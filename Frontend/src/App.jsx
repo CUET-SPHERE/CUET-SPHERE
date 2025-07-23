@@ -27,7 +27,7 @@ function AppContent() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Navbar />
+        {!isAuthenticated && <Navbar />}
         <main>
           <Routes>
             <Route path="/" element={<LandingPage />} />

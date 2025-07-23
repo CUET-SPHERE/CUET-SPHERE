@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mail, Eye, EyeOff } from 'lucide-react';
-import { validateLoginForm } from '../utils/validation';
-import { useUser } from '../contexts/UserContext';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { GraduationCap, Mail, Eye, EyeOff } from "lucide-react";
+import { validateLoginForm } from "../utils/validation";
+import { useUser } from "../contexts/UserContext";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useUser();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -17,16 +17,16 @@ const LoginPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
@@ -34,7 +34,7 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     const validationErrors = validateLoginForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -44,33 +44,35 @@ const LoginPage = () => {
 
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock authentication - check credentials
-      if (formData.email === 'cuetStudent@gmail.com' && formData.password === 'asdfg1122') {
-        // Mock user data for successful login
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Mock authentication - updated credentials for Muhammad Rony
+      if (
+        formData.email === "rony@student.cuet.ac.bd" &&
+        formData.password === "rony123"
+      ) {
+        // Muhammad Rony's user data
         const userData = {
-          fullName: 'Ahmed Rahman',
-          studentId: '2041001',
+          fullName: "Muhammad Rony",
+          studentId: "2204005",
           email: formData.email,
-          batch: '2020',
-          department: 'Computer Science & Engineering',
-          hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
-          role: 'student'
+          batch: "2022-2023",
+          department: "CSE",
+          hall: "Bangabandhu Sheikh Mujibur Rahman Hall",
+          role: "student",
         };
-        
+
         login(userData);
-        navigate('/dashboard');
+        navigate("/dashboard");
       } else {
         // Invalid credentials
-        setErrors({ submit: 'Invalid email or password. Please try again.' });
+        setErrors({ submit: "Invalid email or password. Please try again." });
         setIsSubmitting(false);
         return;
       }
-      
     } catch (error) {
-      console.error('Login error:', error);
-      setErrors({ submit: 'Invalid email or password. Please try again.' });
+      console.error("Login error:", error);
+      setErrors({ submit: "Invalid email or password. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -89,11 +91,29 @@ const LoginPage = () => {
           </p>
         </div>
 
+        {/* Login Credentials Info */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+            Test Login Credentials:
+          </h3>
+          <div className="text-xs text-blue-600 dark:text-blue-300 space-y-1">
+            <p>
+              <strong>Email:</strong> rony@student.cuet.ac.bd
+            </p>
+            <p>
+              <strong>Password:</strong> rony123
+            </p>
+          </div>
+        </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Email Address
               </label>
               <div className="mt-1 relative">
@@ -108,7 +128,7 @@ const LoginPage = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
+                    errors.email ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your email address"
                 />
@@ -120,19 +140,22 @@ const LoginPage = () => {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Password
               </label>
               <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
                   onChange={handleInputChange}
                   className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
+                    errors.password ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="Enter your password"
                 />
@@ -155,7 +178,9 @@ const LoginPage = () => {
           </div>
 
           {errors.submit && (
-            <div className="text-red-600 text-sm text-center">{errors.submit}</div>
+            <div className="text-red-600 text-sm text-center">
+              {errors.submit}
+            </div>
           )}
 
           <div>
@@ -164,8 +189,8 @@ const LoginPage = () => {
               disabled={isSubmitting}
               className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${
                 isSubmitting
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
+                  ? "bg-blue-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 transform hover:scale-105"
               }`}
             >
               {isSubmitting ? (
@@ -174,14 +199,14 @@ const LoginPage = () => {
                   Signing in...
                 </div>
               ) : (
-                'Sign in'
+                "Sign in"
               )}
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <Link
                 to="/signup"
                 className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
