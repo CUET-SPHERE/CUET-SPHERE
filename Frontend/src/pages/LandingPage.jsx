@@ -164,7 +164,7 @@ const LandingPage = () => {
                 to="/signup"
                 className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
               >
-                <span>Join CUET Connect</span>
+                <span>Join CUETSphere</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
