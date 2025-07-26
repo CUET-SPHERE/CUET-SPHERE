@@ -1,54 +1,85 @@
-import React from 'react';
-import { MessageCircle, ThumbsUp, Clock, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip } from 'lucide-react';
 
-const PostCard = ({ post }) => {
-  const { title, content, author, timestamp, likes, comments, category } = post;
+function formatDate(isoString) {
+  const date = new Date(isoString);
+  return date.toLocaleString();
+}
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      'help': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300',
-      'resource': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
-      'question': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
-      'announcement': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
-    };
-    return colors[category] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+function PostCard({ post }) {
+  const [upvotes, setUpvotes] = useState(post.upvotes);
+  const [downvotes, setDownvotes] = useState(post.downvotes);
+  const [bookmarked, setBookmarked] = useState(post.bookmarked);
+  const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
+
+  const handleUpvote = () => {
+    if (userVote === 'up') {
+      setUpvotes(upvotes - 1);
+      setUserVote(null);
+    } else {
+      setUpvotes(upvotes + 1);
+      if (userVote === 'down') setDownvotes(downvotes - 1);
+      setUserVote('up');
+    }
+  };
+
+  const handleDownvote = () => {
+    if (userVote === 'down') {
+      setDownvotes(downvotes - 1);
+      setUserVote(null);
+    } else {
+      setDownvotes(downvotes + 1);
+      if (userVote === 'up') setUpvotes(upvotes - 1);
+      setUserVote('down');
+    }
+  };
+
+  const handleBookmark = () => {
+    setBookmarked(!bookmarked);
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-            <User className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">{author}</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-              <Clock className="h-3 w-3" />
-              <span>{timestamp}</span>
-            </div>
-          </div>
+    <div className="bg-gray-50 rounded-lg shadow p-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-gray-900">{post.author}</span>
+          <span className="text-xs text-gray-500">{formatDate(post.timestamp)}</span>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(category)}`}>
-          {category}
-        </span>
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{post.category}</span>
       </div>
-
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-gray-700 dark:text-gray-300 mb-4">{content}</p>
-
-      <div className="flex items-center space-x-6 text-gray-500 dark:text-gray-400">
-        <button className="flex items-center space-x-2 hover:text-blue-600 transition-colors duration-200">
+      <div>
+        <h3 className="text-lg font-bold text-gray-900 mb-1">{post.title}</h3>
+        <p className="text-gray-700 mb-2">{post.content}</p>
+        {post.attachment && (
+          <div className="flex items-center gap-2 text-blue-600 text-sm">
+            <Paperclip className="h-4 w-4" />
+            <a href="#" className="underline">{post.attachment}</a>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-6 mt-2 text-gray-600">
+        <button className={`flex items-center gap-1 hover:text-blue-600 ${userVote === 'up' ? 'text-blue-600' : ''}`} onClick={handleUpvote}>
           <ThumbsUp className="h-4 w-4" />
-          <span className="text-sm">{likes}</span>
+          <span className="text-sm">{upvotes}</span>
         </button>
-        <button className="flex items-center space-x-2 hover:text-blue-600 transition-colors duration-200">
+        <button className={`flex items-center gap-1 hover:text-red-600 ${userVote === 'down' ? 'text-red-600' : ''}`} onClick={handleDownvote}>
+          <ThumbsDown className="h-4 w-4" />
+          <span className="text-sm">{downvotes}</span>
+        </button>
+        <div className="flex items-center gap-1">
           <MessageCircle className="h-4 w-4" />
-          <span className="text-sm">{comments}</span>
+          <span className="text-sm">{post.commentsCount}</span>
+        </div>
+        <button className="ml-auto" onClick={handleBookmark}>
+          {bookmarked ? (
+            <BookmarkCheck className="h-5 w-5 text-blue-600" />
+          ) : (
+            <Bookmark className="h-5 w-5" />
+          )}
         </button>
       </div>
     </div>
   );
-};
+}
 
 export default PostCard;
