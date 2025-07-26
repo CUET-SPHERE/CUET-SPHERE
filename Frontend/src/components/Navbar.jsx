@@ -1,10 +1,71 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, GraduationCap, Menu, X } from 'lucide-react';
+import { Bell, Moon, Sun, GraduationCap, Menu, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 
-const Navbar = () => {
+// Tabs for logged in users
+const navTabs = [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Feed', to: '/feed' },
+  { label: 'Resources', to: '/dashboard#resources' },
+  { label: 'My Group', to: '/group' },
+  { label: 'Profile', to: '/profile' },
+];
+
+export function LoggedInNavbar() {
+  const location = useLocation();
+  // Mock notification count and user initial
+  const notificationCount = 3;
+  const userInitial = 'S';
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center h-16 justify-between">
+          {/* Logo */}
+          <Link to="/dashboard" className="flex items-center space-x-2">
+            <span className="text-2xl font-extrabold text-blue-600">CUETSphere</span>
+          </Link>
+          {/* Tabs */}
+          <div className="flex items-center space-x-6">
+            {navTabs.map((tab) => (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className={`relative text-base font-medium px-1 pb-1 transition-colors duration-200 ${
+                  (location.pathname === tab.to || (tab.to === '/dashboard#resources' && location.hash === '#resources'))
+                    ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                {tab.label}
+                {(location.pathname === tab.to || (tab.to === '/dashboard#resources' && location.hash === '#resources')) && (
+                  <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-blue-500 rounded"></span>
+                )}
+              </Link>
+            ))}
+          </div>
+          {/* Right side: Notification and User */}
+          <div className="flex items-center space-x-4">
+            {/* Notification Bell */}
+            <div className="relative">
+              <Bell className="h-6 w-6 text-gray-700" />
+              <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">
+                {notificationCount}
+              </span>
+            </div>
+            {/* User Avatar */}
+            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-700">
+              {userInitial}
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export function LoggedOutNavbar() {
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, user, logout } = useUser();
   const location = useLocation();
@@ -68,7 +129,6 @@ const Navbar = () => {
                 <NavLink to="/signup">Sign Up</NavLink>
               </>
             )}
-            
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -145,6 +205,4 @@ const Navbar = () => {
       </div>
     </nav>
   );
-};
-
-export default Navbar;
+}

@@ -2,12 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
-import Navbar from './components/Navbar';
+import { LoggedOutNavbar, LoggedInNavbar } from './components/Navbar';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import StudentDashboard from './pages/StudentDashboard';
+import FeedPage from './pages/FeedPage';
+import MyGroupPage from './pages/MyGroupPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -27,7 +29,7 @@ function AppContent() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {!isAuthenticated && <Navbar />}
+        {isAuthenticated ? <LoggedInNavbar /> : <LoggedOutNavbar />}
         <main>
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -54,6 +56,14 @@ function AppContent() {
                   <StudentDashboard />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/feed" 
+              element={<FeedPage />} 
+            />
+            <Route 
+              path="/group" 
+              element={<MyGroupPage />} 
             />
           </Routes>
         </main>
