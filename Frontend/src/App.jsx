@@ -10,6 +10,7 @@ import SignupPage from './pages/SignupPage';
 import StudentDashboard from './pages/StudentDashboard';
 import FeedPage from './pages/FeedPage';
 import MyGroupPage from './pages/MyGroupPage';
+import ResourcesPage from './pages/ResourcesPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -62,8 +63,20 @@ function AppContent() {
               element={<FeedPage />} 
             />
             <Route 
+              path="/resources" 
+              element={
+                <ProtectedRoute>
+                  <ResourcesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
               path="/group" 
-              element={<MyGroupPage />} 
+              element={
+                <ProtectedRoute>
+                  <MyGroupPage />
+                </ProtectedRoute>
+              } 
             />
           </Routes>
         </main>
