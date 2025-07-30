@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mockUser } from '../mock/mockUser';
+import { useUser } from '../contexts/UserContext';
 import { mockResources as initialMockResources } from '../mock/mockResources';
 import ResourceUploadModal from './ResourceUploadModal';
 
@@ -41,6 +41,7 @@ const coursesByLevelTerm = {
 };
 
 function AcademicResources() {
+  const { user } = useUser();
   const [selectedLevel, setSelectedLevel] = useState(1);
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -56,8 +57,8 @@ function AcademicResources() {
   const getResources = (course) =>
     resources.filter(
       (r) =>
-        r.department === mockUser.department &&
-        r.batch === mockUser.batch &&
+        r.department === user.department &&
+        r.batch === user.batch &&
         r.level === selectedLevel &&
         r.term === selectedTerm &&
         r.course === course
@@ -69,46 +70,46 @@ function AcademicResources() {
       ...resources,
       {
         id: resources.length + 1,
-        department: mockUser.department,
-        batch: mockUser.batch,
+        department: user.department,
+        batch: user.batch,
         level: newRes.level,
         term: newRes.term,
         course: newRes.course,
         title: newRes.title,
         file: newRes.file,
-        uploader: mockUser.email,
+        uploader: user.email,
         downloadCount: 0,
       },
     ]);
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-6">Academic Resources</h2>
-      <div className="flex gap-8">
+    <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col h-full">
+      <h2 className="text-2xl font-bold mb-6 shrink-0">Academic Resources</h2>
+      
+      <div className="flex flex-col gap-6 flex-grow">
         {/* Levels */}
-        <div className="w-32">
-          <h3 className="font-semibold mb-4">Levels</h3>
-          {levels.map((level) => (
-            <button
-              key={level}
-              className={`w-full mb-2 px-4 py-2 rounded-lg text-left font-medium transition-all ${
-                selectedLevel === level
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              onClick={() => {
-                setSelectedLevel(level);
-                setSelectedTerm(1);
-                setSelectedCourse(null);
-              }}
-            >
-              Level {level}
-            </button>
-          ))}
+        <div className="grid grid-cols-5 items-center gap-4">
+          <h3 className="font-semibold text-gray-600 col-span-1">Levels</h3>
+          <div className="col-span-4 grid grid-cols-4 gap-2">
+            {levels.map((level) => (
+              <button
+                key={level}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${selectedLevel === level ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                onClick={() => {
+                  setSelectedLevel(level);
+                  setSelectedTerm(1);
+                  setSelectedCourse(null);
+                }}
+              >
+                Level {level}
+              </button>
+            ))}
+          </div>
         </div>
-        {/* Terms and Courses */}
-        <div className="flex-1">
+
+        {/* Term selector & Courses */}
+        <div className="w-full">
           {!selectedCourse ? (
             <>
               <div className="flex gap-4 mb-4">
@@ -174,7 +175,7 @@ function AcademicResources() {
                 )}
               </div>
               {/* Upload Button for CRs */}
-              {mockUser.role === 'CR' && (
+              {user && user.role === 'CR' && (
                 <>
                   <button
                     className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-all"
@@ -205,4 +206,4 @@ function AcademicResources() {
   );
 }
 
-export default AcademicResources; 
+export default AcademicResources;

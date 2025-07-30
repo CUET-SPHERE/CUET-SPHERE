@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { mockUser } from '../mock/mockUser'; // For testing purposes
 
 const UserContext = createContext();
 
@@ -11,17 +12,10 @@ export const useUser = () => {
 };
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    // Check for saved user data on app load
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
-  }, []);
+  // --- FOR TESTING: Set mock user as default ---
+  const [user, setUser] = useState(mockUser);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // --------------------------------------------
 
   const login = (userData) => {
     setUser(userData);

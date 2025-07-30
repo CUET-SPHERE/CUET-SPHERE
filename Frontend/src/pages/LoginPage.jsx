@@ -46,24 +46,51 @@ const LoginPage = () => {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Mock authentication - updated credentials for Muhammad Rony
-      if (
-        formData.email === "rony@student.cuet.ac.bd" &&
-        formData.password === "rony123"
-      ) {
-        // Muhammad Rony's user data
-        const userData = {
-          fullName: "Muhammad Rony",
-          studentId: "2204005",
-          email: formData.email,
-          batch: "2022-2023",
-          department: "CSE",
-          hall: "Bangabandhu Sheikh Mujibur Rahman Hall",
-          role: "student",
-        };
+      // Mock authentication for multiple users
+      const mockUsers = {
+        'rony@student.cuet.ac.bd': {
+          password: 'rony123',
+          userData: {
+            fullName: 'Muhammad Rony',
+            studentId: '2204005',
+            email: 'rony@student.cuet.ac.bd',
+            batch: '2022-2023',
+            department: 'CSE',
+            hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
+            role: 'student',
+          },
+        },
+        'cr@student.cuet.ac.bd': {
+          password: 'cr123',
+          userData: {
+            fullName: 'CR User',
+            studentId: '2204001',
+            email: 'cr@student.cuet.ac.bd',
+            batch: '2022-2023',
+            department: 'CSE',
+            hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
+            role: 'cr',
+          },
+        },
+        'admin@student.cuet.ac.bd': {
+          password: 'admin123',
+          userData: {
+            fullName: 'Admin User',
+            studentId: '0000000',
+            email: 'admin@student.cuet.ac.bd',
+            batch: 'N/A',
+            department: 'System',
+            hall: 'N/A',
+            role: 'admin',
+          },
+        },
+      };
 
-        login(userData);
-        navigate("/dashboard");
+      const user = mockUsers[formData.email];
+
+      if (user && user.password === formData.password) {
+        login(user.userData);
+        navigate('/dashboard');
       } else {
         // Invalid credentials
         setErrors({ submit: "Invalid email or password. Please try again." });
@@ -96,13 +123,22 @@ const LoginPage = () => {
           <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
             Test Login Credentials:
           </h3>
-          <div className="text-xs text-blue-600 dark:text-blue-300 space-y-1">
-            <p>
-              <strong>Email:</strong> rony@student.cuet.ac.bd
-            </p>
-            <p>
-              <strong>Password:</strong> rony123
-            </p>
+          <div className="text-xs text-blue-600 dark:text-blue-300 space-y-2">
+            <div>
+              <p><strong>Role:</strong> Student</p>
+              <p><strong>Email:</strong> rony@student.cuet.ac.bd</p>
+              <p><strong>Password:</strong> rony123</p>
+            </div>
+            <div>
+              <p><strong>Role:</strong> CR</p>
+              <p><strong>Email:</strong> cr@student.cuet.ac.bd</p>
+              <p><strong>Password:</strong> cr123</p>
+            </div>
+            <div>
+              <p><strong>Role:</strong> Admin</p>
+              <p><strong>Email:</strong> admin@student.cuet.ac.bd</p>
+              <p><strong>Password:</strong> admin123</p>
+            </div>
           </div>
         </div>
 

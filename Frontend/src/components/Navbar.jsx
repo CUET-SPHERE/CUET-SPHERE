@@ -8,20 +8,21 @@ import { useUser } from '../contexts/UserContext';
 const navTabs = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Feed', to: '/feed' },
-  { label: 'Resources', to: '/dashboard#resources' },
+  { label: 'Resources', to: '/resources' },
   { label: 'My Group', to: '/group' },
   { label: 'Profile', to: '/profile' },
 ];
 
 export function LoggedInNavbar() {
   const location = useLocation();
+  const { user, logout } = useUser();
   // Mock notification count and user initial
   const notificationCount = 3;
-  const userInitial = 'S';
+  const userInitial = user?.fullName?.charAt(0) || 'S';
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-10 sm:px-12 lg:px-16">
         <div className="flex items-center h-16 justify-between">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center space-x-2">
@@ -44,6 +45,33 @@ export function LoggedInNavbar() {
                 )}
               </Link>
             ))}
+            {/* Role-specific tabs */}
+            {user?.role === 'cr' && (
+              <Link
+                to="/cr-panel"
+                className={`relative text-base font-medium px-1 pb-1 transition-colors duration-200 ${
+                  location.pathname === '/cr-panel' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                CR Panel
+                {location.pathname === '/cr-panel' && (
+                  <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-blue-500 rounded"></span>
+                )}
+              </Link>
+            )}
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin-panel"
+                className={`relative text-base font-medium px-1 pb-1 transition-colors duration-200 ${
+                  location.pathname === '/admin-panel' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                Admin Panel
+                {location.pathname === '/admin-panel' && (
+                  <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-blue-500 rounded"></span>
+                )}
+              </Link>
+            )}
           </div>
           {/* Right side: Notification and User */}
           <div className="flex items-center space-x-4">
@@ -58,6 +86,13 @@ export function LoggedInNavbar() {
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-700">
               {userInitial}
             </div>
+            {/* Logout Button */}
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm font-medium"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
