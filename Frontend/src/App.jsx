@@ -11,6 +11,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import FeedPage from './pages/FeedPage';
 import MyGroupPage from './pages/MyGroupPage';
 import ResourcesPage from './pages/ResourcesPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -75,6 +76,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <MyGroupPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               } 
             />
