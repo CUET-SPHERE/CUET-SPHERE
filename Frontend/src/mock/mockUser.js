@@ -5,6 +5,6 @@ export const mockUser = {
   hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
   batch: '22',
   department: '04', // CSE
-  role: 'CR', // Change to 'student' to test student view
+  role: 'Student', // Change to 'student' to test student view
   profilePicture: null,
 }; 

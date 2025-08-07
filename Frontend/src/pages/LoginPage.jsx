@@ -57,7 +57,7 @@ const LoginPage = () => {
             batch: '2022-2023',
             department: 'CSE',
             hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
-            role: 'student',
+            role: 'Student',
           },
         },
         'cr@student.cuet.ac.bd': {
@@ -69,7 +69,7 @@ const LoginPage = () => {
             batch: '2022-2023',
             department: 'CSE',
             hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
-            role: 'cr',
+            role: 'CR',
           },
         },
         'admin@student.cuet.ac.bd': {
