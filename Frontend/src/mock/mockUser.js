@@ -7,4 +7,4 @@ export const mockUser = {
   department: '04', // CSE
   role: 'Student', // Change to 'student' to test student view
   profilePicture: null,
-}; 
+};

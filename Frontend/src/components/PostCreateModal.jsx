@@ -183,4 +183,4 @@ function PostCreateModal({ open, onClose, onCreate }) {
   );
 }
 
-export default PostCreateModal; 
+export default PostCreateModal;

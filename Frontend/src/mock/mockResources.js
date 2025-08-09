@@ -36,4 +36,4 @@ export const mockResources = [
     downloadCount: 5,
   },
   // Add more mock resources for other courses, terms, and levels as needed
-]; 
+];

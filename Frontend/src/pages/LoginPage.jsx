@@ -22,7 +22,6 @@ const LoginPage = () => {
       [name]: value,
     }));
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -43,10 +42,8 @@ const LoginPage = () => {
     }
 
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Mock authentication for multiple users
       const mockUsers = {
         'rony@student.cuet.ac.bd': {
           password: 'rony123',
@@ -90,16 +87,18 @@ const LoginPage = () => {
 
       if (user && user.password === formData.password) {
         login(user.userData);
-        navigate('/dashboard');
+        // Redirect based on role
+        if (user.userData.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
-        // Invalid credentials
         setErrors({ submit: "Invalid email or password. Please try again." });
-        setIsSubmitting(false);
-        return;
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrors({ submit: "Invalid email or password. Please try again." });
+      setErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -114,11 +113,10 @@ const LoginPage = () => {
             Welcome Back
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in to your CUET Connect account
+            Sign in to your CUET Sphere account
           </p>
         </div>
 
-        {/* Login Credentials Info */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
             Test Login Credentials:
@@ -144,7 +142,6 @@ const LoginPage = () => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Email */}
             <div>
               <label
                 htmlFor="email"
@@ -174,7 +171,6 @@ const LoginPage = () => {
               )}
             </div>
 
-            {/* Password */}
             <div>
               <label
                 htmlFor="password"
