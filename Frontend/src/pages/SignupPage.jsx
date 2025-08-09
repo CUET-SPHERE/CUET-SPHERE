@@ -1,8 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, User, Mail, Hash, Home, Eye, EyeOff } from 'lucide-react';
-import { validateSignupForm, extractBatch, extractDepartment, HALLS } from '../utils/validation';
+import { GraduationCap, User, Mail, Hash, Eye, EyeOff, Lock, Users, Building } from 'lucide-react';
+import { validateSignupForm, extractBatch, extractDepartment, HALLS, GENDERS } from '../utils/validation';
 import { useUser } from '../contexts/UserContext';
+
+// --- Component Definitions Moved Outside ---
+// This prevents them from being re-created on every render, fixing the focus loss issue.
+
+const InputField = ({ id, name, label, type, value, onChange, error, placeholder, icon, maxLength, required = true }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{icon}</div>
+      <input id={id} name={name} type={type} required={required} value={value} onChange={onChange} maxLength={maxLength}
+        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+        placeholder={placeholder} />
+    </div>
+    {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
+  </div>
+);
+
+const SelectField = ({ id, name, label, value, onChange, error, icon, children, required = true }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{icon}</div>
+      <select id={id} name={name} required={required} value={value} onChange={onChange}
+        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}>
+        {children}
+      </select>
+    </div>
+    {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
+  </div>
+);
+
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -12,32 +43,28 @@ const SignupPage = () => {
     studentId: '',
     email: '',
     password: '',
-    hall: ''
+    confirmPassword: '',
+    hall: '',
+    gender: ''
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+    setErrors({});
+
     const validationErrors = validateSignupForm(formData);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -45,257 +72,136 @@ const SignupPage = () => {
       return;
     }
 
-    try {
-      // Simulate API call
+    const { confirmPassword, ...signupData } = formData;
+    const derivedData = {
+      batch: extractBatch(signupData.studentId),
+      department: extractDepartment(signupData.studentId),
+    };
+
+    const finalUserData = { ...signupData, ...derivedData };
+
+    if (import.meta.env.VITE_PROJECT_STATE === 'development') {
+      console.log('DEV MODE: Simulating signup with data:', finalUserData);
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const userData = {
-        ...formData,
-        batch: extractBatch(formData.studentId),
-        department: extractDepartment(formData.studentId),
-        role: 'student'
-      };
-      
-      login(userData);
+      login({ ...finalUserData, role: 'student' });
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Signup error:', error);
-      setErrors({ submit: 'An error occurred during signup. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalUserData),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setErrors(data.errors || { submit: data.message || 'An unknown error occurred.' });
+        } else {
+          login(data.user);
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Signup API error:', error);
+        setErrors({ submit: 'Could not connect to the server. Please try again later.' });
+      }
     }
+
+    setIsSubmitting(false);
   };
 
-  const batch = extractBatch(formData.studentId);
-  const department = extractDepartment(formData.studentId);
+  const { batch, department } = useMemo(() => ({
+    batch: extractBatch(formData.studentId),
+    department: extractDepartment(formData.studentId),
+  }), [formData.studentId]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      {/* --- Increased horizontal space from max-w-md to max-w-2xl --- */}
+      <div className="max-w-2xl w-full space-y-6 p-8 md:p-10 bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="text-center">
-          <GraduationCap className="mx-auto h-12 w-12 text-blue-600" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
-            Join CUET Connect
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Create your account to access all features
-          </p>
+          <GraduationCap className="mx-auto h-12 w-12 text-primary-600" />
+          <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-white">Join CUET Sphere</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Create your account to connect with the community.</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {/* Full Name */}
-            <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Full Name
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.fullName ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your full name"
-                />
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputField id="fullName" name="fullName" label="Full Name" type="text" value={formData.fullName} onChange={handleInputChange} error={errors.fullName} placeholder="Enter your full name" icon={<User className="h-5 w-5 text-gray-400" />} />
+            <InputField id="studentId" name="studentId" label="Student ID" type="text" value={formData.studentId} onChange={handleInputChange} error={errors.studentId} placeholder="e.g., 2004001" icon={<Hash className="h-5 w-5 text-gray-400" />} maxLength={7} />
+          </div>
+
+          {(batch || department) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Batch</label>
+                <input type="text" value={batch} readOnly className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white cursor-not-allowed" />
               </div>
-              {errors.fullName && (
-                <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                <input type="text" value={department} readOnly className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white cursor-not-allowed" />
+              </div>
             </div>
+          )}
 
-            {/* Student ID */}
+          <InputField id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleInputChange} error={errors.email} placeholder="you@example.com" icon={<Mail className="h-5 w-5 text-gray-400" />} />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SelectField id="hall" name="hall" label="Hall" value={formData.hall} onChange={handleInputChange} error={errors.hall} icon={<Building className="h-5 w-5 text-gray-400" />}>
+              <option value="">Select your hall</option>
+              {HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)}
+            </SelectField>
+            <SelectField id="gender" name="gender" label="Gender" value={formData.gender} onChange={handleInputChange} error={errors.gender} icon={<Users className="h-5 w-5 text-gray-400" />}>
+              <option value="">Select gender</option>
+              {GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+            </SelectField>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Student ID
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Hash className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="studentId"
-                  name="studentId"
-                  type="text"
-                  required
-                  value={formData.studentId}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.studentId ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your 7-digit student ID"
-                  maxLength="7"
-                />
-              </div>
-              {errors.studentId && (
-                <p className="mt-1 text-sm text-red-600">{errors.studentId}</p>
-              )}
-            </div>
-
-            {/* Auto-detected fields */}
-            {(batch || department) && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Batch
-                  </label>
-                  <input
-                    type="text"
-                    value={batch}
-                    readOnly
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Auto-detected"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Department
-                  </label>
-                  <input
-                    type="text"
-                    value={department}
-                    readOnly
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs"
-                    placeholder="Auto-detected"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email Address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your email address"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Lock className="h-5 w-5 text-gray-400" /></div>
+                <input id="password" name="password" type={showPassword ? 'text' : 'password'} required value={formData.password} onChange={handleInputChange}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+                  placeholder="Create a password" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
+              {errors.password && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
             </div>
 
-            {/* Hall */}
             <div>
-              <label htmlFor="hall" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Hall
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Home className="h-5 w-5 text-gray-400" />
-                </div>
-                <select
-                  id="hall"
-                  name="hall"
-                  required
-                  value={formData.hall}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.hall ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select your hall</option>
-                  {HALLS.map((hall) => (
-                    <option key={hall} value={hall}>{hall}</option>
-                  ))}
-                </select>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Lock className="h-5 w-5 text-gray-400" /></div>
+                <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required value={formData.confirmPassword} onChange={handleInputChange}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+                  placeholder="Confirm your password" />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
-              {errors.hall && (
-                <p className="mt-1 text-sm text-red-600">{errors.hall}</p>
-              )}
+              {errors.confirmPassword && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>}
             </div>
           </div>
 
-          {errors.submit && (
-            <div className="text-red-600 text-sm text-center">{errors.submit}</div>
-          )}
+          {errors.submit && <div className="text-red-600 dark:text-red-400 text-sm text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">{errors.submit}</div>}
 
           <div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${
-                isSubmitting
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 transform hover:scale-105'
-              }`}
-            >
+            <button type="submit" disabled={isSubmitting}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 ${isSubmitting ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 transform hover:scale-105'}`}>
               {isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                'Create Account'
-              )}
+                <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>Creating Account...</>
+              ) : 'Create Account'}
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
-              >
-                Sign in
-              </Link>
+              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500 transition-colors duration-200">Sign in</Link>
             </p>
           </div>
         </form>

@@ -221,4 +221,4 @@ export const mockPosts = [
       }
     ]
   }
-]; 
+];

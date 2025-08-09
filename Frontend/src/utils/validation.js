@@ -1,84 +1,94 @@
-// Department mapping based on CUET student ID structure
 export const DEPARTMENTS = {
-  '01': 'Computer Science & Engineering',
-  '02': 'Electrical & Electronic Engineering',
+  '01': 'Civil Engineering',
+  '02': 'Electrical &amp; Electronic Engineering',
   '03': 'Mechanical Engineering',
-  '04': 'Civil Engineering',
-  '05': 'Chemical Engineering'
+  '04': 'Computer Science &amp; Engineering',
+  '05': 'Urban &amp; Regional Planning',
+  '06': 'Architecture',
+  '07': 'Petroleum &amp; Mining Engineering',
+  '08': 'Electronics &amp; Telecommunication Engineering',
+  '09': 'Mechatronics &amp; Industrial Engineering',
+  '10': 'Water Resources Engineering',
+  '11': 'Biomedical Engineering',
+  '12': 'Materials Science &amp; Engineering',
 };
 
 export const HALLS = [
-  'Bangabandhu Sheikh Mujibur Rahman Hall',
-  'Shaheed Tajuddin Ahmad Hall',
-  'Pritilata Waddedar Hall',
-  'Begum Rokeya Hall',
-  'Deshnetri Begum Khaleda Zia Hall',
-  'Sheikh Hasina Hall'
+  'Kazi Nazrul Islam Hall',
+  'Syed Muhammad Shah Hall',
+  'Tarek Huda Hall',
+  'Dr. Qudrat-E-Khuda Hall',
+  'Bangabandhu Hall',
+  'Shaheed Mohammad Shah Hall',
+  'Sufia Kamal Hall',
+  'Sheikh Russel Hall',
 ];
 
-// Extract batch from student ID (first 2 digits)
+export const GENDERS = ['Male', 'Female', 'Other'];
+
 export const extractBatch = (studentId) => {
-  if (!studentId || studentId.length < 2) return '';
-  return '20' + studentId.substring(0, 2);
+  if (typeof studentId !== 'string' || studentId.length < 2) return '';
+  return `20${studentId.substring(0, 2)}`;
 };
 
-// Extract department from student ID (3rd and 4th digits)
 export const extractDepartment = (studentId) => {
-  if (!studentId || studentId.length < 4) return '';
+  if (typeof studentId !== 'string' || studentId.length < 4) return '';
   const deptCode = studentId.substring(2, 4);
   return DEPARTMENTS[deptCode] || '';
 };
 
-// Validate email format
-export const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-// Validate student ID (7 digits)
-export const validateStudentId = (studentId) => {
-  const idRegex = /^\d{7}$/;
-  return idRegex.test(studentId);
-};
-
-// Validate form data
 export const validateSignupForm = (formData) => {
   const errors = {};
 
-  if (!formData.fullName?.trim()) {
-    errors.fullName = 'Full name is required';
+  if (!formData.fullName.trim()) {
+    errors.fullName = 'Full name is required.';
   }
 
-  if (!formData.studentId) {
-    errors.studentId = 'Student ID is required';
-  } else if (!validateStudentId(formData.studentId)) {
-    errors.studentId = 'Student ID must be exactly 7 digits';
+  if (!/^\d{7}$/.test(formData.studentId)) {
+    errors.studentId = 'Student ID must be exactly 7 digits.';
+  } else if (!extractDepartment(formData.studentId)) {
+    errors.studentId = 'Invalid department code in Student ID.';
   }
 
-  if (!formData.email) {
-    errors.email = 'Email is required';
-  } else if (!validateEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address';
+  if (!formData.email.trim()) {
+    errors.email = 'Email is required.';
+  } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    errors.email = 'Email address is invalid.';
+  }
+
+  if (!formData.password) {
+    errors.password = 'Password is required.';
+  } else if (formData.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters long.';
+  }
+
+  if (formData.password !== formData.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match.';
   }
 
   if (!formData.hall) {
-    errors.hall = 'Please select a hall';
+    errors.hall = 'Please select your hall of residence.';
+  }
+
+  if (!formData.gender) {
+    errors.gender = 'Please select your gender.';
   }
 
   return errors;
 };
 
+// --- ADDED THIS FUNCTION ---
 export const validateLoginForm = (formData) => {
   const errors = {};
 
-  if (!formData.email) {
-    errors.email = 'Email is required';
-  } else if (!validateEmail(formData.email)) {
-    errors.email = 'Please enter a valid email address';
+  if (!formData.email.trim()) {
+    errors.email = 'Email is required.';
+  } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    errors.email = 'Email address is invalid.';
   }
 
   if (!formData.password) {
-    errors.password = 'Password is required';
+    errors.password = 'Password is required.';
   }
 
   return errors;

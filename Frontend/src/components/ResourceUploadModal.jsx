@@ -63,4 +63,4 @@ function ResourceUploadModal({ open, onClose, onUpload, course, level, term }) {
   );
 }
 
-export default ResourceUploadModal; 
+export default ResourceUploadModal;
