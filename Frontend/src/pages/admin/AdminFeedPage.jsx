@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Switch } from '@headlessui/react';
 import clsx from 'clsx';
-import PostFeed from '../../components/PostFeed'; // Import the reused component
+import PostFeed from '../../components/PostFeed';
 import { ShieldAlert } from 'lucide-react';
 
 const AdminFeedPage = () => {
   const [manageMode, setManageMode] = useState(false);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header Section */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+    <div className="flex flex-col h-full bg-gray-100 dark:bg-gray-900">
+      {/* Sticky Header Section - Correctly offset from the top */}
+      <header className="sticky top-16 z-30 bg-white/95 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -55,14 +55,14 @@ const AdminFeedPage = () => {
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Reused PostFeed Component */}
-      <div className="flex-grow bg-gray-100 dark:bg-gray-900">
+      {/* Main Content */}
+      <main>
         <div className="max-w-4xl mx-auto">
           <PostFeed isManageMode={manageMode} />
         </div>
-      </div>
+      </main>
     </div>
   );
 };

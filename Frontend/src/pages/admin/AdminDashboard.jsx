@@ -3,6 +3,7 @@ import { useUser } from '../../contexts/UserContext';
 import { Building, Home, Trash2, BarChart2 } from 'lucide-react';
 import DepartmentManager from '../../components/admin/DepartmentManager';
 import HallManager from '../../components/admin/HallManager';
+import CRManager from '../../components/admin/CRManager';
 
 const StatCard = ({ title, value, icon, color }) => {
   const Icon = icon;
@@ -45,6 +46,7 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <DepartmentManager />
           <HallManager />
+          <CRManager />
         </div>
       </div>
     </div>

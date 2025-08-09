@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2 } from 'lucide-react';
 import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl } from '../utils/formatters';
 
 // Avatar component
@@ -243,7 +243,7 @@ function PostImage({ src, alt }) {
   );
 }
 
-function PostCard({ post }) {
+function PostCard({ post, isManageMode = false, onDelete }) {
   const [upvotes, setUpvotes] = useState(post.upvotes);
   const [downvotes, setDownvotes] = useState(post.downvotes);
   const [bookmarked, setBookmarked] = useState(post.bookmarked);
@@ -388,9 +388,9 @@ function PostCard({ post }) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
-      {/* Post Header */}
-      <div className="p-6 pb-4">
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
+      <div className="p-6">
+        {/* Post Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <Avatar src={post.profilePicture} name={post.author} />
@@ -413,12 +413,8 @@ function PostCard({ post }) {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{post.title}</h3>
           <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{post.content}</p>
           
-          {/* Image Display */}
-          {post.image && isImageUrl(post.image) && (
-            <PostImage src={post.image} alt={post.title} />
-          )}
+          {post.image && isImageUrl(post.image) && <PostImage src={post.image} alt={post.title} />}
 
-          {/* Attachment */}
           {post.attachment && (
             <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <Paperclip className="h-4 w-4 text-gray-500" />
@@ -430,55 +426,58 @@ function PostCard({ post }) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-6">
-            <button 
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                userVote === 'up' 
-                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' 
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`} 
-              onClick={handleUpvote}
-            >
-              <ThumbsUp className="h-4 w-4" />
-              <span className="text-sm font-medium">{upvotes}</span>
-            </button>
+        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <button 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                onClick={handleUpvote}
+                disabled={isManageMode}
+              >
+                <ThumbsUp className="h-4 w-4" />
+                <span className="text-sm font-medium">{upvotes}</span>
+              </button>
+              
+              <button 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                onClick={handleDownvote}
+                disabled={isManageMode}
+              >
+                <ThumbsDown className="h-4 w-4" />
+                <span className="text-sm font-medium">{downvotes}</span>
+              </button>
+              
+              <button 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => !isManageMode && setShowComments(!showComments)}
+                disabled={isManageMode}
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">{comments.length}</span>
+              </button>
+            </div>
             
-            <button 
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                userVote === 'down' 
-                  ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' 
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`} 
-              onClick={handleDownvote}
-            >
-              <ThumbsDown className="h-4 w-4" />
-              <span className="text-sm font-medium">{downvotes}</span>
-            </button>
-            
-            <button 
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              onClick={() => setShowComments(!showComments)}
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">{comments.length}</span>
-            </button>
+            <div className="flex items-center gap-4">
+              <button 
+                className={`p-2 rounded-lg transition-colors ${bookmarked ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleBookmark}
+                disabled={isManageMode}
+              >
+                {bookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+              </button>
+
+              {isManageMode && (
+                <button
+                  onClick={() => onDelete(post.id)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                  aria-label="Delete post"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </button>
+              )}
+            </div>
           </div>
-          
-          <button 
-            className={`p-2 rounded-lg transition-colors ${
-              bookmarked 
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900' 
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-            onClick={handleBookmark}
-          >
-            {bookmarked ? (
-              <BookmarkCheck className="h-5 w-5" />
-            ) : (
-              <Bookmark className="h-5 w-5" />
-            )}
-          </button>
         </div>
       </div>
 
