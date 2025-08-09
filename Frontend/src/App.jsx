@@ -23,6 +23,7 @@ import ProfilePage from './pages/ProfilePage';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminFeedPage from './pages/admin/AdminFeedPage';
+import AdminProfilePage from './pages/admin/AdminProfilePage';
 
 // Route Protection Components
 const ProtectedRoute = ({ children }) => {
@@ -79,8 +80,7 @@ function AppContent() {
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/feed" element={<AdminRoute><AdminFeedPage /></AdminRoute>} />
-          {/* A shared profile page can be used, or a dedicated admin one */}
-          <Route path="/admin/profile" element={<AdminRoute><ProfilePage /></AdminRoute>} />
+          <Route path="/admin/profile" element={<AdminRoute><AdminProfilePage /></AdminRoute>} />
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />
