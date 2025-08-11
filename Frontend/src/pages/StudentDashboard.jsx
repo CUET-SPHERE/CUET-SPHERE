@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { 
   Calendar, 
   Clock, 
@@ -12,11 +11,10 @@ import {
   Edit3,
   Upload,
   Image as ImageIcon,
-  CheckCircle,
+  Check,
   AlertCircle,
-  TrendingUp,
   Users,
-  Star
+  X
 } from 'lucide-react';
 
 // Mock data for weekly schedule and tasks
@@ -75,53 +73,10 @@ const mockClassRoutine = {
   customImage: null
 };
 
-// Quick Stats Component
-const QuickStatsCard = () => {
-  const { isDark } = useTheme();
-  
-  const stats = [
-    { label: 'Posts Created', value: 0, icon: FileText, color: 'blue' },
-    { label: 'Resources Downloaded', value: 0, icon: Download, color: 'green' },
-    { label: 'Comments Made', value: 0, icon: MessageCircle, color: 'purple' }
-  ];
-
-  const getColorClasses = (color) => {
-    const colors = {
-      blue: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
-      green: 'text-green-600 bg-green-50 dark:bg-green-900/20',
-      purple: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20'
-    };
-    return colors[color] || colors.blue;
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Stats</h3>
-      <div className="space-y-4">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${getColorClasses(stat.color)}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</span>
-              </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">{stat.value}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 // Mini Profile Component
 const MiniProfile = ({ user }) => {
-  const { isDark } = useTheme();
-  
   const getInitials = (name) => {
+    if (!name) return 'S';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
@@ -130,7 +85,7 @@ const MiniProfile = ({ user }) => {
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
           <span className="text-white font-bold text-xl">
-            {getInitials(user?.fullName || 'Student')}
+            {getInitials(user?.fullName)}
           </span>
         </div>
         <div className="flex-1">
@@ -139,7 +94,7 @@ const MiniProfile = ({ user }) => {
           <p className="text-blue-200 text-sm">{user?.department || 'Department'} - Batch {user?.batch || 'XX'}</p>
         </div>
         <div className="text-right">
-          <div className="w-3 h-3 bg-green-400 rounded-full mb-1"></div>
+          <div className="w-3 h-3 bg-green-400 rounded-full mb-1 animate-pulse"></div>
           <span className="text-xs text-blue-200">Online</span>
         </div>
       </div>
@@ -147,10 +102,68 @@ const MiniProfile = ({ user }) => {
   );
 };
 
+// Activity Stats Component
+const ActivityStats = () => {
+  const stats = [
+    {
+      icon: FileText,
+      value: '12',
+      label: 'Posts Created',
+      color: 'text-blue-500 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20'
+    },
+    {
+      icon: MessageCircle,
+      value: '48',
+      label: 'Comments Made',
+      color: 'text-green-500 dark:text-green-400',
+      bgColor: 'bg-green-50 dark:bg-green-900/20'
+    },
+    {
+      icon: Download,
+      value: '7',
+      label: 'Resources Downloaded',
+      color: 'text-orange-500 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20'
+    }
+  ];
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Activity Stats</h3>
+      <div className="space-y-4">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div key={index} className="flex items-center gap-4">
+              <div className={`p-3 rounded-lg ${stat.bgColor}`}>
+                <Icon className={`h-6 w-6 ${stat.color}`} />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // Weekly Schedule Component
 const WeeklySchedule = () => {
-  const { isDark } = useTheme();
-  
+  const [tasks, setTasks] = useState(mockWeeklyTasks);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const addTaskInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isAddingTask) {
+      addTaskInputRef.current?.focus();
+    }
+  }, [isAddingTask]);
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
@@ -166,7 +179,8 @@ const WeeklySchedule = () => {
       case 'assignment': return <FileText className="h-4 w-4" />;
       case 'lab': return <AlertCircle className="h-4 w-4" />;
       case 'presentation': return <Users className="h-4 w-4" />;
-      case 'quiz': return <CheckCircle className="h-4 w-4" />;
+      case 'quiz': return <Check className="h-4 w-4" />;
+      case 'user': return <Plus className="h-4 w-4" />;
       default: return <Calendar className="h-4 w-4" />;
     }
   };
@@ -187,60 +201,83 @@ const WeeklySchedule = () => {
   };
 
   const toggleTaskCompletion = (taskId) => {
-    // This would update the task completion status
-    console.log('Toggle task completion:', taskId);
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const handleAddNewTask = () => {
+    if (newTaskTitle.trim() === "") return;
+
+    const newTask = {
+      id: Date.now(),
+      title: newTaskTitle.trim(),
+      type: 'user',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      priority: 'low',
+      completed: false,
+    };
+
+    setTasks([newTask, ...tasks]);
+    setNewTaskTitle("");
+    setIsAddingTask(false);
   };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">This Week's Important Tasks</h3>
-        <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+        <button 
+          onClick={() => setIsAddingTask(!isAddingTask)}
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
           <Plus className="h-4 w-4" />
         </button>
       </div>
       
       <div className="space-y-3">
-        {mockWeeklyTasks.map((task) => (
+        {tasks.map((task) => (
           <div 
             key={task.id} 
             className={`p-4 rounded-lg border transition-all ${
               task.completed 
-                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 opacity-75' 
+                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 opacity-60' 
                 : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
               <button
                 onClick={() => toggleTaskCompletion(task.id)}
-                className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                className={`mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
                   task.completed
                     ? 'bg-green-500 border-green-500 text-white'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-green-500'
+                    : 'border-gray-300 dark:border-gray-500 hover:border-green-500'
                 }`}
               >
-                {task.completed && <CheckCircle className="h-3 w-3" />}
+                {task.completed && <Check className="h-3 w-3" />}
               </button>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="text-gray-500 dark:text-gray-400">
-                    {getTypeIcon(task.type)}
-                  </div>
+                <div className="flex items-center flex-wrap gap-2 mb-1">
                   <h4 className={`font-medium ${task.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                     {task.title}
                   </h4>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
                     {task.priority}
                   </span>
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    {getTypeIcon(task.type)}
+                    <span className="capitalize">{task.type}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <Calendar className="h-3 w-3" />
                     <span>{formatDate(task.date)}</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Clock className="h-3 w-3" />
                     <span>{task.time}</span>
                   </div>
@@ -251,18 +288,41 @@ const WeeklySchedule = () => {
         ))}
       </div>
       
-      <button className="w-full mt-4 p-3 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-        + Add New Task
-      </button>
+      {isAddingTask && (
+        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+          <input
+            ref={addTaskInputRef}
+            type="text"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddNewTask()}
+            placeholder="Enter new task title..."
+            className="w-full bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
+          />
+          <div className="flex justify-end items-center gap-2 mt-2">
+            <button 
+              onClick={() => setIsAddingTask(false)}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={handleAddNewTask}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              disabled={!newTaskTitle.trim()}
+            >
+              Add Task
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // Class Routine Component
 const ClassRoutine = () => {
-  const { isDark } = useTheme();
   const [routine, setRoutine] = useState(mockClassRoutine);
-  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -398,7 +458,6 @@ const RecentActivity = () => {
 
 const StudentDashboard = () => {
   const { user } = useUser();
-  const { isDark } = useTheme();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
@@ -429,30 +488,11 @@ const StudentDashboard = () => {
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Quick Stats */}
-            <QuickStatsCard />
-            
+            {/* Activity Stats */}
+            <ActivityStats />
+
             {/* Recent Activity */}
             <RecentActivity />
-            
-            {/* Quick Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm font-medium">
-                  Create Post
-                </button>
-                <button className="p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-sm font-medium">
-                  Browse Resources
-                </button>
-                <button className="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium">
-                  View Group
-                </button>
-                <button className="p-3 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-sm font-medium">
-                  Update Profile
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ export const mockPosts = [
     timestamp: '2024-12-29T08:30:00Z',
     title: 'How to prepare for Data Structures CT?',
     content: 'Can anyone share tips or resources for the upcoming CT? I am a bit nervous about the implementation questions.',
-    category: 'Help',
+    tags: ['help', 'data-structures', 'exam-prep'],
     upvotes: 5,
     downvotes: 0,
     commentsCount: 2,
@@ -73,13 +73,13 @@ export const mockPosts = [
     timestamp: '2024-12-29T06:45:00Z',
     title: 'Previous Year Questions Uploaded',
     content: 'I have uploaded the previous year questions for Physics I. Check the Academic Resources section.',
-    category: 'Resource',
+    tags: ['resource', 'physics', 'questions'],
     upvotes: 8,
     downvotes: 1,
     commentsCount: 3,
     bookmarked: true,
     attachment: 'physics1_questions.pdf',
-    image: 'https://via.placeholder.com/600x400/3b82f6/ffffff?text=Physics+Questions',
+    image: 'https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     comments: [
       {
         id: 3,
@@ -89,28 +89,6 @@ export const mockPosts = [
         profilePicture: null,
         content: 'Thank you so much! This is exactly what I needed.',
         timestamp: '2024-12-29T07:20:00Z',
-        isEdited: false,
-        replies: []
-      },
-      {
-        id: 4,
-        author: 'Samira Khatun',
-        authorEmail: 'samira@student.cuet.ac.bd',
-        studentId: '2204045',
-        profilePicture: null,
-        content: 'Could you also upload the solution keys if you have them?',
-        timestamp: '2024-12-29T08:00:00Z',
-        isEdited: false,
-        replies: []
-      },
-      {
-        id: 5,
-        author: 'Ayesha Rahman',
-        authorEmail: 'ayesha@student.cuet.ac.bd',
-        studentId: '2204018',
-        profilePicture: null,
-        content: 'I will upload the solutions soon. Stay tuned!',
-        timestamp: '2024-12-29T08:30:00Z',
         isEdited: false,
         replies: []
       }
@@ -125,7 +103,7 @@ export const mockPosts = [
     timestamp: '2024-12-28T21:15:00Z',
     title: 'CT-2 Date Announced',
     content: 'CT-2 for Data Structures will be held on 10th January. Best of luck to everyone! Please prepare well and be on time.',
-    category: 'Announcement',
+    tags: ['announcement', 'data-structures', 'exam'],
     upvotes: 12,
     downvotes: 0,
     commentsCount: 1,
@@ -155,13 +133,13 @@ export const mockPosts = [
     timestamp: '2024-12-28T15:30:00Z',
     title: 'Group Study Session This Weekend',
     content: 'Planning a group study session for Algorithm Analysis this Saturday at the library. Anyone interested?',
-    category: 'Question',
+    tags: ['question', 'study-group', 'algorithms'],
     upvotes: 6,
     downvotes: 0,
     commentsCount: 4,
     bookmarked: true,
     attachment: null,
-    image: 'https://via.placeholder.com/600x300/10b981/ffffff?text=Study+Group',
+    image: 'https://images.pexels.com/photos/3184398/pexels-photo-3184398.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     comments: [
       {
         id: 7,
@@ -171,51 +149,6 @@ export const mockPosts = [
         profilePicture: null,
         content: 'Count me in! What time are you planning?',
         timestamp: '2024-12-28T16:00:00Z',
-        isEdited: false,
-        replies: []
-      },
-      {
-        id: 8,
-        author: 'Karim Rahman',
-        authorEmail: 'karim@student.cuet.ac.bd',
-        studentId: '2204028',
-        profilePicture: null,
-        content: 'I would like to join too. Which topics will we cover?',
-        timestamp: '2024-12-28T16:30:00Z',
-        isEdited: false,
-        replies: [
-          {
-            id: 81,
-            author: 'Tanvir Hasan',
-            authorEmail: 'tanvir@student.cuet.ac.bd',
-            studentId: '2204067',
-            profilePicture: null,
-            content: 'We will cover sorting algorithms, time complexity, and maybe some graph basics.',
-            timestamp: '2024-12-28T16:45:00Z',
-            isEdited: false,
-            replies: []
-          }
-        ]
-      },
-      {
-        id: 9,
-        author: 'Tanvir Hasan',
-        authorEmail: 'tanvir@student.cuet.ac.bd',
-        studentId: '2204067',
-        profilePicture: null,
-        content: 'Great! Let us meet at 2 PM. We will focus on sorting algorithms and complexity analysis.',
-        timestamp: '2024-12-28T17:00:00Z',
-        isEdited: true,
-        replies: []
-      },
-      {
-        id: 10,
-        author: 'Priya Sharma',
-        authorEmail: 'priya@student.cuet.ac.bd',
-        studentId: '2204041',
-        profilePicture: null,
-        content: 'Sounds perfect! See you all there.',
-        timestamp: '2024-12-28T18:00:00Z',
         isEdited: false,
         replies: []
       }

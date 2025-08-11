@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Plus, Tag } from 'lucide-react';
 import { mockPosts as initialMockPosts } from '../mock/mockPosts';
 import PostCard from './PostCard';
 import PostCreateModal from './PostCreateModal';
 import { mockUser } from '../mock/mockUser';
 import { useUser } from '../contexts/UserContext';
 
-const categories = ['All', 'Help', 'Resource', 'Question', 'Announcement'];
-
 function PostFeed({ isManageMode = false }) {
   const [posts, setPosts] = useState(initialMockPosts);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedTag, setSelectedTag] = useState('All');
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { incrementPostDeleteCount } = useUser();
 
-  // Filtered posts
+  // Get all unique tags and their counts
+  const allTags = useMemo(() => {
+    const tagCounts = posts.reduce((acc, post) => {
+      post.tags.forEach(tag => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+      return acc;
+    }, {});
+    // Sort by count descending, then alphabetically
+    return Object.entries(tagCounts)
+      .sort(([tagA, countA], [tagB, countB]) => {
+        if (countB !== countA) {
+          return countB - countA;
+        }
+        return tagA.localeCompare(tagB);
+      })
+      .map(([tag]) => tag);
+  }, [posts]);
+
+  // Filtered posts based on selected tag and search term
   const filteredPosts = posts.filter(
     (post) =>
-      (selectedCategory === 'All' || post.category === selectedCategory) &&
-      (search === '' || post.title.toLowerCase().includes(search.toLowerCase()) || post.content.toLowerCase().includes(search.toLowerCase()))
+      (selectedTag === 'All' || (post.tags && post.tags.includes(selectedTag))) &&
+      (search === '' || 
+       post.title.toLowerCase().includes(search.toLowerCase()) || 
+       post.content.toLowerCase().includes(search.toLowerCase()) ||
+       post.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
   );
 
   // Handle new post creation
@@ -54,10 +74,10 @@ function PostFeed({ isManageMode = false }) {
 
   return (
     <div className="min-h-full">
-      {/* Conditionally Sticky Header */}
-      <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm ${!isManageMode ? 'sticky top-16 z-10' : ''}`}>
-        <div className="px-4 py-4">
-          {/* Header Title and Create Button (hidden in manage mode) */}
+      {/* Sticky Header */}
+      <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm ${!isManageMode ? 'sticky top-0 z-10' : ''}`}>
+        <div className="px-4 pt-4 pb-2">
+          {/* Header Title and Create Button */}
           {!isManageMode && (
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Post Feed</h1>
@@ -71,36 +91,47 @@ function PostFeed({ isManageMode = false }) {
             </div>
           )}
 
-          {/* Categories and Search */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Categories */}
-            <div className="flex gap-2 flex-wrap">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedCategory === cat 
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Search */}
-            <div className="relative sm:ml-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Search posts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Search posts by title, content, or #tag..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+        
+        {/* Tags Filter */}
+        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700/50">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+            <Tag className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <button
+              className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${
+                selectedTag === 'All' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => setSelectedTag('All')}
+            >
+              All Posts
+            </button>
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+            {allTags.slice(0, 10).map((tag) => ( // Show top 10 tags
+              <button
+                key={tag}
+                className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${
+                  selectedTag === tag 
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300 dark:ring-blue-700' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                onClick={() => setSelectedTag(tag)}
+              >
+                #{tag}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -113,7 +144,7 @@ function PostFeed({ isManageMode = false }) {
               <div className="text-gray-400 dark:text-gray-500 text-6xl mb-4">📝</div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts found</h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {search ? 'Try adjusting your search terms' : 'No posts available in this category.'}
+                {search ? 'Try adjusting your search terms' : 'No posts available for this tag.'}
               </p>
             </div>
           ) : (
@@ -123,6 +154,7 @@ function PostFeed({ isManageMode = false }) {
                 post={post} 
                 isManageMode={isManageMode}
                 onDelete={handleDeletePost}
+                onSelectTag={setSelectedTag}
               />
             ))
           )}
