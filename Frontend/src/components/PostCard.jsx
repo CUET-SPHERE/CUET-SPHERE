@@ -82,7 +82,6 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
             )}
           </div>
           
-          {/* Comment Content */}
           {isEditing ? (
             <div className="mb-2">
               <textarea
@@ -115,7 +114,6 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
             <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{comment.content}</p>
           )}
 
-          {/* Comment Actions */}
           {!isEditing && (
             <div className="flex items-center gap-4 text-xs">
               {depth < maxDepth && (
@@ -153,7 +151,6 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
             </div>
           )}
 
-          {/* Reply Form */}
           {showReplyForm && (
             <div className="mt-3 flex gap-2">
               <Avatar src={null} name="Muhammad Rony" size="sm" />
@@ -190,7 +187,6 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
         </div>
       </div>
 
-      {/* Nested Replies */}
       {comment.replies && comment.replies.length > 0 && showReplies && (
         <div className="mt-2">
           {comment.replies.map((reply) => (
@@ -210,7 +206,6 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
   );
 }
 
-// Enhanced Image component with error handling
 function PostImage({ src, alt }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -243,7 +238,7 @@ function PostImage({ src, alt }) {
   );
 }
 
-function PostCard({ post, isManageMode = false, onDelete }) {
+function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const [upvotes, setUpvotes] = useState(post.upvotes);
   const [downvotes, setDownvotes] = useState(post.downvotes);
   const [bookmarked, setBookmarked] = useState(post.bookmarked);
@@ -377,16 +372,6 @@ function PostCard({ post, isManageMode = false, onDelete }) {
     }
   };
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      'Help': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      'Resource': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'Question': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'Announcement': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    };
-    return colors[category] || 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-  };
-
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
       <div className="p-6">
@@ -403,9 +388,6 @@ function PostCard({ post, isManageMode = false, onDelete }) {
               <span className="text-sm text-gray-500 dark:text-gray-400">Student ID: {post.studentId}</span>
             </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(post.category)}`}>
-            {post.category}
-          </span>
         </div>
 
         {/* Post Content */}
@@ -424,6 +406,21 @@ function PostCard({ post, isManageMode = false, onDelete }) {
             </div>
           )}
         </div>
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {post.tags.map(tag => (
+              <button 
+                key={tag}
+                onClick={() => onSelectTag(tag)}
+                className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="pt-4 border-t border-gray-100 dark:border-gray-700">

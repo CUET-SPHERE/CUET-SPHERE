@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { X, Image, Paperclip } from 'lucide-react';
+import TagInput from './TagInput';
 
-const categories = ['Help', 'Resource', 'Question', 'Announcement'];
+// This could be fetched from a DB in a real app
+const MOCK_EXISTING_TAGS = ['help', 'resource', 'question', 'announcement', 'data-structures', 'exam-prep', 'physics', 'algorithms', 'study-group'];
 
 function PostCreateModal({ open, onClose, onCreate }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState(categories[0]);
+  const [tags, setTags] = useState([]);
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
@@ -19,35 +21,30 @@ function PostCreateModal({ open, onClose, onCreate }) {
       setError('Title and content are required.');
       return;
     }
+    if (tags.length === 0) {
+      setError('Please add at least one tag to your post.');
+      return;
+    }
     onCreate({
       title,
       content,
-      category,
+      tags,
       attachment: file ? file.name : null,
       image: imageUrl || null,
     });
+    // Reset form
     setTitle('');
     setContent('');
-    setCategory(categories[0]);
+    setTags([]);
     setFile(null);
     setImageUrl('');
     setError('');
     onClose();
   };
 
-  const getCategoryColor = (cat) => {
-    const colors = {
-      'Help': 'bg-orange-100 text-orange-800 border-orange-200',
-      'Resource': 'bg-green-100 text-green-800 border-green-200',
-      'Question': 'bg-purple-100 text-purple-800 border-purple-200',
-      'Announcement': 'bg-red-100 text-red-800 border-red-200',
-    };
-    return colors[cat] || 'bg-blue-100 text-blue-800 border-blue-200';
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New Post</h2>
@@ -91,24 +88,14 @@ function PostCreateModal({ open, onClose, onCreate }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Category
+              Tags (at least one)
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`p-3 rounded-lg border-2 font-medium transition-all ${
-                    category === cat
-                      ? getCategoryColor(cat)
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+            <TagInput 
+              tags={tags} 
+              setTags={setTags} 
+              allTags={MOCK_EXISTING_TAGS}
+              placeholder="Add tags like 'help', 'exam-prep'..."
+            />
           </div>
 
           <div>

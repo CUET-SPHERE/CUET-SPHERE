@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Edit3, Lock, Unlock, Settings, Key, Mail, User, MapPin, Calendar, FileText, Users, Heart, Eye, EyeOff } from 'lucide-react';
+import { Camera, Edit3, Lock, Unlock, Settings, Key, Mail, User, MapPin, Calendar, FileText, Users, Heart, Eye, EyeOff, Bookmark } from 'lucide-react';
 import { getInitials, getAvatarColor, formatTimeAgo } from '../utils/formatters';
 import { mockUser } from '../mock/mockUser';
 import { mockPosts } from '../mock/mockPosts';
@@ -10,7 +10,7 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
   const sizeClasses = {
     lg: 'w-16 h-16 text-lg',
     xl: 'w-24 h-24 text-2xl',
-    '2xl': 'w-32 h-32 text-3xl'
+    '2xl': 'w-40 h-40 text-5xl'
   };
 
   if (src) {
@@ -19,14 +19,14 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
         <img 
           src={src} 
           alt={name}
-          className={`${sizeClasses[size]} rounded-full object-cover border-4 border-white shadow-lg`}
+          className={`${sizeClasses[size]} rounded-full object-cover border-8 border-white dark:border-gray-800 shadow-lg`}
         />
         {editable && (
           <button
             onClick={onEdit}
-            className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+            className="absolute bottom-2 right-2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
           >
-            <Camera className="h-4 w-4" />
+            <Camera className="h-5 w-5" />
           </button>
         )}
       </div>
@@ -38,15 +38,15 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
 
   return (
     <div className="relative">
-      <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center text-white font-bold shadow-lg border-4 border-white`}>
+      <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center text-white font-bold shadow-lg border-8 border-white dark:border-gray-800`}>
         {initials}
       </div>
       {editable && (
         <button
           onClick={onEdit}
-          className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+          className="absolute bottom-2 right-2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         >
-          <Camera className="h-4 w-4" />
+          <Camera className="h-5 w-5" />
         </button>
       )}
     </div>
@@ -447,7 +447,7 @@ function ProfilePage() {
     bio: 'Class Representative for CSE 22 batch. Passionate about software development and competitive programming. Love helping fellow students with their academic journey.',
     interests: ['Programming', 'Algorithms', 'Web Development', 'Teaching'],
     profilePicture: null,
-    backgroundImage: 'https://via.placeholder.com/1200x300/3b82f6/ffffff?text=CUET+CSE+22',
+    backgroundImage: 'https://images.pexels.com/photos/2041540/pexels-photo-2041540.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
     isPublic: true,
     postsCount: 25,
     followersCount: 150,
@@ -460,6 +460,8 @@ function ProfilePage() {
 
   // Get user's posts
   const userPosts = mockPosts.filter(post => post.authorEmail === user.email);
+  // Get user's saved posts
+  const savedPosts = mockPosts.filter(post => post.bookmarked);
 
   const handleSaveProfile = (newData) => {
     setUser({ ...user, ...newData });
@@ -470,45 +472,47 @@ function ProfilePage() {
   };
 
   const tabs = [
-    { id: 'posts', label: 'Posts', count: userPosts.length },
-    { id: 'about', label: 'About', count: null },
-    { id: 'settings', label: 'Settings', count: null }
+    { id: 'posts', label: 'Posts', count: userPosts.length, icon: FileText },
+    { id: 'saved', label: 'Saved', count: savedPosts.length, icon: Bookmark },
+    { id: 'about', label: 'About', count: null, icon: User },
+    { id: 'settings', label: 'Settings', count: null, icon: Settings }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Cover Photo Section */}
-      <div className="relative">
-        <div className="h-64 md:h-80 bg-gradient-to-r from-blue-500 to-purple-600 relative overflow-hidden">
-          {user.backgroundImage ? (
-            <img
-              src={user.backgroundImage}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
-          )}
-          <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-        </div>
+      {/* Full Width Cover Photo */}
+      <div className="relative h-72 bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden">
+        {user.backgroundImage ? (
+          <img
+            src={user.backgroundImage}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
+        )}
+        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+      </div>
 
-        {/* Profile Info Overlay */}
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center -mt-16 md:-mt-20">
-            {/* Profile Picture - Centered */}
-            <div className="mb-6">
-              <ProfileAvatar
-                src={user.profilePicture}
-                name={user.full_name}
-                size="2xl"
-                editable
-                onEdit={handleProfilePictureEdit}
-              />
-            </div>
-
-            {/* User Info Card */}
-            <div className="w-full max-w-4xl">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+         {/* Header Section */}
+         <div className="relative">
+           {/* Profile Info Card */}
+           <div className="relative text-center px-4">
+             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 -mt-20">
+              {/* Avatar */}
+              <div className="flex justify-center -mt-24">
+                <ProfileAvatar
+                  src={user.profilePicture}
+                  name={user.full_name}
+                  size="2xl"
+                  editable
+                  onEdit={handleProfilePictureEdit}
+                />
+              </div>
+              
+              {/* User Details */}
+              <div className="mt-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-3">
                   {user.full_name}
                   {user.isPublic ? (
@@ -529,171 +533,211 @@ function ProfilePage() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              {tab.label}
-              {tab.count !== null && (
-                <span className="ml-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === 'posts' && (
-              <div className="space-y-6">
-                {userPosts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts yet</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Start sharing your thoughts with the community!</p>
-                  </div>
-                ) : (
-                  userPosts.map((post) => (
-                    <PostCard key={post.id} post={post} />
-                  ))
+        {/* Main Content */}
+        <div className="mt-8">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+                {tab.count !== null && (
+                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                    {tab.count}
+                  </span>
                 )}
-              </div>
-            )}
-
-            {activeTab === 'about' && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-gray-500" />
-                    <span className="text-gray-700 dark:text-gray-300">{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <User className="h-5 w-5 text-gray-500" />
-                    <span className="text-gray-700 dark:text-gray-300">{user.department} - Batch {user.batch}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-gray-500" />
-                    <span className="text-gray-700 dark:text-gray-300">{user.hall}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span className="text-gray-700 dark:text-gray-300">
-                      Joined {new Date().toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long'
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                {user.interests && user.interests.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Interests</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {user.interests.map((interest, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'settings' && (
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Privacy Settings</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">Profile Visibility</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Control who can see your profile and posts
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {user.isPublic ? (
-                          <Eye className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <EyeOff className="h-5 w-5 text-gray-500" />
-                        )}
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user.isPublic ? 'Public' : 'Private'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Settings</h3>
-                  <div className="space-y-4">
-                    <button
-                      onClick={() => setShowPasswordModal(true)}
-                      className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Key className="h-5 w-5 text-gray-500" />
-                        <div className="text-left">
-                          <div className="font-medium text-gray-900 dark:text-white">Change Password</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">Update your account password</div>
-                        </div>
-                      </div>
-                      <Edit3 className="h-4 w-4 text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+              </button>
+            ))}
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <Edit3 className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Edit Profile</span>
-                </button>
-                <button
-                  onClick={() => setShowPasswordModal(true)}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <Key className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
-                </button>
-                <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                  <Settings className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Account Settings</span>
-                </button>
-              </div>
+          {/* Tab Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {activeTab === 'posts' && (
+                <div className="space-y-6">
+                  {userPosts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts yet</h3>
+                      <p className="text-gray-500 dark:text-gray-400">Start sharing your thoughts with the community!</p>
+                    </div>
+                  ) : (
+                    userPosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))
+                  )}
+                </div>
+              )}
 
-              
+              {activeTab === 'saved' && (
+                <div className="space-y-6">
+                  {savedPosts.length === 0 ? (
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                      <Bookmark className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Saved Posts</h3>
+                      <p className="text-gray-500 dark:text-gray-400">You haven't saved any posts yet. Click the bookmark icon on a post to save it for later.</p>
+                    </div>
+                  ) : (
+                    savedPosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
+                    ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'about' && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">About</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-5 w-5 text-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <User className="h-5 w-5 text-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">{user.department} - Batch {user.batch}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">{user.hall}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Joined {new Date().toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {user.interests && user.interests.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">Interests</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {user.interests.map((interest, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                          >
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'settings' && (
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Content & Privacy</h3>
+                    <div className="space-y-4">
+                      <button
+                        onClick={() => setActiveTab('saved')}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Bookmark className="h-5 w-5 text-gray-500" />
+                          <div className="text-left">
+                            <div className="font-medium text-gray-900 dark:text-white">View Saved Posts</div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Review posts you've bookmarked.</p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
+                          {savedPosts.length}
+                        </span>
+                      </button>
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">Profile Visibility</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Control who can see your profile and posts
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {user.isPublic ? (
+                            <Eye className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <EyeOff className="h-5 w-5 text-gray-500" />
+                          )}
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user.isPublic ? 'Public' : 'Private'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Settings</h3>
+                    <div className="space-y-4">
+                      <button
+                        onClick={() => setShowPasswordModal(true)}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Key className="h-5 w-5 text-gray-500" />
+                          <div className="text-left">
+                            <div className="font-medium text-gray-900 dark:text-white">Change Password</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Update your account password</div>
+                          </div>
+                        </div>
+                        <Edit3 className="h-4 w-4 text-gray-400" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <Edit3 className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Edit Profile</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('saved')}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <Bookmark className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Saved Posts</span>
+                  </button>
+                  <button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <Key className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('settings')}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <Settings className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Account Settings</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
