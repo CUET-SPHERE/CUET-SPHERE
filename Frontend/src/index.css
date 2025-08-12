@@ -2,13 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  /* Custom utility to hide scrollbars */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
+body {
+  @apply bg-gray-50 dark:bg-background text-gray-800 dark:text-text-primary transition-colors duration-300;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Custom scrollbar for a modern look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
 }

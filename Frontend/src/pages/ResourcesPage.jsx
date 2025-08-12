@@ -3,26 +3,30 @@ import useWindowDimensions from '../hooks/useWindowDimensions';
 import FolderSidebar from '../components/FolderSidebar';
 import RecentFeed from '../components/RecentFeed';
 import AcademicResources from '../components/AcademicResources';
+import { ResourcesProvider } from '../contexts/ResourcesContext';
 
 function ResourcesPage() {
-  const { height, width } = useWindowDimensions();
+  const { height } = useWindowDimensions();
+  
   return (
-    <div className="max-w-screen-2xl  m-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex  flex-row gap-6" style={{ height: height - 160 }}>
-        {/* Left sidebar (25%) */}
-        <div style={{ width: width * 0.25 }}>
-          <FolderSidebar />
-        </div>
-        {/* Center recent feed (25%) */}
-        <div style={{ width: width * 0.25 }}>
-          <RecentFeed />
-        </div>
-        {/* Right academic resources */}
-        <div style={{ width: width * 0.5 }}>
-          <AcademicResources />
+    <ResourcesProvider>
+      <div className="max-w-screen-2xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col lg:flex-row gap-6" style={{ minHeight: height - 160 }}>
+          {/* Left sidebar */}
+          <div className="w-full lg:w-1/4">
+            <FolderSidebar />
+          </div>
+          {/* Center recent feed */}
+          <div className="w-full lg:w-1/4">
+            <RecentFeed />
+          </div>
+          {/* Right academic resources */}
+          <div className="w-full lg:w-1/2">
+            <AcademicResources />
+          </div>
         </div>
       </div>
-    </div>
+    </ResourcesProvider>
   );
 }
 
