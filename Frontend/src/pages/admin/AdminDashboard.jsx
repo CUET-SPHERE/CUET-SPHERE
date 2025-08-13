@@ -37,9 +37,8 @@ const AdminDashboard = () => {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard title="Total Departments" value="12" icon={Building} color="bg-blue-500" />
-          <StatCard title="Total Halls" value="8" icon={Home} color="bg-green-500" />
+          <StatCard title="Total Halls" value="9" icon={Home} color="bg-green-500" />
           <StatCard title="Posts Deleted by Admin" value={postDeleteCount} icon={Trash2} color="bg-red-500" />
-          <StatCard title="Platform Activity" value="High" icon={BarChart2} color="bg-yellow-500" />
         </div>
 
         {/* Management Sections */}

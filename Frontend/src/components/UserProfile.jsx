@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Mail, MapPin, Calendar, Users, FileText, Heart, Badge, Lock } from 'lucide-react';
+import { X, Mail, MapPin, Calendar, Users, FileText, Heart, Badge, Lock, Edit } from 'lucide-react';
 import { getInitials, getAvatarColor, formatTimeAgo } from '../utils/formatters';
 
 // Avatar component (reusing from PostCard)
@@ -13,8 +13,8 @@ function Avatar({ src, name, size = 'lg' }) {
 
   if (src) {
     return (
-      <img 
-        src={src} 
+      <img
+        src={src}
         alt={name}
         className={`${sizeClasses[size]} rounded-full object-cover border-4 border-white shadow-lg`}
       />
@@ -85,14 +85,24 @@ function UserProfile({ user, isOpen, onClose }) {
         <div className="relative">
           {/* Cover Photo Placeholder */}
           <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-t-2xl"></div>
-          
+
           {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-white hover:text-gray-200 bg-black bg-opacity-20 hover:bg-opacity-40 rounded-full transition-all"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="absolute top-4 right-4 flex gap-2">
+            {isOwnProfile && (
+              <button
+                onClick={() => {/* Handle edit profile */ }}
+                className="p-2 text-white hover:text-gray-200 bg-black bg-opacity-20 hover:bg-opacity-40 rounded-full transition-all"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 text-white hover:text-gray-200 bg-black bg-opacity-20 hover:bg-opacity-40 rounded-full transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
           {/* Profile Picture */}
           <div className="absolute -bottom-12 left-6">
@@ -137,10 +147,10 @@ function UserProfile({ user, isOpen, onClose }) {
               </div>
               <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
-                <span className="text-sm">Joined {new Date(user.joinDate).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <span className="text-sm">Joined {new Date(user.joinDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}</span>
               </div>
             </div>

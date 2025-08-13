@@ -12,8 +12,8 @@ function Avatar({ src, name, size = 'md' }) {
 
   if (src) {
     return (
-      <img 
-        src={src} 
+      <img
+        src={src}
         alt={name}
         className={`${sizeClasses[size]} rounded-full object-cover border-2 border-gray-200`}
       />
@@ -81,7 +81,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
               </>
             )}
           </div>
-          
+
           {isEditing ? (
             <div className="mb-2">
               <textarea
@@ -246,6 +246,17 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState(post.comments || []);
   const [newComment, setNewComment] = useState('');
+  const [showFullContent, setShowFullContent] = useState(false);
+
+  const MAX_CONTENT_LENGTH = 200; // Adjust as needed
+
+  const displayedContent = post.content.length > MAX_CONTENT_LENGTH && !showFullContent
+    ? `${post.content.substring(0, MAX_CONTENT_LENGTH)}...`
+    : post.content;
+
+  const toggleShowFullContent = () => {
+    setShowFullContent(!showFullContent);
+  };
 
   const handleUpvote = () => {
     if (userVote === 'up') {
@@ -393,8 +404,16 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         {/* Post Content */}
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{post.title}</h3>
-          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{post.content}</p>
-          
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{displayedContent}</p>
+          {post.content.length > MAX_CONTENT_LENGTH && (
+            <button
+              onClick={toggleShowFullContent}
+              className="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2"
+            >
+              {showFullContent ? 'See Less' : 'See More'}
+            </button>
+          )}
+
           {post.image && isImageUrl(post.image) && <PostImage src={post.image} alt={post.title} />}
 
           {post.attachment && (
@@ -411,7 +430,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map(tag => (
-              <button 
+              <button
                 key={tag}
                 onClick={() => onSelectTag(tag)}
                 className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
@@ -426,25 +445,25 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`} 
+              <button
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleUpvote}
                 disabled={isManageMode}
               >
                 <ThumbsUp className="h-4 w-4" />
                 <span className="text-sm font-medium">{upvotes}</span>
               </button>
-              
-              <button 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`} 
+
+              <button
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleDownvote}
                 disabled={isManageMode}
               >
                 <ThumbsDown className="h-4 w-4" />
                 <span className="text-sm font-medium">{downvotes}</span>
               </button>
-              
-              <button 
+
+              <button
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => !isManageMode && setShowComments(!showComments)}
                 disabled={isManageMode}
@@ -453,9 +472,9 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
                 <span className="text-sm font-medium">{comments.length}</span>
               </button>
             </div>
-            
+
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 className={`p-2 rounded-lg transition-colors ${bookmarked ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleBookmark}
                 disabled={isManageMode}
@@ -513,8 +532,8 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
               </p>
             ) : (
               comments.map((comment) => (
-                <Comment 
-                  key={comment.id} 
+                <Comment
+                  key={comment.id}
                   comment={comment}
                   onReply={handleReplyToComment}
                   onEdit={handleEditComment}

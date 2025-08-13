@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 
 // Navbars
 import { LoggedOutNavbar, LoggedInNavbar } from './components/Navbar';
@@ -20,10 +21,14 @@ import MyGroupPage from './pages/MyGroupPage';
 import ResourcesPage from './pages/ResourcesPage';
 import ProfilePage from './pages/ProfilePage';
 
+// Student Pages
+import NotificationsPage from './pages/NotificationsPage';
+
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminFeedPage from './pages/admin/AdminFeedPage';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
 
 // Route Protection Components
 const ProtectedRoute = ({ children }) => {
@@ -76,11 +81,13 @@ function AppContent() {
           <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
           <Route path="/group" element={<ProtectedRoute><MyGroupPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/feed" element={<AdminRoute><AdminFeedPage /></AdminRoute>} />
           <Route path="/admin/profile" element={<AdminRoute><AdminProfilePage /></AdminRoute>} />
+          <Route path="/admin/notifications" element={<AdminRoute><AdminNotificationsPage /></AdminRoute>} />
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />
@@ -95,9 +102,11 @@ function App() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <NotificationsProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </NotificationsProvider>
       </UserProvider>
     </ThemeProvider>
   );
