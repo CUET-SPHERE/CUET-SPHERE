@@ -17,20 +17,21 @@ export function LoggedInNavbar() {
   const location = useLocation();
   const { user, logout } = useUser();
   const { theme, toggleTheme } = useTheme();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
   const notificationCount = 3;
-  const userInitial = user?.fullName?.charAt(0) || 'S';
 
   return (
     <nav className="bg-white dark:bg-surface shadow-sm border-b border-gray-200 dark:border-border-color sticky top-0 z-50">
-      <div className="mx-auto px-10 sm:px-12 lg:px-16">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 justify-between">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center space-x-2">
             <span className="text-2xl font-extrabold text-primary">CUETSphere</span>
           </Link>
-          {/* Tabs */}
-          <div className="hidden md:flex items-center space-x-6">
+          
+          {/* Desktop Navigation - Only visible on screens >= 1000px */}
+          <div className="hidden lg:flex items-center space-x-6">
             {navTabs.map((tab) => (
               <Link
                 key={tab.to}
@@ -46,24 +47,11 @@ export function LoggedInNavbar() {
                 )}
               </Link>
             ))}
-            {/* Role-specific tabs */}
-            {user?.role === 'CR' && (
-              <Link
-                to="/cr-panel"
-                className={`relative text-base font-medium px-1 pb-1 transition-colors duration-200 ${
-                  location.pathname === '/cr-panel' ? 'text-primary' : 'text-gray-700 dark:text-text-secondary hover:text-primary'
-                }`}
-              >
-                CR Panel
-                {location.pathname === '/cr-panel' && (
-                  <span className="absolute left-0 -bottom-1 w-full h-0.5 bg-primary rounded"></span>
-                )}
-              </Link>
-            )}
           </div>
-          {/* Right side: Theme, Notification and User */}
-          <div className="flex items-center space-x-4">
-             {/* Theme Toggle */}
+          
+          {/* Right side: Theme Toggle, Notification and Menu/Logout */}
+          <div className="flex items-center space-x-3">
+            {/* Theme Toggle - Always visible */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-200"
@@ -75,26 +63,59 @@ export function LoggedInNavbar() {
                 <Sun className="h-5 w-5" />
               )}
             </button>
-            {/* Notification Bell */}
+            
+            {/* Notification Bell - Always visible */}
             <div className="relative">
               <Bell className="h-6 w-6 text-gray-700 dark:text-text-secondary" />
               <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1.5 py-0.5 font-bold">
                 {notificationCount}
               </span>
             </div>
-            {/* User Avatar */}
-            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-              {userInitial}
-            </div>
-            {/* Logout Button */}
+            
+            {/* Logout Button - Only visible on large screens */}
             <button
               onClick={logout}
-              className="px-3 py-1.5 bg-error text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+              className="hidden lg:block px-3 py-1.5 bg-error text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+            >
+              Logout
+            </button>
+            
+            {/* Mobile Menu Button - Only visible on screens < 1000px */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-2 rounded-lg bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-text-secondary"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+        
+        {/* Mobile Menu - Only visible when menu is open and on screens < 1000px */}
+        {isMenuOpen && (
+          <div className="lg:hidden py-4 space-y-2 border-t border-gray-200 dark:border-border-color mt-1">
+            {navTabs.map((tab) => (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                onClick={() => setIsMenuOpen(false)}
+                className={`block px-4 py-2 rounded-lg transition-colors duration-200 ${
+                  location.pathname.startsWith(tab.to)
+                    ? 'bg-primary text-white' 
+                    : 'text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700'
+                }`}
+              >
+                {tab.label}
+              </Link>
+            ))}
+            <button
+              onClick={logout}
+              className="w-full text-left px-4 py-2 bg-error text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
             >
               Logout
             </button>
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );

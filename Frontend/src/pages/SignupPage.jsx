@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, User, Mail, Hash, Eye, EyeOff, Lock, Users, Building } from 'lucide-react';
-import { validateSignupForm, extractBatch, extractDepartment, HALLS, GENDERS } from '../utils/validation';
+import { validateSignupForm, extractBatch, extractDepartment, HALLS, BOYS_HALLS, GIRLS_HALLS, GENDERS } from '../utils/validation';
 import { useUser } from '../contexts/UserContext';
 
 // --- Component Definitions Moved Outside ---
@@ -13,7 +13,7 @@ const InputField = ({ id, name, label, type, value, onChange, error, placeholder
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{icon}</div>
       <input id={id} name={name} type={type} required={required} value={value} onChange={onChange} maxLength={maxLength}
-        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9E7FFF] focus:border-[#9E7FFF] dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
         placeholder={placeholder} />
     </div>
     {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -26,7 +26,7 @@ const SelectField = ({ id, name, label, value, onChange, error, icon, children, 
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{icon}</div>
       <select id={id} name={name} required={required} value={value} onChange={onChange}
-        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}>
+        className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9E7FFF] focus:border-[#9E7FFF] dark:bg-gray-700 dark:border-gray-600 dark:text-white ${error ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}>
         {children}
       </select>
     </div>
@@ -54,7 +54,21 @@ const SignupPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Create updated form data
+    const updatedFormData = { ...formData, [name]: value };
+    
+    // Auto-fill gender based on hall selection
+    if (name === 'hall') {
+      if (GIRLS_HALLS.includes(value)) {
+        updatedFormData.gender = 'Female';
+      } else if (BOYS_HALLS.includes(value)) {
+        updatedFormData.gender = 'Male';
+      }
+    }
+    
+    setFormData(updatedFormData);
+    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -120,7 +134,7 @@ const SignupPage = () => {
       {/* --- Increased horizontal space from max-w-md to max-w-2xl --- */}
       <div className="max-w-2xl w-full space-y-6 p-8 md:p-10 bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="text-center">
-          <GraduationCap className="mx-auto h-12 w-12 text-primary-600" />
+          <GraduationCap className="mx-auto h-12 w-12 text-[#9E7FFF]" />
           <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-white">Join CUET Sphere</h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Create your account to connect with the community.</p>
         </div>
@@ -149,7 +163,12 @@ const SignupPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SelectField id="hall" name="hall" label="Hall" value={formData.hall} onChange={handleInputChange} error={errors.hall} icon={<Building className="h-5 w-5 text-gray-400" />}>
               <option value="">Select your hall</option>
-              {HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)}
+              {formData.gender === 'Female' 
+                ? GIRLS_HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
+                : formData.gender === 'Male'
+                ? BOYS_HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
+                : HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
+              }
             </SelectField>
             <SelectField id="gender" name="gender" label="Gender" value={formData.gender} onChange={handleInputChange} error={errors.gender} icon={<Users className="h-5 w-5 text-gray-400" />}>
               <option value="">Select gender</option>
@@ -163,7 +182,7 @@ const SignupPage = () => {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Lock className="h-5 w-5 text-gray-400" /></div>
                 <input id="password" name="password" type={showPassword ? 'text' : 'password'} required value={formData.password} onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9E7FFF] focus:border-[#9E7FFF] dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
                   placeholder="Create a password" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -177,7 +196,7 @@ const SignupPage = () => {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Lock className="h-5 w-5 text-gray-400" /></div>
                 <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required value={formData.confirmPassword} onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9E7FFF] focus:border-[#9E7FFF] dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-500'}`}
                   placeholder="Confirm your password" />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -191,7 +210,7 @@ const SignupPage = () => {
 
           <div>
             <button type="submit" disabled={isSubmitting}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 ${isSubmitting ? 'bg-primary-400 cursor-not-allowed' : 'bg-primary-600 hover:bg-primary-700 transform hover:scale-105'}`}>
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9E7FFF] transition-all duration-200 ${isSubmitting ? 'bg-[#BFB0FF] cursor-not-allowed' : 'bg-[#9E7FFF] hover:bg-[#8A6AE3] transform hover:scale-105'}`}>
               {isSubmitting ? (
                 <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>Creating Account...</>
               ) : 'Create Account'}
@@ -201,7 +220,7 @@ const SignupPage = () => {
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
-              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500 transition-colors duration-200">Sign in</Link>
+              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200">Sign in</Link>
             </p>
           </div>
         </form>

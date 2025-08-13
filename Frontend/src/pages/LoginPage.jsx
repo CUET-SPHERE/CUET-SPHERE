@@ -52,7 +52,7 @@ const LoginPage = () => {
             studentId: '2204005',
             email: 'rony@student.cuet.ac.bd',
             batch: '2022-2023',
-            department: 'CSE',
+            department: '04',
             hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
             role: 'Student',
           },
@@ -64,7 +64,7 @@ const LoginPage = () => {
             studentId: '2204001',
             email: 'cr@student.cuet.ac.bd',
             batch: '2022-2023',
-            department: 'CSE',
+            department: '04',
             hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
             role: 'CR',
           },
@@ -160,9 +160,8 @@ const LoginPage = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.email ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.email ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Enter your email address"
                 />
               </div>
@@ -186,9 +185,8 @@ const LoginPage = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.password ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -219,11 +217,10 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${
-                isSubmitting
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${isSubmitting
                   ? "bg-blue-400 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700 transform hover:scale-105"
-              }`}
+                }`}
             >
               {isSubmitting ? (
                 <div className="flex items-center">

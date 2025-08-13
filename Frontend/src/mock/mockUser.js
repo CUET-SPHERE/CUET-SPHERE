@@ -6,5 +6,5 @@ export const mockUser = {
   batch: '22',
   department: '04', // CSE
   role: 'CR', // Changed to 'CR' to demonstrate Class Representative features
-  profilePicture: null,
+  profilePicture: '/src/assets/images/cuet_app_gate.jpg',
 };

@@ -1,0 +1,4 @@
+I can see there appears a CR panel tab on navbar for CR user, remove it as it has no use.
+Remove the profile icon from the right side of the navbar as we already have a profile page on navbar
+when the screen becomes less than 1000px, move the navbar items to a menu icon for responsiveness, just keep the CUETsphere title and , theme toggle and menu icon on the navbar.
+4.fix the positioning of the components in My group page for responsive mode, keep the cr action tab at the top(this component  will be visible for cr user only) then upcoming test, then announcement, then view group members component and class representive . For desktop mode the current implementation is alright

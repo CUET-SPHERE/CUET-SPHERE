@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Mail, Plus, Edit, Trash2, X, Save } from 'lucide-react';
 
 const INITIAL_CR_EMAILS = [
-  'jane.doe.1901001@student.cuet.ac.bd',
-  'john.smith.1902025@student.cuet.ac.bd',
-  'alex.ray.1904050@student.cuet.ac.bd',
+  '2204015@student.cuet.ac.bd',
+  '2204055@student.cuet.ac.bd',
+  '2204093@student.cuet.ac.bd',
 ];
 
 const CRManager = () => {
