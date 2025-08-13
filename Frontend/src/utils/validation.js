@@ -1,30 +1,36 @@
 export const DEPARTMENTS = {
   '01': 'Civil Engineering',
-  '02': 'Electrical &amp; Electronic Engineering',
+  '02': 'Electrical & Electronic Engineering',
   '03': 'Mechanical Engineering',
-  '04': 'Computer Science &amp; Engineering',
-  '05': 'Urban &amp; Regional Planning',
+  '04': 'Computer Science & Engineering',
+  '05': 'Urban & Regional Planning',
   '06': 'Architecture',
-  '07': 'Petroleum &amp; Mining Engineering',
-  '08': 'Electronics &amp; Telecommunication Engineering',
-  '09': 'Mechatronics &amp; Industrial Engineering',
+  '07': 'Petroleum & Mining Engineering',
+  '08': 'Electronics & Telecommunication Engineering',
+  '09': 'Mechatronics & Industrial Engineering',
   '10': 'Water Resources Engineering',
   '11': 'Biomedical Engineering',
-  '12': 'Materials Science &amp; Engineering',
+  '12': 'Materials Science & Engineering',
 };
 
-export const HALLS = [
+export const BOYS_HALLS = [
   'Kazi Nazrul Islam Hall',
-  'Syed Muhammad Shah Hall',
+  'Shaheed Muhammad Shah Hall',
   'Tarek Huda Hall',
   'Dr. Qudrat-E-Khuda Hall',
-  'Bangabandhu Hall',
-  'Shaheed Mohammad Shah Hall',
-  'Sufia Kamal Hall',
-  'Sheikh Russel Hall',
+  'Muktizuddha Hall',
+  'Shaheed Abu Sayed Hall'
 ];
 
-export const GENDERS = ['Male', 'Female', 'Other'];
+export const GIRLS_HALLS = [
+  'Sufia Kamal Hall',
+  'Shamsunnahar Hall',
+  'Taposhi Rabeya Hall'
+];
+
+export const HALLS = [...BOYS_HALLS, ...GIRLS_HALLS];
+
+export const GENDERS = ['Male', 'Female'];
 
 export const extractBatch = (studentId) => {
   if (typeof studentId !== 'string' || studentId.length < 2) return '';

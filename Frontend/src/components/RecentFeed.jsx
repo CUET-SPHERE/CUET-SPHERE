@@ -1,11 +1,14 @@
 import React from 'react';
 import { useResources } from '../contexts/ResourcesContext';
 import FileIcon from './FileIcon';
-import { Download, Eye } from 'lucide-react';
+import { Download, Eye, Star } from 'lucide-react';
 import { formatTimeAgo } from '../utils/time';
 
 function RecentFeed() {
-  const { resources } = useResources();
+  const { resources, toggleFavourite, findFolder } = useResources();
+  
+  const favouritesFolder = findFolder('favourites');
+  const favouriteResourceIds = favouritesFolder ? favouritesFolder.resourceIds : [];
 
   // Get top 7 most recent resources
   const recentFiles = [...resources]
@@ -23,12 +26,20 @@ function RecentFeed() {
                 <FileIcon fileType={res.file.type} className="h-6 w-6 shrink-0" />
                 <div className="overflow-hidden">
                   <p className="font-medium text-sm text-gray-800 dark:text-text-primary truncate">{res.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-text-secondary truncate">
-                    {res.uploader.split('@')[0]} &middot; {formatTimeAgo(new Date(res.uploadedAt))}
-                  </p>
+                  <div className="text-xs text-gray-500 dark:text-text-secondary">
+                    <p className="truncate">uploaded by: {res.uploader}</p>
+                    <p className="truncate">Id: 22{Math.floor(Math.random() * 10000).toString().padStart(4, '0')} &middot; {formatTimeAgo(new Date(res.uploadedAt))}</p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => toggleFavourite(res.id)}
+                  className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-yellow-100 dark:hover:bg-yellow-900 hover:text-yellow-500 transition-colors"
+                  aria-label={`Favorite ${res.title}`}
+                >
+                  <Star size={16} className={favouriteResourceIds.includes(res.id) ? 'text-yellow-500 fill-current' : ''} />
+                </button>
                 <a
                   href={res.file.url}
                   target="_blank"

@@ -66,11 +66,12 @@ const mockWeeklyTasks = [
   }
 ];
 
-// Mock class routine image
-const mockClassRoutine = {
+// Default class routine image path
+const defaultRoutineFile = {
   hasCustom: false,
-  defaultImage: 'https://images.pexels.com/photos/6238297/pexels-photo-6238297.jpeg?auto=compress&cs=tinysrgb&w=800',
-  customImage: null
+  defaultFile: '/src/assets/images/class-routine-2022.jpg',
+  customFile: null,
+  fileType: 'image'
 };
 
 // Mini Profile Component
@@ -225,7 +226,7 @@ const WeeklySchedule = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">This Week's Important Tasks</h3>
         <button 
@@ -236,7 +237,7 @@ const WeeklySchedule = () => {
         </button>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-y-auto flex-grow scrollbar-hide">
         {tasks.map((task) => (
           <div 
             key={task.id} 
@@ -322,9 +323,10 @@ const WeeklySchedule = () => {
 
 // Class Routine Component
 const ClassRoutine = () => {
-  const [routine, setRoutine] = useState(mockClassRoutine);
+  const [routine, setRoutine] = useState(defaultRoutineFile);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
-  const handleImageUpload = (event) => {
+  const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -332,7 +334,8 @@ const ClassRoutine = () => {
         setRoutine({
           ...routine,
           hasCustom: true,
-          customImage: e.target.result
+          customFile: e.target.result,
+          fileType: 'image'
         });
       };
       reader.readAsDataURL(file);
@@ -343,12 +346,19 @@ const ClassRoutine = () => {
     setRoutine({
       ...routine,
       hasCustom: false,
-      customImage: null
+      customFile: null,
+      fileType: 'image'
     });
   };
 
+  const toggleViewer = () => {
+    setIsViewerOpen(!isViewerOpen);
+  };
+
+  const currentFile = routine.hasCustom ? routine.customFile : routine.defaultFile;
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Class Routine</h3>
         <div className="flex gap-2">
@@ -357,7 +367,7 @@ const ClassRoutine = () => {
             <input
               type="file"
               accept="image/*"
-              onChange={handleImageUpload}
+              onChange={handleFileUpload}
               className="hidden"
             />
           </label>
@@ -373,15 +383,16 @@ const ClassRoutine = () => {
         </div>
       </div>
       
-      <div className="relative group">
+      <div className="relative group h-[calc(100%-80px)] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600">
         <img
-          src={routine.hasCustom ? routine.customImage : routine.defaultImage}
+          src={currentFile}
           alt="Class Routine"
-          className="w-full h-64 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+          className="w-full h-full object-contain cursor-pointer"
+          onClick={() => window.open(currentFile, '_blank')}
         />
         
         {!routine.hasCustom && (
-          <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="text-center text-white">
               <ImageIcon className="h-8 w-8 mx-auto mb-2" />
               <p className="text-sm">Upload your custom routine</p>
@@ -394,7 +405,10 @@ const ClassRoutine = () => {
         <span className="text-gray-500 dark:text-gray-400">
           {routine.hasCustom ? 'Custom routine' : 'Default routine'}
         </span>
-        <button className="text-blue-600 dark:text-blue-400 hover:underline">
+        <button 
+          onClick={() => window.open(currentFile, '_blank')}
+          className="text-blue-600 dark:text-blue-400 hover:underline"
+        >
           View Full Size
         </button>
       </div>
@@ -475,24 +489,18 @@ const StudentDashboard = () => {
         {/* Top Row - Mini Profile */}
         <MiniProfile user={user} />
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Weekly Schedule */}
-            <WeeklySchedule />
-            
-            {/* Class Routine */}
-            <ClassRoutine />
+        {/* Main Content Row */}
+        <div className="flex flex-col lg:flex-row gap-6 h-[600px]">
+          {/* Weekly Schedule - 50% space */}
+          <div className="lg:w-1/2 h-full overflow-hidden">
+            <div className="h-full overflow-y-auto scrollbar-hide">
+              <WeeklySchedule />
+            </div>
           </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Activity Stats */}
-            <ActivityStats />
-
-            {/* Recent Activity */}
-            <RecentActivity />
+          
+          {/* Class Routine - 50% space */}
+          <div className="lg:w-1/2 h-full">
+            <ClassRoutine />
           </div>
         </div>
       </div>

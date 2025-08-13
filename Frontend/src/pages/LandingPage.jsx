@@ -2,9 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, Users, MessageCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import gateImg from '../assets/images/cuet_app_gate.jpg';
+import nightImg from '../assets/images/cuet_app_image_night.jpg';
+import { useTheme } from '../contexts/ThemeContext';
 
 const LandingPage = () => {
   const [currentSlide, setCurrentSlide] = React.useState(0);
+  const { theme } = useTheme();
 
   const features = [
     {
@@ -43,7 +46,7 @@ const LandingPage = () => {
       <section className="relative h-screen flex items-center justify-center">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${gateImg})` }}
+          style={{ backgroundImage: `url(${theme === 'dark' ? nightImg : gateImg})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/10" />
         
