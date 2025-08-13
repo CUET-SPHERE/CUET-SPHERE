@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Bell, Moon, Sun, GraduationCap, Menu, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
+import { useNotifications } from '../contexts/NotificationsContext';
 
 // Tabs for logged in users
 const navTabs = [
@@ -18,28 +19,30 @@ export function LoggedInNavbar() {
   const { user, logout } = useUser();
   const { theme, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  
-  const notificationCount = 3;
+
+  const { unreadCount: notificationCount } = useNotifications();
 
   return (
     <nav className="bg-white dark:bg-surface shadow-sm border-b border-gray-200 dark:border-border-color sticky top-0 z-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 justify-between">
           {/* Logo */}
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <span className="text-2xl font-extrabold text-primary">CUETSphere</span>
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              CUETSphere
+            </span>
           </Link>
-          
+
           {/* Desktop Navigation - Only visible on screens >= 1000px */}
-          <div className="hidden lg:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center ml-12 space-x-8">
             {navTabs.map((tab) => (
               <Link
                 key={tab.to}
                 to={tab.to}
-                className={`relative text-base font-medium px-1 pb-1 transition-colors duration-200 ${
-                  location.pathname.startsWith(tab.to)
+                className={`relative text-base font-medium px-2 py-1.5 transition-colors duration-200 ${location.pathname.startsWith(tab.to)
                     ? 'text-primary' : 'text-gray-700 dark:text-text-secondary hover:text-primary'
-                }`}
+                  }`}
               >
                 {tab.label}
                 {location.pathname.startsWith(tab.to) && (
@@ -48,13 +51,13 @@ export function LoggedInNavbar() {
               </Link>
             ))}
           </div>
-          
+
           {/* Right side: Theme Toggle, Notification and Menu/Logout */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-6">
             {/* Theme Toggle - Always visible */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-full text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-200"
+              className="p-2.5 rounded-full text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-200"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -63,15 +66,19 @@ export function LoggedInNavbar() {
                 <Sun className="h-5 w-5" />
               )}
             </button>
-            
+
             {/* Notification Bell - Always visible */}
-            <div className="relative">
-              <Bell className="h-6 w-6 text-gray-700 dark:text-text-secondary" />
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1.5 py-0.5 font-bold">
-                {notificationCount}
-              </span>
-            </div>
-            
+            <Link to="/notifications" className="relative">
+              <button className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-200">
+                <Bell className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
+                {notificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center">
+                    {notificationCount}
+                  </span>
+                )}
+              </button>
+            </Link>
+
             {/* Logout Button - Only visible on large screens */}
             <button
               onClick={logout}
@@ -79,7 +86,7 @@ export function LoggedInNavbar() {
             >
               Logout
             </button>
-            
+
             {/* Mobile Menu Button - Only visible on screens < 1000px */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -90,7 +97,7 @@ export function LoggedInNavbar() {
             </button>
           </div>
         </div>
-        
+
         {/* Mobile Menu - Only visible when menu is open and on screens < 1000px */}
         {isMenuOpen && (
           <div className="lg:hidden py-4 space-y-2 border-t border-gray-200 dark:border-border-color mt-1">
@@ -99,11 +106,10 @@ export function LoggedInNavbar() {
                 key={tab.to}
                 to={tab.to}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block px-4 py-2 rounded-lg transition-colors duration-200 ${
-                  location.pathname.startsWith(tab.to)
-                    ? 'bg-primary text-white' 
+                className={`block px-4 py-2 rounded-lg transition-colors duration-200 ${location.pathname.startsWith(tab.to)
+                    ? 'bg-primary text-white'
                     : 'text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700'
-                }`}
+                  }`}
               >
                 {tab.label}
               </Link>
@@ -140,11 +146,10 @@ export function LoggedOutNavbar() {
     <Link
       to={to}
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-        location.pathname === to
+      className={`px-4 py-2 rounded-lg transition-colors duration-200 ${location.pathname === to
           ? 'bg-primary text-white'
           : 'text-gray-700 dark:text-text-secondary hover:bg-gray-100 dark:hover:bg-neutral-700'
-      }`}
+        }`}
     >
       {children}
     </Link>

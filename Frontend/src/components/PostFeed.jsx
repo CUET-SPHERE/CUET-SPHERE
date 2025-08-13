@@ -36,10 +36,10 @@ function PostFeed({ isManageMode = false }) {
   const filteredPosts = posts.filter(
     (post) =>
       (selectedTag === 'All' || (post.tags && post.tags.includes(selectedTag))) &&
-      (search === '' || 
-       post.title.toLowerCase().includes(search.toLowerCase()) || 
-       post.content.toLowerCase().includes(search.toLowerCase()) ||
-       post.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
+      (search === '' ||
+        post.title.toLowerCase().includes(search.toLowerCase()) ||
+        post.content.toLowerCase().includes(search.toLowerCase()) ||
+        post.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
   );
 
   // Handle new post creation
@@ -81,7 +81,7 @@ function PostFeed({ isManageMode = false }) {
           {!isManageMode && (
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Post Feed</h1>
-              <button 
+              <button
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
                 onClick={() => setShowCreateModal(true)}
               >
@@ -103,30 +103,37 @@ function PostFeed({ isManageMode = false }) {
             />
           </div>
         </div>
-        
+
         {/* Tags Filter */}
         <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700/50">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-2">
             <Tag className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <button
-              className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${
-                selectedTag === 'All' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
+              className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === 'All'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
               onClick={() => setSelectedTag('All')}
             >
               All Posts
             </button>
             <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+            <button
+              className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === 'Trending'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              onClick={() => setSelectedTag('Trending')}
+            >
+              Trending Posts
+            </button>
             {allTags.slice(0, 10).map((tag) => ( // Show top 10 tags
               <button
                 key={tag}
-                className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${
-                  selectedTag === tag 
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300 dark:ring-blue-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                }`}
+                className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === tag
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300 dark:ring-blue-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
                 onClick={() => setSelectedTag(tag)}
               >
                 #{tag}
@@ -149,9 +156,9 @@ function PostFeed({ isManageMode = false }) {
             </div>
           ) : (
             filteredPosts.map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={post} 
+              <PostCard
+                key={post.id}
+                post={post}
                 isManageMode={isManageMode}
                 onDelete={handleDeletePost}
                 onSelectTag={setSelectedTag}
@@ -161,10 +168,10 @@ function PostFeed({ isManageMode = false }) {
         </div>
       </div>
 
-      <PostCreateModal 
-        open={showCreateModal} 
-        onClose={() => setShowCreateModal(false)} 
-        onCreate={handleCreatePost} 
+      <PostCreateModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreatePost}
       />
     </div>
   );

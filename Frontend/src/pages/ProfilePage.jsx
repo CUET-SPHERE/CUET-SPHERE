@@ -16,8 +16,8 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
   if (src) {
     return (
       <div className="relative">
-        <img 
-          src={src} 
+        <img
+          src={src}
           alt={name}
           className={`${sizeClasses[size]} rounded-full object-cover border-8 border-white dark:border-gray-800 shadow-lg`}
         />
@@ -127,7 +127,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Edit Profile</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -138,7 +138,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                 <input
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
@@ -150,7 +150,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                 <input
                   type="text"
                   value={formData.hall}
-                  onChange={(e) => setFormData({...formData, hall: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, hall: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -163,7 +163,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
               </label>
               <textarea
                 value={formData.bio}
-                onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
                 placeholder="Tell others about yourself..."
@@ -299,7 +299,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                 <input
                   type="checkbox"
                   checked={formData.isPublic}
-                  onChange={(e) => setFormData({...formData, isPublic: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
                   className="w-5 h-5 text-blue-600"
                 />
                 <div>
@@ -372,7 +372,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="p-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Change Password</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -381,7 +381,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
               <input
                 type="password"
                 value={passwords.current}
-                onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
@@ -394,7 +394,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
               <input
                 type="password"
                 value={passwords.new}
-                onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
@@ -407,7 +407,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
               <input
                 type="password"
                 value={passwords.confirm}
-                onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
@@ -456,7 +456,7 @@ function ProfilePage() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('posts');
+  const [activeTab, setActiveTab] = useState('about');
 
   // Get user's posts
   const userPosts = mockPosts.filter(post => post.authorEmail === user.email);
@@ -472,9 +472,9 @@ function ProfilePage() {
   };
 
   const tabs = [
+    { id: 'about', label: 'About', count: null, icon: User },
     { id: 'posts', label: 'Posts', count: userPosts.length, icon: FileText },
     { id: 'saved', label: 'Saved', count: savedPosts.length, icon: Bookmark },
-    { id: 'about', label: 'About', count: null, icon: User },
     { id: 'settings', label: 'Settings', count: null, icon: Settings }
   ];
 
@@ -495,11 +495,11 @@ function ProfilePage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-         {/* Header Section */}
-         <div className="relative">
-           {/* Profile Info Card */}
-           <div className="relative text-center px-4">
-             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 -mt-20">
+        {/* Header Section */}
+        <div className="relative">
+          {/* Profile Info Card */}
+          <div className="relative text-center px-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 -mt-20">
               {/* Avatar */}
               <div className="flex justify-center -mt-24">
                 <ProfileAvatar
@@ -510,17 +510,26 @@ function ProfilePage() {
                   onEdit={handleProfilePictureEdit}
                 />
               </div>
-              
+
               {/* User Details */}
               <div className="mt-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-3">
-                  {user.full_name}
-                  {user.isPublic ? (
-                    <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
-                  ) : (
-                    <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
-                  )}
-                </h1>
+                <div className="flex items-center justify-center gap-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    {user.full_name}
+                    {user.isPublic ? (
+                      <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
+                    ) : (
+                      <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
+                    )}
+                  </h1>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                    title="Edit Profile"
+                  >
+                    <Edit3 className="h-5 w-5" />
+                  </button>
+                </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">
                   {user.student_id} • {user.department} Batch {user.batch}
                 </p>
@@ -542,11 +551,10 @@ function ProfilePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
@@ -560,9 +568,9 @@ function ProfilePage() {
           </div>
 
           {/* Tab Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-3">
+            <div>
               {activeTab === 'posts' && (
                 <div className="space-y-6">
                   {userPosts.length === 0 ? (
@@ -614,8 +622,8 @@ function ProfilePage() {
                     <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-gray-500" />
                       <span className="text-gray-700 dark:text-gray-300">
-                        Joined {new Date().toLocaleDateString('en-US', { 
-                          year: 'numeric', 
+                        Joined {new Date().toLocaleDateString('en-US', {
+                          year: 'numeric',
                           month: 'long'
                         })}
                       </span>
@@ -703,42 +711,6 @@ function ProfilePage() {
               )}
             </div>
 
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Edit3 className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Edit Profile</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('saved')}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Bookmark className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Saved Posts</span>
-                  </button>
-                  <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Key className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('settings')}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Settings className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Account Settings</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
