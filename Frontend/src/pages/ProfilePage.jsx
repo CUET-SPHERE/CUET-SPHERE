@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Edit3, Lock, Unlock, Settings, Key, Mail, User, MapPin, Calendar, FileText, Users, Heart, Eye, EyeOff, Bookmark } from 'lucide-react';
 import { getInitials, getAvatarColor, formatTimeAgo } from '../utils/formatters';
-import { mockUser } from '../mock/mockUser';
+import { useUser } from '../contexts/UserContext';
 import { mockPosts } from '../mock/mockPosts';
 import PostCard from '../components/PostCard';
+import ApiService from '../services/api';
 
 // Profile Avatar Component
 function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
@@ -56,9 +57,9 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
 // Edit Profile Modal
 function EditProfileModal({ isOpen, onClose, user, onSave }) {
   const [formData, setFormData] = useState({
-    full_name: user.full_name,
+    full_name: user.fullName || user.full_name || '',
     bio: user.bio || '',
-    hall: user.hall,
+    hall: user.hall || '',
     interests: user.interests || [],
     profilePicture: user.profilePicture || '',
     backgroundImage: user.backgroundImage || '',
@@ -68,8 +69,24 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
   const [newInterest, setNewInterest] = useState('');
   const [profilePreview, setProfilePreview] = useState(user.profilePicture || '');
   const [backgroundPreview, setBackgroundPreview] = useState(user.backgroundImage || '');
+  const [isUploading, setIsUploading] = useState(false);
   const profileFileRef = useRef(null);
   const backgroundFileRef = useRef(null);
+
+  // Update form data when user changes
+  useEffect(() => {
+    setFormData({
+      full_name: user.fullName || user.full_name || '',
+      bio: user.bio || 'Student at CUET. Passionate about learning and growing.',
+      hall: user.hall || 'Not specified',
+      interests: user.interests || ['Technology', 'Learning', 'Innovation'],
+      profilePicture: user.profilePicture || '',
+      backgroundImage: user.backgroundImage || '',
+      isPublic: user.isPublic !== false
+    });
+    setProfilePreview(user.profilePicture || '');
+    setBackgroundPreview(user.backgroundImage || '');
+  }, [user]);
 
   if (!isOpen) return null;
 
@@ -83,25 +100,84 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
     onClose();
   };
 
-  const handleProfileImageChange = (e) => {
+  const validateImageFile = (file) => {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPEG, PNG, or WebP)');
+      return false;
+    }
+    
+    if (file.size > maxSize) {
+      alert('File size must be less than 5MB');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleProfileImageChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfilePreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    if (file && validateImageFile(file)) {
+      try {
+        setIsUploading(true);
+        
+        // Show preview immediately
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setProfilePreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+        
+        // Upload to S3 via backend
+        const response = await ApiService.uploadProfilePicture(file, 'profile');
+        if (response.success) {
+          setProfilePreview(response.fileUrl);
+          console.log('Profile picture uploaded successfully:', response.fileUrl);
+        } else {
+          throw new Error(response.message || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        alert('Failed to upload profile picture. Please try again.');
+        // Reset preview on error
+        setProfilePreview(user.profilePicture || '');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
-  const handleBackgroundImageChange = (e) => {
+  const handleBackgroundImageChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setBackgroundPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    if (file && validateImageFile(file)) {
+      try {
+        setIsUploading(true);
+        
+        // Show preview immediately
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setBackgroundPreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+        
+        // Upload to S3 via backend
+        const response = await ApiService.uploadProfilePicture(file, 'background');
+        if (response.success) {
+          setBackgroundPreview(response.fileUrl);
+          console.log('Background image uploaded successfully:', response.fileUrl);
+        } else {
+          throw new Error(response.message || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading background image:', error);
+        alert('Failed to upload background image. Please try again.');
+        // Reset preview on error
+        setBackgroundPreview(user.backgroundImage || '');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -191,13 +267,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                     onChange={handleProfileImageChange}
                     className="hidden"
                   />
-                  <button
-                    type="button"
-                    onClick={() => profileFileRef.current.click()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Choose Image
-                  </button>
+                                     <button
+                     type="button"
+                     onClick={() => profileFileRef.current.click()}
+                     disabled={isUploading}
+                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                   >
+                     {isUploading ? 'Uploading...' : 'Choose Image'}
+                   </button>
                   {profilePreview && (
                     <button
                       type="button"
@@ -232,13 +309,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                     onChange={handleBackgroundImageChange}
                     className="hidden"
                   />
-                  <button
-                    type="button"
-                    onClick={() => backgroundFileRef.current.click()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Choose Background
-                  </button>
+                                     <button
+                     type="button"
+                     onClick={() => backgroundFileRef.current.click()}
+                     disabled={isUploading}
+                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                   >
+                     {isUploading ? 'Uploading...' : 'Choose Background'}
+                   </button>
                   {backgroundPreview && (
                     <button
                       type="button"
@@ -442,29 +520,113 @@ function ChangePasswordModal({ isOpen, onClose }) {
 }
 
 function ProfilePage() {
+  const { user: contextUser, updateUser } = useUser();
+  
+  console.log('ProfilePage received contextUser:', contextUser); // Debug log
+  
+  // Get department name from department code
+  const getDepartmentName = (deptCode) => {
+    const departments = {
+      '01': 'Civil Engineering',
+      '02': 'Mechanical Engineering', 
+      '03': 'Electrical & Electronics Engineering',
+      '04': 'Computer Science & Engineering',
+      '05': 'Water Resources Engineering',
+      '06': 'Petroleum & Mining Engineering',
+      '07': 'Mechatronics and Industrial Engineering',
+      '08': 'Electronics & Telecommunication Engineering',
+      '09': 'Urban & Regional Planning',
+      '10': 'Architecture',
+      '11': 'Biomedical Engineering',
+      '12': 'Nuclear Engineering',
+      '13': 'Materials Science & Engineering',
+      '14': 'Physics',
+      '15': 'Chemistry',
+      '16': 'Mathematics',
+      '17': 'Humanities'
+    };
+    return departments[deptCode] || 'Unknown Department';
+  };
+
+  // Format student ID properly
+  const formatStudentId = (email) => {
+    if (!email) return 'XXXXXXX';
+    const match = email.match(/u(\d{7})@student\.cuet\.ac\.bd/);
+    if (match) {
+      return match[1];
+    }
+    return 'XXXXXXX';
+  };
+
   const [user, setUser] = useState({
-    ...mockUser,
-    bio: 'Class Representative for CSE 22 batch. Passionate about software development and competitive programming. Love helping fellow students with their academic journey.',
-    interests: ['Programming', 'Algorithms', 'Web Development', 'Teaching'],
-    profilePicture: null,
-    backgroundImage: 'https://images.pexels.com/photos/2041540/pexels-photo-2041540.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    isPublic: true,
+    ...contextUser,
+    fullName: contextUser?.fullName || contextUser?.full_name || 'User',
+    bio: contextUser?.bio || 'Student at CUET. Passionate about learning and growing.',
+    interests: contextUser?.interests || ['Technology', 'Learning', 'Innovation'],
+    profilePicture: contextUser?.profilePicture || null,
+    backgroundImage: contextUser?.backgroundImage || 'https://images.pexels.com/photos/2041540/pexels-photo-2041540.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+    isPublic: contextUser?.isPublic !== false,
     postsCount: 25,
     followersCount: 150,
-    followingCount: 89
+    followingCount: 89,
+    department: getDepartmentName(contextUser?.department),
+    studentId: formatStudentId(contextUser?.email),
+    hall: contextUser?.hall || 'Not specified'
   });
+
+  // Update user state when contextUser changes
+  useEffect(() => {
+    if (contextUser) {
+      setUser({
+        ...contextUser,
+        fullName: contextUser?.fullName || contextUser?.full_name || 'User',
+        bio: contextUser?.bio || 'Student at CUET. Passionate about learning and growing.',
+        interests: contextUser?.interests || ['Technology', 'Learning', 'Innovation'],
+        profilePicture: contextUser?.profilePicture || null,
+        backgroundImage: contextUser?.backgroundImage || 'https://images.pexels.com/photos/2041540/pexels-photo-2041540.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
+        isPublic: contextUser?.isPublic !== false,
+        postsCount: 25,
+        followersCount: 150,
+        followingCount: 89,
+        department: getDepartmentName(contextUser?.department),
+        studentId: formatStudentId(contextUser?.email),
+        hall: contextUser?.hall || 'Not specified'
+      });
+    }
+  }, [contextUser]);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [activeTab, setActiveTab] = useState('about');
 
   // Get user's posts
-  const userPosts = mockPosts.filter(post => post.authorEmail === user.email);
+  const userPosts = mockPosts.filter(post => post.authorEmail === (user.email || user.fullName));
   // Get user's saved posts
   const savedPosts = mockPosts.filter(post => post.bookmarked);
 
-  const handleSaveProfile = (newData) => {
-    setUser({ ...user, ...newData });
+  const handleSaveProfile = async (newData) => {
+    try {
+      // Update local state immediately for better UX
+      const updatedUser = { ...user, ...newData };
+      setUser(updatedUser);
+      
+      // Update the context as well
+      updateUser(newData);
+      
+      // Save to backend
+      const response = await ApiService.updateUserProfile(newData);
+      if (response.success) {
+        console.log('Profile updated successfully');
+        // Optionally show success message
+      } else {
+        throw new Error(response.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+      // Revert local changes on error
+      setUser(user);
+    }
   };
 
   const handleProfilePictureEdit = () => {
@@ -502,37 +664,37 @@ function ProfilePage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 -mt-20">
               {/* Avatar */}
               <div className="flex justify-center -mt-24">
-                <ProfileAvatar
-                  src={user.profilePicture}
-                  name={user.full_name}
-                  size="2xl"
-                  editable
-                  onEdit={handleProfilePictureEdit}
-                />
+                                 <ProfileAvatar
+                   src={user.profilePicture}
+                   name={user.fullName || user.full_name || 'User'}
+                   size="2xl"
+                   editable
+                   onEdit={handleProfilePictureEdit}
+                 />
               </div>
 
               {/* User Details */}
               <div className="mt-4">
-                <div className="flex items-center justify-center gap-3">
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    {user.full_name}
-                    {user.isPublic ? (
-                      <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
-                    ) : (
-                      <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
-                    )}
-                  </h1>
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
-                    title="Edit Profile"
-                  >
-                    <Edit3 className="h-5 w-5" />
-                  </button>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  {user.student_id} • {user.department} Batch {user.batch}
-                </p>
+                                 <div className="flex items-center justify-center gap-3">
+                   <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                     {user.fullName || user.full_name || 'User'}
+                     {user.isPublic ? (
+                       <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
+                     ) : (
+                       <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
+                     )}
+                   </h1>
+                   <button
+                     onClick={() => setShowEditModal(true)}
+                     className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                     title="Edit Profile"
+                   >
+                     <Edit3 className="h-5 w-5" />
+                   </button>
+                 </div>
+                 <p className="text-gray-600 dark:text-gray-400 mt-1">
+                   {user.studentId || user.student_id || 'XXXXXXX'} • {user.department} Batch {user.batch}
+                 </p>
                 {user.bio && (
                   <p className="text-gray-700 dark:text-gray-300 mt-4 max-w-2xl mx-auto">
                     {user.bio}

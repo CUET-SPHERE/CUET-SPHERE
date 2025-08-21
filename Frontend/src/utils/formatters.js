@@ -38,6 +38,9 @@ export function formatTimeAgo(isoString) {
 
 // Avatar utilities
 export function getInitials(name) {
+  if (!name || typeof name !== 'string') {
+    return 'U';
+  }
   return name
     .split(' ')
     .map(word => word.charAt(0).toUpperCase())
@@ -46,6 +49,9 @@ export function getInitials(name) {
 }
 
 export function getAvatarColor(name) {
+  if (!name || typeof name !== 'string') {
+    return 'bg-blue-500';
+  }
   const colors = [
     'bg-red-500',
     'bg-blue-500',

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Admin Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .section {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.danger {
+            background-color: #dc3545;
+        }
+        button.danger:hover {
+            background-color: #c82333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .response {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .user-card {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .user-role {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .role-student { background-color: #e9ecef; color: #495057; }
+        .role-cr { background-color: #fff3cd; color: #856404; }
+        .role-admin { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>System Admin Test Panel</h1>
+    
+    <div class="container">
+        <h3>Authentication</h3>
+        <div class="form-group">
+            <label for="authToken">JWT Token:</label>
+            <input type="text" id="authToken" placeholder="Enter your JWT token" rows="3">
+        </div>
+        <button onclick="testAuth()">Test Authentication</button>
+    </div>
+    
+    <div class="container">
+        <h3>CR Role Assignment</h3>
+        <div class="form-group">
+            <label for="userEmail">User Email:</label>
+            <input type="email" id="userEmail" placeholder="u2204015@student.cuet.ac.bd">
+        </div>
+        <div class="form-group">
+            <label for="department">Department:</label>
+            <input type="text" id="department" placeholder="04" value="04">
+        </div>
+        <div class="form-group">
+            <label for="batch">Batch:</label>
+            <input type="text" id="batch" placeholder="22" value="22">
+        </div>
+        <button onclick="assignCrRole()">Assign CR Role</button>
+        <button onclick="removeCrRole()" class="danger">Remove CR Role</button>
+    </div>
+    
+    <div class="container">
+        <h3>User Management</h3>
+        <button onclick="getAllUsers()">Get All Users</button>
+        <button onclick="getUsersByDeptBatch()">Get Users by Dept/Batch</button>
+        <button onclick="getSystemInfo()">Get System Info</button>
+    </div>
+    
+    <div class="container">
+        <h3>Response</h3>
+        <div id="response" class="response">No response yet...</div>
+    </div>
+    
+    <div class="container">
+        <h3>Users List</h3>
+        <div id="usersList"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:5454';
+        
+        function getAuthHeaders() {
+            const token = document.getElementById('authToken').value;
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
+        
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: getAuthHeaders()
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function displayResponse(result) {
+            const responseDiv = document.getElementById('response');
+            if (result.success) {
+                responseDiv.className = 'response success';
+                responseDiv.textContent = `Success (${result.status}): ${JSON.stringify(result.data, null, 2)}`;
+            } else {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `Error: ${result.error || JSON.stringify(result.data, null, 2)}`;
+            }
+        }
+        
+        async function testAuth() {
+            const result = await makeRequest(`${BASE_URL}/api/admin/system-info`);
+            displayResponse(result);
+        }
+        
+        async function assignCrRole() {
+            const requestData = {
+                userEmail: document.getElementById('userEmail').value,
+                department: document.getElementById('department').value,
+                batch: document.getElementById('batch').value
+            };
+            
+            const result = await makeRequest(`${BASE_URL}/api/admin/assign-cr`, {
+                method: 'POST',
+                body: JSON.stringify(requestData)
+            });
+            
+            displayResponse(result);
+            if (result.success) {
+                getAllUsers(); // Refresh users list
+            }
+        }
+        
+        async function removeCrRole() {
+            const userEmail = document.getElementById('userEmail').value;
+            if (!userEmail) {
+                alert('Please enter user email');
+                return;
+            }
+            
+            const result = await makeRequest(`${BASE_URL}/api/admin/remove-cr/${userEmail}`, {
+                method: 'DELETE'
+            });
+            
+            displayResponse(result);
+            if (result.success) {
+                getAllUsers(); // Refresh users list
+            }
+        }
+        
+        async function getAllUsers() {
+            const result = await makeRequest(`${BASE_URL}/api/admin/users`);
+            displayResponse(result);
+            if (result.success) {
+                displayUsers(result.data);
+            }
+        }
+        
+        async function getUsersByDeptBatch() {
+            const department = document.getElementById('department').value;
+            const batch = document.getElementById('batch').value;
+            
+            const result = await makeRequest(`${BASE_URL}/api/admin/users/department/${department}/batch/${batch}`);
+            displayResponse(result);
+            if (result.success) {
+                displayUsers(result.data);
+            }
+        }
+        
+        async function getSystemInfo() {
+            const result = await makeRequest(`${BASE_URL}/api/admin/system-info`);
+            displayResponse(result);
+        }
+        
+        function displayUsers(users) {
+            const usersDiv = document.getElementById('usersList');
+            if (!Array.isArray(users)) {
+                usersDiv.innerHTML = '<p>No users to display</p>';
+                return;
+            }
+            
+            usersDiv.innerHTML = users.map(user => `
+                <div class="user-card">
+                    <h4>${user.fullName}</h4>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Batch:</strong> ${user.batch}, <strong>Department:</strong> ${user.department}</p>
+                    <p><strong>Student ID:</strong> ${user.studentId}</p>
+                    <p><strong>Role:</strong> <span class="user-role role-${user.role.toLowerCase()}">${user.role}</span></p>
+                    <p><strong>Status:</strong> ${user.isActive ? 'Active' : 'Inactive'}</p>
+                    <p><strong>Hall:</strong> ${user.hall || 'N/A'}</p>
+                </div>
+            `).join('');
+        }
+        
+        // Auto-fill form with sample data
+        window.onload = function() {
+            document.getElementById('userEmail').value = 'u2204015@student.cuet.ac.bd';
+            document.getElementById('department').value = '04';
+            document.getElementById('batch').value = '22';
+        };
+    </script>
+</body>
+</html>

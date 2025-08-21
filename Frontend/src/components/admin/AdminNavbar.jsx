@@ -6,7 +6,7 @@ import { Sun, Moon, Bell, LogOut, User, LayoutDashboard, Newspaper, ShieldCheck,
 import { useNotifications } from '../../contexts/NotificationsContext';
 
 const AdminNavbar = () => {
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user, logout } = useUser();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
@@ -63,7 +63,7 @@ const AdminNavbar = () => {
               className="p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-800 focus:ring-blue-500"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
+              {theme === 'dark' ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
             </button>
             <Link
               to="/admin/notifications"
