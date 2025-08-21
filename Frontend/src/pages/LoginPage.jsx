@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, Mail, Eye, EyeOff } from "lucide-react";
 import { validateLoginForm } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
+import ApiService from "../services/api";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrors({});
 
     const validationErrors = validateLoginForm(formData);
     if (Object.keys(validationErrors).length > 0) {
@@ -42,63 +44,41 @@ const LoginPage = () => {
     }
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await ApiService.signin(formData);
+      
+      console.log('Backend response:', response); // Debug log
+      
+      if (response.success) {
+        // Transform the response to match frontend expectations
+        const userData = {
+          fullName: response.fullName,
+          email: response.email,
+          role: response.role,
+          token: response.token,
+          // Add other fields that might be needed
+          studentId: response.studentId || '',
+          batch: response.batch || '',
+          department: response.department || '',
+          hall: response.hall || '',
+          bio: response.bio || '',
+        };
 
-      const mockUsers = {
-        'rony@student.cuet.ac.bd': {
-          password: 'rony123',
-          userData: {
-            fullName: 'Muhammad Rony',
-            studentId: '2204005',
-            email: 'rony@student.cuet.ac.bd',
-            batch: '2022-2023',
-            department: '04',
-            hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
-            role: 'Student',
-          },
-        },
-        'cr@student.cuet.ac.bd': {
-          password: 'cr123',
-          userData: {
-            fullName: 'CR User',
-            studentId: '2204001',
-            email: 'cr@student.cuet.ac.bd',
-            batch: '2022-2023',
-            department: '04',
-            hall: 'Bangabandhu Sheikh Mujibur Rahman Hall',
-            role: 'CR',
-          },
-        },
-        'admin@student.cuet.ac.bd': {
-          password: 'admin123',
-          userData: {
-            fullName: 'Admin User',
-            studentId: '0000000',
-            email: 'admin@student.cuet.ac.bd',
-            batch: 'N/A',
-            department: 'System',
-            hall: 'N/A',
-            role: 'admin',
-          },
-        },
-      };
+        console.log('Transformed userData:', userData); // Debug log
 
-      const user = mockUsers[formData.email];
-
-      if (user && user.password === formData.password) {
-        login(user.userData);
+        login(userData);
+        
         // Redirect based on role
-        if (user.userData.role === 'admin') {
+        if (response.role === 'SYSTEM_ADMIN') {
           navigate('/admin/dashboard');
         } else {
           navigate('/dashboard');
         }
       } else {
-        setErrors({ submit: "Invalid email or password. Please try again." });
+        setErrors({ submit: response.message || "Login failed. Please try again." });
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrors({ submit: "An unexpected error occurred. Please try again." });
+      setErrors({ submit: error.message || "An unexpected error occurred. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -134,8 +114,8 @@ const LoginPage = () => {
             </div>
             <div>
               <p><strong>Role:</strong> Admin</p>
-              <p><strong>Email:</strong> admin@student.cuet.ac.bd</p>
-              <p><strong>Password:</strong> admin123</p>
+              <p><strong>Email:</strong> u2204015@student.cuet.ac.bd</p>
+              <p><strong>Password:</strong> asdf</p>
             </div>
           </div>
         </div>

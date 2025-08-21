@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
+import AdminCRFeatures from '../components/AdminCRFeatures';
 import { 
   Calendar, 
   Clock, 
@@ -81,6 +82,40 @@ const MiniProfile = ({ user }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  // Get department name from department code
+  const getDepartmentName = (deptCode) => {
+    const departments = {
+      '01': 'Civil Engineering',
+      '02': 'Mechanical Engineering', 
+      '03': 'Electrical & Electronics Engineering',
+      '04': 'Computer Science & Engineering',
+      '05': 'Water Resources Engineering',
+      '06': 'Petroleum & Mining Engineering',
+      '07': 'Mechatronics and Industrial Engineering',
+      '08': 'Electronics & Telecommunication Engineering',
+      '09': 'Urban & Regional Planning',
+      '10': 'Architecture',
+      '11': 'Biomedical Engineering',
+      '12': 'Nuclear Engineering',
+      '13': 'Materials Science & Engineering',
+      '14': 'Physics',
+      '15': 'Chemistry',
+      '16': 'Mathematics',
+      '17': 'Humanities'
+    };
+    return departments[deptCode] || 'Unknown Department';
+  };
+
+  // Format student ID properly
+  const formatStudentId = (email) => {
+    if (!email) return 'XXXXXXX';
+    const match = email.match(/u(\d{7})@student\.cuet\.ac\.bd/);
+    if (match) {
+      return match[1];
+    }
+    return 'XXXXXXX';
+  };
+
   return (
     <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
       <div className="flex items-center gap-4">
@@ -91,8 +126,22 @@ const MiniProfile = ({ user }) => {
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-bold">{user?.fullName || 'Student Name'}</h2>
-          <p className="text-blue-100 text-sm">ID: {user?.studentId || 'XXXXXXX'}</p>
-          <p className="text-blue-200 text-sm">{user?.department || 'Department'} - Batch {user?.batch || 'XX'}</p>
+          <p className="text-blue-100 text-sm">ID: {formatStudentId(user?.email)}</p>
+          <p className="text-blue-200 text-sm">{getDepartmentName(user?.department)} - Batch {user?.batch || 'XX'}</p>
+          {user?.role === 'CR' && (
+            <div className="mt-1">
+              <span className="inline-block px-2 py-1 bg-yellow-500 text-yellow-900 text-xs font-bold rounded-full">
+                Class Representative
+              </span>
+            </div>
+          )}
+          {user?.role === 'SYSTEM_ADMIN' && (
+            <div className="mt-1">
+              <span className="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                System Administrator
+              </span>
+            </div>
+          )}
         </div>
         <div className="text-right">
           <div className="w-3 h-3 bg-green-400 rounded-full mb-1 animate-pulse"></div>
@@ -472,7 +521,9 @@ const RecentActivity = () => {
 
 const StudentDashboard = () => {
   const { user } = useUser();
-
+  
+  console.log('StudentDashboard received user:', user); // Debug log
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -488,6 +539,9 @@ const StudentDashboard = () => {
 
         {/* Top Row - Mini Profile */}
         <MiniProfile user={user} />
+
+        {/* Admin/CR Features Row */}
+        <AdminCRFeatures user={user} />
 
         {/* Main Content Row */}
         <div className="flex flex-col lg:flex-row gap-6 h-[600px]">

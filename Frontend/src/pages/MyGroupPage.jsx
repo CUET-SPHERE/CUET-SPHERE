@@ -1,688 +1,570 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { mockGroup } from '../mock/mockGroup';
-import { Calendar, Megaphone, Users, TrendingUp, Plus, Clock, MapPin, BookOpen, Send, Paperclip, X, Edit, Trash2 } from 'lucide-react';
+import { Megaphone, Users, Plus, Edit, Trash2, Paperclip } from 'lucide-react';
+import ApiService from '../services/api';
+import webSocketService from '../services/websocket';
 
 function MyGroupPage() {
   const { user, isAuthenticated } = useUser();
-  const [newAnnouncement, setNewAnnouncement] = useState('');
-  const [announcementAttachment, setAnnouncementAttachment] = useState(null);
-  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
-  const [showClassTestForm, setShowClassTestForm] = useState(false);
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 'mock-1',
-      author: 'John Doe',
-      role: 'CR',
-      message: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-      date: '2023-08-13',
-      time: '10:00 AM',
-      attachment: null,
-    },
-    ...mockGroup.announcements
-  ]);
-  const [expandedAnnouncements, setExpandedAnnouncements] = useState({});
-  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
-  const [classTests, setClassTests] = useState(mockGroup.classTests);
-  const [newClassTest, setNewClassTest] = useState({
-    subject: '',
-    date: '',
-    time: '',
-    syllabus: '',
-    duration: ''
-  });
+  const [notices, setNotices] = useState([]);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [newNotice, setNewNotice] = useState({ title: '', message: '', noticeType: 'GENERAL' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const toggleAnnouncementExpansion = (id) => {
-    setExpandedAnnouncements(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('User authenticated, loading group data and setting up WebSocket');
+      // Load data first, then setup WebSocket
+      loadGroupData().then(() => {
+        setupWebSocket();
+      }).catch(err => {
+        console.error('Failed to load initial data:', err);
+        // Still try to setup WebSocket even if initial data fails
+        setupWebSocket();
+      });
+    }
 
-  const handleAnnouncementEdit = (announcement) => {
-    setEditingAnnouncement(announcement);
-    setNewAnnouncement(announcement.message);
-    setAnnouncementAttachment(announcement.attachment);
-    setIsAnnouncementModalOpen(true);
-  };
+    // Cleanup WebSocket on unmount
+    return () => {
+      console.log('Cleaning up WebSocket subscriptions');
+      if (user?.role === 'SYSTEM_ADMIN') {
+        webSocketService.unsubscribe('notices_all');
+      } else {
+        webSocketService.unsubscribe(`notices_${user?.batch}_${user?.department}`);
+      }
+    };
+  }, [isAuthenticated, user]);
 
-  const handleAnnouncementDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this announcement?')) {
-      setAnnouncements(prev => prev.filter(a => a.id !== id));
+  const setupWebSocket = async () => {
+    try {
+      console.log('Setting up WebSocket...');
+      await webSocketService.connect();
+      setWsConnected(true);
+      console.log('WebSocket connected successfully');
+      
+      // Wait a bit for connection to be fully established
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (user?.role === 'SYSTEM_ADMIN') {
+        // Admin can see all notices
+        console.log('Setting up admin WebSocket subscription');
+        webSocketService.subscribeToAllNotices((notice) => {
+          console.log('Received notice via WebSocket (admin):', notice);
+          setNotices(prevNotices => {
+            // Check if notice already exists
+            const exists = prevNotices.find(n => n.noticeId === notice.noticeId);
+            if (!exists) {
+              return [notice, ...prevNotices];
+            }
+            return prevNotices;
+          });
+        });
+      } else {
+        // Regular users see only notices from their batch and department
+        console.log('Setting up user WebSocket subscription for batch:', user.batch, 'department:', user.department);
+        webSocketService.subscribeToNotices(user.batch, user.department, (notice) => {
+          console.log('Received notice via WebSocket (user):', notice);
+          setNotices(prevNotices => {
+            // Check if notice already exists
+            const exists = prevNotices.find(n => n.noticeId === notice.noticeId);
+            if (!exists) {
+              return [notice, ...prevNotices];
+            }
+            return prevNotices;
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Failed to setup WebSocket:', error);
+      setWsConnected(false);
+      // Fallback to polling if WebSocket fails
+      const interval = setInterval(() => {
+        console.log('WebSocket failed, using polling fallback');
+        loadGroupData();
+      }, 10000);
+      
+      return () => clearInterval(interval);
     }
   };
 
-  const truncateText = (text, maxLength = 200) => {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength) + '...';
+  const loadGroupData = async (page = 0, append = false) => {
+    try {
+      if (page === 0) {
+        setLoading(true);
+        setCurrentPage(0);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const [noticesData, membersData] = await Promise.all([
+        ApiService.getAllNotices(page, pageSize),
+        ApiService.getGroupMembers()
+      ]);
+      
+      console.log('Notices data received:', noticesData);
+      console.log('Members data received:', membersData);
+      
+      // Handle pagination response
+      let noticesToSet = [];
+      if (noticesData && noticesData.content) {
+        // Backend pagination response
+        noticesToSet = noticesData.content;
+        setHasMore(noticesData.hasNext || false);
+      } else if (Array.isArray(noticesData)) {
+        // Fallback for non-paginated response
+        noticesToSet = noticesData;
+        setHasMore(false);
+      }
+      
+      if (append) {
+        setNotices(prevNotices => [...prevNotices, ...noticesToSet]);
+      } else {
+        setNotices(noticesToSet);
+      }
+      
+      setGroupMembers(membersData || []);
+      setCurrentPage(page);
+    } catch (err) {
+      console.error('Error loading group data:', err);
+      // Set empty arrays on error to prevent UI issues
+      if (!append) {
+        setNotices([]);
+        setGroupMembers([]);
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
-  const handleAnnouncementSubmit = (e) => {
-    e.preventDefault();
-    if (newAnnouncement.trim()) {
-      const currentDate = new Date();
-      const announcement = {
-        id: editingAnnouncement ? editingAnnouncement.id : Date.now().toString(),
-        author: user.fullName,
-        role: user.role,
-        message: newAnnouncement.trim(),
-        date: currentDate.toISOString().split('T')[0],
-        time: currentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        attachment: announcementAttachment,
-      };
+  const loadMoreNotices = async () => {
+    if (hasMore && !loadingMore) {
+      await loadGroupData(currentPage + 1, true);
+    }
+  };
 
-      setAnnouncements(prev => {
-        if (editingAnnouncement) {
-          return prev.map(a => a.id === editingAnnouncement.id ? announcement : a);
+  const handleScroll = (e) => {
+    const { scrollTop } = e.target;
+    setShowScrollTop(scrollTop > 100);
+  };
+
+  const scrollToTop = () => {
+    const container = document.querySelector('.notices-container');
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const closeNoticeModal = () => {
+    setIsNoticeModalOpen(false);
+    setNewNotice({ title: '', message: '', noticeType: 'GENERAL' });
+    setIsSubmitting(false);
+  };
+
+  const handleNoticeSubmit = async (e) => {
+    e.preventDefault();
+    if (!newNotice.title.trim() || !newNotice.message.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+      console.log('Submitting notice:', newNotice);
+      console.log('Notice data being sent:', JSON.stringify(newNotice, null, 2));
+      
+      const response = await ApiService.createNotice(newNotice);
+      console.log('Notice creation response:', response);
+      
+      if (response && response.success) {
+        // Reset form and close modal immediately
+        setNewNotice({ title: '', message: '', noticeType: 'GENERAL' });
+        setIsNoticeModalOpen(false);
+        
+        // Add the new notice to local state immediately for real-time feel
+        if (response.noticeId) {
+          const newNoticeWithId = {
+            ...newNotice,
+            noticeId: response.noticeId,
+            senderName: user.fullName,
+            senderEmail: user.email,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            department: user.department,
+            batch: user.batch
+          };
+          setNotices(prevNotices => [newNoticeWithId, ...prevNotices]);
         }
-        return [announcement, ...prev];
-      });
-
-      setNewAnnouncement('');
-      setAnnouncementAttachment(null);
-      setIsAnnouncementModalOpen(false);
-      setEditingAnnouncement(null);
+        
+        // Reload data to ensure consistency
+        await loadGroupData();
+      } else {
+        console.error('Notice creation failed:', response);
+        let errorMessage = 'Unknown error occurred';
+        
+        if (response) {
+          if (response.error) {
+            errorMessage = response.error;
+          } else if (response.message) {
+            errorMessage = response.message;
+          } else if (typeof response === 'string') {
+            errorMessage = response;
+          }
+        }
+        
+        alert('Failed to create notice: ' + errorMessage);
+      }
+    } catch (err) {
+      console.error('Error creating notice:', err);
+      let errorMessage = 'Network error occurred';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response) {
+        errorMessage = err.response.data?.error || err.response.data?.message || 'Server error';
+      }
+      
+      alert('Failed to submit notice: ' + errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleClassTestSubmit = (e) => {
-    e.preventDefault();
-    if (newClassTest.subject && newClassTest.date) {
-      console.log('New class test:', newClassTest);
-      setNewClassTest({
-        subject: '',
-        date: '',
-        time: '',
-        syllabus: '',
-        duration: ''
-      });
-      setShowClassTestForm(false);
-      alert('Class test scheduled successfully!');
+  const handleNoticeDelete = async (noticeId) => {
+    if (!window.confirm('Are you sure you want to delete this notice?')) return;
+    try {
+      console.log('Deleting notice:', noticeId);
+      const response = await ApiService.deleteNotice(noticeId);
+      console.log('Delete response:', response);
+      
+      if (response && response.success) {
+        // Remove notice from local state immediately for real-time feel
+        setNotices(prevNotices => prevNotices.filter(n => n.noticeId !== noticeId));
+        // Also reload data to ensure consistency
+        await loadGroupData();
+      } else {
+        console.error('Notice deletion failed:', response);
+        let errorMessage = 'Unknown error occurred';
+        
+        if (response) {
+          if (response.error) {
+            errorMessage = response.error;
+          } else if (response.message) {
+            errorMessage = response.message;
+          } else if (typeof response === 'string') {
+            errorMessage = response;
+          }
+        }
+        
+        alert('Failed to delete notice: ' + errorMessage);
+      }
+    } catch (err) {
+      console.error('Error deleting notice:', err);
+      let errorMessage = 'Network error occurred';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response) {
+        errorMessage = err.response.data?.error || err.response.data?.message || 'Server error';
+      }
+      
+      alert('Failed to delete notice: ' + errorMessage);
     }
   };
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" />;
+  const canCreateNotices = user?.role === 'CR' || user?.role === 'SYSTEM_ADMIN';
+  const canDeleteNotice = (notice) => {
+    return user?.role === 'SYSTEM_ADMIN' || 
+           (user?.role === 'CR' && notice.senderEmail === user.email);
+  };
+
+  const getDepartmentName = (deptCode) => {
+    const departments = {
+      '01': 'Civil Engineering',
+      '02': 'Mechanical Engineering', 
+      '03': 'Electrical & Electronics Engineering',
+      '04': 'Computer Science & Engineering',
+      '05': 'Water Resources Engineering',
+      '06': 'Petroleum & Mining Engineering',
+      '07': 'Mechatronics and Industrial Engineering',
+      '08': 'Electronics & Telecommunication Engineering',
+      '09': 'Urban & Regional Planning',
+      '10': 'Architecture',
+      '11': 'Biomedical Engineering',
+      '12': 'Nuclear Engineering',
+      '13': 'Materials Science & Engineering',
+      '14': 'Physics',
+      '15': 'Chemistry',
+      '16': 'Mathematics',
+      '17': 'Humanities'
+    };
+    return departments[deptCode] || 'Unknown Department';
+  };
+
+  if (!isAuthenticated) return <Navigate to="/" />;
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">Loading...</div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Group Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {mockGroup.departmentName || 'Unknown Department'} Batch {mockGroup.batch || '00'}
-          </h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {getDepartmentName(user?.department)} - Batch {user?.batch}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                {groupMembers.length} members
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                wsConnected 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  wsConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                {wsConnected ? 'Live Updates' : 'Polling Mode'}
+              </div>
+              
+              {/* Test API Button */}
+              <button
+                onClick={async () => {
+                  try {
+                    console.log('Testing API endpoints...');
+                    
+                    // Test debug endpoint
+                    const debugResponse = await fetch('/api/notices/debug');
+                    const debugData = await debugResponse.json();
+                    console.log('Debug endpoint response:', debugData);
+                    
+                    // Test database endpoint
+                    const dbResponse = await fetch('/api/notices/db-check');
+                    const dbData = await dbResponse.json();
+                    console.log('Database check response:', dbData);
+                    
+                    alert('API test completed. Check console for details.');
+                  } catch (err) {
+                    console.error('API test failed:', err);
+                    alert('API test failed: ' + err.message);
+                  }
+                }}
+                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded-lg hover:bg-yellow-600"
+                title="Test API endpoints"
+              >
+                Test API
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Desktop Layout - Grid with 4 columns */}
-        <div className="hidden lg:grid lg:grid-cols-4 lg:gap-6">
-          {/* Left Sidebar - Class Representatives & Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Class Representatives */}
-            <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-                Class Representatives
-              </h2>
-              <div className="space-y-4">
-                {mockGroup.classRepresentatives.map((rep) => (
-                  <div key={rep.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-sm">
-                      {rep.initials}
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-text-primary">{rep.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{rep.role}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Group Stats */}
-            <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Group Stats
               </h2>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-300">Total Members</span>
-                  <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.memberCount}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Members:</span>
+                  <span className="font-semibold">{groupMembers.length}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-300">Active This Week</span>
-                  <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.activeThisWeek}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-300">Resources Shared</span>
-                  <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.resourcesShared}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-300">Announcements</span>
-                  <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.announcements.length}</span>
+                <div className="flex justify-between">
+                  <span>Notices:</span>
+                  <span className="font-semibold">{notices.length}</span>
                 </div>
               </div>
-              <button className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                View group members
-              </button>
             </div>
           </div>
 
-          {/* Center - Announcement Feed */}
+          {/* Center - Notices */}
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                <Megaphone className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-                Announcements
-              </h3>
-              <div className="h-97 overflow-y-auto scrollbar-hide space-y-4">
-                {announcements.map((announcement) => (
-                  <div key={announcement.id} className="bg-gray-50 dark:bg-background rounded-lg p-4 border border-gray-200 dark:border-border-color">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-xs">
-                        {announcement.author.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900 dark:text-text-primary">{announcement.author}</span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">({announcement.role})</span>
-                          </div>
-                          {user.role === 'CR' && announcement.author === user.fullName && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleAnnouncementEdit(announcement)}
-                                className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleAnnouncementDelete(announcement.id)}
-                                className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-gray-700 dark:text-gray-300 mb-2">
-                            {expandedAnnouncements[announcement.id]
-                              ? announcement.message
-                              : truncateText(announcement.message)}
-                          </p>
-                          {announcement.message.length > 200 && (
-                            <button
-                              onClick={() => toggleAnnouncementExpansion(announcement.id)}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm mb-2"
-                            >
-                              {expandedAnnouncements[announcement.id] ? 'See less' : 'See more'}
-                            </button>
-                          )}
-                          {announcement.attachment && (
-                            <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                              <Paperclip size={14} />
-                              <a
-                                href={announcement.attachment}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-blue-600 dark:hover:text-blue-400"
-                              >
-                                Attachment
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {announcement.date}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {announcement.time}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Sidebar - CR Management */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Right Sidebar - CR Management */}
-            {user && user.role === 'CR' && (
-              <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                  <Megaphone className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-                  CR Actions
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Group Notices
                 </h3>
-
-                <button
-                  onClick={() => setIsAnnouncementModalOpen(true)}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 mb-4"
-                >
-                  <Plus className="h-4 w-4" />
-                  Make Announcement
-                </button>
-
-                {!showClassTestForm ? (
+                {canCreateNotices && (
                   <button
-                    onClick={() => setShowClassTestForm(true)}
-                    className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    onClick={() => setIsNoticeModalOpen(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                   >
-                    <Plus className="h-4 w-4" />
-                    Add Class Test
+                    <Plus className="h-4 w-4 inline mr-2" />
+                    New Notice
                   </button>
-                ) : (
-                  <form onSubmit={handleClassTestSubmit} className="space-y-3">
-                    <input
-                      type="text"
-                      value={newClassTest.subject}
-                      onChange={(e) => setNewClassTest({ ...newClassTest, subject: e.target.value })}
-                      placeholder="Subject"
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                      required
-                    />
-                    <input
-                      type="date"
-                      value={newClassTest.date}
-                      onChange={(e) => setNewClassTest({ ...newClassTest, date: e.target.value })}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                      required
-                    />
-                    <input
-                      type="time"
-                      value={newClassTest.time}
-                      onChange={(e) => setNewClassTest({ ...newClassTest, time: e.target.value })}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                    />
-                    <textarea
-                      value={newClassTest.syllabus}
-                      onChange={(e) => setNewClassTest({ ...newClassTest, syllabus: e.target.value })}
-                      placeholder="Syllabus"
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm h-16 resize-none bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm"
-                      >
-                        Add Test
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowClassTestForm(false);
-                          setNewClassTest({
-                            subject: '',
-                            date: '',
-                            time: '',
-                            syllabus: '',
-                            duration: ''
-                          });
-                        }}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
                 )}
               </div>
-            )}
-
-            {/* Upcoming Class Tests */}
-            <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-                Upcoming Tests
-              </h3>
-              <div className="space-y-3">
-                {mockGroup.classTests.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">No upcoming tests.</p>
+              
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2 notices-container" onScroll={handleScroll}>
+                {notices.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No notices yet</p>
                 ) : (
-                  mockGroup.classTests.map((test, index) => (
-                    <div key={index} className="bg-gray-50 dark:bg-background rounded-lg p-3 border border-gray-200 dark:border-border-color">
-                      <div className="font-medium text-gray-900 dark:text-text-primary text-sm">{test.subject}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-1">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Duration: {test.duration}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {test.date} at {test.time}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" />
-                          {test.syllabus}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile/Responsive Layout - Stack components in specific order */}
-        <div className="lg:hidden space-y-6">
-          {/* 1. CR Actions (only visible for CR users) */}
-          {user && user.role === 'CR' && (
-            <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-                <Megaphone className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-                CR Actions
-              </h3>
-
-              <button
-                onClick={() => setIsAnnouncementModalOpen(true)}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 mb-4"
-              >
-                <Plus className="h-4 w-4" />
-                Make Announcement
-              </button>
-
-              {!showClassTestForm ? (
-                <button
-                  onClick={() => setShowClassTestForm(true)}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Class Test
-                </button>
-              ) : (
-                <form onSubmit={handleClassTestSubmit} className="space-y-3">
-                  <input
-                    type="text"
-                    value={newClassTest.subject}
-                    onChange={(e) => setNewClassTest({ ...newClassTest, subject: e.target.value })}
-                    placeholder="Subject"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                    required
-                  />
-                  <input
-                    type="date"
-                    value={newClassTest.date}
-                    onChange={(e) => setNewClassTest({ ...newClassTest, date: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                    required
-                  />
-                  <input
-                    type="time"
-                    value={newClassTest.time}
-                    onChange={(e) => setNewClassTest({ ...newClassTest, time: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                  />
-                  <textarea
-                    value={newClassTest.syllabus}
-                    onChange={(e) => setNewClassTest({ ...newClassTest, syllabus: e.target.value })}
-                    placeholder="Syllabus"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm h-16 resize-none bg-white dark:bg-background text-gray-900 dark:text-text-primary"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                      Add Test
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowClassTestForm(false);
-                        setNewClassTest({
-                          subject: '',
-                          date: '',
-                          time: '',
-                          syllabus: '',
-                          duration: ''
-                        });
-                      }}
-                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
-
-          {/* 2. Upcoming Tests */}
-          <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-              Upcoming Tests
-            </h3>
-            <div className="space-y-3">
-              {mockGroup.classTests.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No upcoming tests.</p>
-              ) : (
-                mockGroup.classTests.map((test, index) => (
-                  <div key={index} className="bg-gray-50 dark:bg-background rounded-lg p-3 border border-gray-200 dark:border-border-color">
-                    <div className="font-medium text-gray-900 dark:text-text-primary text-sm">{test.subject}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Duration: {test.duration}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {test.date} at {test.time}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        {test.syllabus}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 3. Announcements */}
-          <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-              Announcements
-            </h3>
-            <div className="max-h-96 overflow-y-auto scrollbar-hide space-y-4">
-              {announcements.map((announcement) => (
-                <div key={announcement.id} className="bg-gray-50 dark:bg-background rounded-lg p-4 border border-gray-200 dark:border-border-color">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-xs">
-                      {announcement.author.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 dark:text-text-primary">{announcement.author}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">({announcement.role})</span>
-                        </div>
-                        {user.role === 'CR' && announcement.author === user.fullName && (
-                          <div className="flex items-center gap-2">
+                  <>
+                    {notices.map((notice) => (
+                      <div key={notice.noticeId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{notice.title}</h4>
+                            <p className="text-sm text-gray-500">by {notice.senderName}</p>
+                          </div>
+                          {canDeleteNotice(notice) && (
                             <button
-                              onClick={() => handleAnnouncementEdit(announcement)}
-                              className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleAnnouncementDelete(announcement.id)}
-                              className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                              onClick={() => handleNoticeDelete(notice.noticeId)}
+                              className="text-red-600 hover:text-red-800"
                             >
                               <Trash2 size={16} />
                             </button>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-gray-700 dark:text-gray-300 mb-2">
-                          {expandedAnnouncements[announcement.id]
-                            ? announcement.message
-                            : truncateText(announcement.message)}
-                        </p>
-                        {announcement.message.length > 200 && (
-                          <button
-                            onClick={() => toggleAnnouncementExpansion(announcement.id)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm mb-2"
-                          >
-                            {expandedAnnouncements[announcement.id] ? 'See less' : 'See more'}
-                          </button>
-                        )}
-                        {announcement.attachment && (
-                          <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                            <Paperclip size={14} />
-                            <a
-                              href={announcement.attachment}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-blue-600 dark:hover:text-blue-400"
-                            >
+                          )}
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300">{notice.message}</p>
+                        {notice.attachment && (
+                          <div className="mt-2">
+                            <Paperclip className="h-4 w-4 inline mr-1" />
+                            <a href={notice.attachment} className="text-blue-600 hover:underline">
                               Attachment
                             </a>
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {announcement.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {announcement.time}
-                        </span>
+                    ))}
+                    
+                    {/* Load More Button */}
+                    {hasMore && (
+                      <div className="text-center pt-4">
+                        <button
+                          onClick={loadMoreNotices}
+                          disabled={loadingMore}
+                          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loadingMore ? 'Loading...' : 'Load More Notices'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Group Members
+              </h3>
+              <div className="space-y-3">
+                {groupMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 text-sm font-semibold">
+                      {member.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white text-sm">
+                        {member.fullName}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {member.role}
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 4. View Group Members */}
-          <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-              Group Stats
-            </h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-300">Total Members</span>
-                <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.memberCount}</span>
+                ))}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-300">Active This Week</span>
-                <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.activeThisWeek}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-300">Resources Shared</span>
-                <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.resourcesShared}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-300">Announcements</span>
-                <span className="font-semibold text-gray-900 dark:text-text-primary">{mockGroup.announcements.length}</span>
-              </div>
-            </div>
-            <button className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-              View group members
-            </button>
-          </div>
-
-          {/* 5. Class Representatives */}
-          <div className="bg-white dark:bg-surface rounded-lg shadow-sm p-6 border border-gray-200 dark:border-border-color">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-text-primary mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-gray-700 dark:text-text-secondary" />
-              Class Representatives
-            </h2>
-            <div className="space-y-4">
-              {mockGroup.classRepresentatives.map((rep) => (
-                <div key={rep.id} className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-sm">
-                    {rep.initials}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-text-primary">{rep.name}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{rep.role}</div>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Announcement Modal */}
-      {isAnnouncementModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-surface rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-border-color">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-text-primary">Make an Announcement</h3>
-              <button onClick={() => setIsAnnouncementModalOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                <X size={20} />
+      {/* Notice Modal */}
+      {isNoticeModalOpen && (
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={closeNoticeModal}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Post New Notice
+              </h3>
+              <button
+                onClick={closeNoticeModal}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-            <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
+            <form onSubmit={handleNoticeSubmit} className="space-y-4">
               <div>
-                <label htmlFor="announcement-content" className="sr-only">Announcement Content</label>
-                <textarea
-                  id="announcement-content"
-                  value={newAnnouncement}
-                  onChange={(e) => setNewAnnouncement(e.target.value)}
-                  placeholder="Write your announcement here..."
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-y h-32 text-sm bg-white dark:bg-background text-gray-900 dark:text-text-primary focus:ring-blue-500 focus:border-blue-500"
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={newNotice.title}
+                  onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
                   required
                 />
               </div>
               <div>
-                <label htmlFor="announcement-attachment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attach File (Optional)</label>
-                <input
-                  type="file"
-                  id="announcement-attachment"
-                  onChange={(e) => setAnnouncementAttachment(e.target.files[0])}
-                  className="w-full text-sm text-gray-500 dark:text-gray-400
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300 dark:hover:file:bg-blue-800
-                  "
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Message *
+                </label>
+                <textarea
+                  value={newNotice.message}
+                  onChange={(e) => setNewNotice({ ...newNotice, message: e.target.value })}
+                  rows={4}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
+                  required
                 />
-                {announcementAttachment && (
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                    <Paperclip size={14} /> {announcementAttachment.name}
-                  </p>
-                )}
               </div>
-              <div className="flex justify-end gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Type
+                </label>
+                <select
+                  value={newNotice.noticeType}
+                  onChange={(e) => setNewNotice({ ...newNotice, noticeType: e.target.value })}
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
+                >
+                  <option value="GENERAL">General</option>
+                  <option value="ACADEMIC">Academic</option>
+                  <option value="URGENT">Urgent</option>
+                  <option value="EVENT">Event</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsAnnouncementModalOpen(false);
-                    setNewAnnouncement('');
-                    setAnnouncementAttachment(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300"
+                  onClick={closeNoticeModal}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={isSubmitting}
                 >
-                  <Send size={16} />
-                  Post Announcement
+                  {isSubmitting ? 'Posting...' : 'Post Notice'}
                 </button>
               </div>
             </form>
@@ -690,15 +572,18 @@ function MyGroupPage() {
         </div>
       )}
 
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-20 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+          title="Scroll to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

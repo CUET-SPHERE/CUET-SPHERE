@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notice WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .notice {
+            background-color: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .urgent {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .academic {
+            background-color: #d1ecf1;
+            border-left-color: #17a2b8;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Notice WebSocket Test</h1>
+    
+    <div class="container">
+        <h3>Connection Status</h3>
+        <div id="status" class="status disconnected">Disconnected</div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+    
+    <div class="container">
+        <h3>Subscribe to Notices</h3>
+        <input type="text" id="batch" placeholder="Batch (e.g., 22)" value="22">
+        <input type="text" id="department" placeholder="Department (e.g., 04)" value="04">
+        <button onclick="subscribeToNotices()">Subscribe to Batch/Department Notices</button>
+        <button onclick="subscribeToPersonalNotices()">Subscribe to Personal Notices</button>
+    </div>
+    
+    <div class="container">
+        <h3>Send Test Notice (CR Only)</h3>
+        <select id="noticeType">
+            <option value="GENERAL">General</option>
+            <option value="URGENT">Urgent</option>
+            <option value="ACADEMIC">Academic</option>
+            <option value="EVENT">Event</option>
+            <option value="OTHER">Other</option>
+        </select>
+        <textarea id="message" placeholder="Notice message" rows="4"></textarea>
+        <input type="text" id="attachment" placeholder="Attachment URL (optional)">
+        <button onclick="sendTestNotice()">Send Test Notice</button>
+    </div>
+    
+    <div class="container">
+        <h3>Received Notices</h3>
+        <div id="notices"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let connected = false;
+        
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function (frame) {
+                connected = true;
+                updateStatus('Connected', true);
+                console.log('Connected: ' + frame);
+            }, function (error) {
+                connected = false;
+                updateStatus('Connection failed: ' + error, false);
+                console.log('Connection failed: ' + error);
+            });
+        }
+        
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                connected = false;
+                updateStatus('Disconnected', false);
+                console.log('Disconnected');
+            }
+        }
+        
+        function updateStatus(message, isConnected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isConnected ? 'connected' : 'disconnected');
+        }
+        
+        function subscribeToNotices() {
+            if (!connected) {
+                alert('Please connect first');
+                return;
+            }
+            
+            const batch = document.getElementById('batch').value;
+            const department = document.getElementById('department').value;
+            
+            if (!batch || !department) {
+                alert('Please enter batch and department');
+                return;
+            }
+            
+            const topic = `/topic/notices/${batch}/${department}`;
+            stompClient.subscribe(topic, function (notice) {
+                displayNotice(JSON.parse(notice.body));
+            });
+            
+            console.log('Subscribed to: ' + topic);
+            alert('Subscribed to notices for batch ' + batch + ', department ' + department);
+        }
+        
+        function subscribeToPersonalNotices() {
+            if (!connected) {
+                alert('Please connect first');
+                return;
+            }
+            
+            const userId = prompt('Enter your user ID:');
+            if (!userId) return;
+            
+            const queue = `/user/${userId}/queue/notices`;
+            stompClient.subscribe(queue, function (notice) {
+                displayNotice(JSON.parse(notice.body));
+            });
+            
+            console.log('Subscribed to personal notices: ' + queue);
+            alert('Subscribed to personal notices for user ' + userId);
+        }
+        
+        function sendTestNotice() {
+            if (!connected) {
+                alert('Please connect first');
+                return;
+            }
+            
+            const message = document.getElementById('message').value;
+            const noticeType = document.getElementById('noticeType').value;
+            const attachment = document.getElementById('attachment').value;
+            
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+            
+            const notice = {
+                message: message,
+                noticeType: noticeType,
+                attachment: attachment
+            };
+            
+            // This would normally be sent to your REST API
+            console.log('Test notice:', notice);
+            alert('Test notice prepared. In a real app, this would be sent via REST API.');
+        }
+        
+        function displayNotice(notice) {
+            const noticesDiv = document.getElementById('notices');
+            const noticeDiv = document.createElement('div');
+            noticeDiv.className = 'notice ' + notice.noticeType.toLowerCase();
+            
+            const timestamp = new Date(notice.createdAt).toLocaleString();
+            
+            noticeDiv.innerHTML = `
+                <h4>${notice.noticeType} Notice</h4>
+                <p><strong>Message:</strong> ${notice.message}</p>
+                <p><strong>From:</strong> ${notice.senderName} (${notice.senderEmail})</p>
+                <p><strong>Batch:</strong> ${notice.batch}, <strong>Department:</strong> ${notice.department}</p>
+                ${notice.attachment ? `<p><strong>Attachment:</strong> <a href="${notice.attachment}" target="_blank">${notice.attachment}</a></p>` : ''}
+                <p><strong>Time:</strong> ${timestamp}</p>
+            `;
+            
+            noticesDiv.insertBefore(noticeDiv, noticesDiv.firstChild);
+        }
+        
+        // Auto-connect on page load
+        window.onload = function() {
+            connect();
+        };
+    </script>
+</body>
+</html>

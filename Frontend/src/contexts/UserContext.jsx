@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import ApiService from '../services/api';
 
 const UserContext = createContext();
 
@@ -21,8 +22,14 @@ export const UserProvider = ({ children }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
+        // Check if token exists and is not expired
+        if (parsedUser.token) {
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+        } else {
+          // Clear invalid user data
+          localStorage.removeItem('user');
+        }
       }
       const storedDeleteCount = localStorage.getItem('postDeleteCount');
       if (storedDeleteCount) {
@@ -38,11 +45,23 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   const login = (userData) => {
-    setUser(userData);
+    console.log('UserContext.login called with:', userData); // Debug log
+    
+    // Ensure userData has the required fields
+    const userWithToken = {
+      ...userData,
+      token: userData.token || userData.jwt,
+      role: userData.role || 'STUDENT'
+    };
+    
+    console.log('Final userWithToken:', userWithToken); // Debug log
+    
+    setUser(userWithToken);
     setIsAuthenticated(true);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(userWithToken));
+    
     // Reset delete count on new admin login if desired, or persist across sessions
-    if (userData.role !== 'admin') {
+    if (userWithToken.role !== 'SYSTEM_ADMIN') {
         localStorage.removeItem('postDeleteCount');
         setPostDeleteCount(0);
     }
@@ -72,6 +91,26 @@ export const UserProvider = ({ children }) => {
     });
   };
 
+  // Check if user has specific role
+  const hasRole = (role) => {
+    return user && user.role === role;
+  };
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return hasRole('SYSTEM_ADMIN');
+  };
+
+  // Check if user is CR
+  const isCR = () => {
+    return hasRole('CR');
+  };
+
+  // Check if user is student
+  const isStudent = () => {
+    return hasRole('STUDENT');
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -81,6 +120,10 @@ export const UserProvider = ({ children }) => {
     updateUser,
     postDeleteCount,
     incrementPostDeleteCount,
+    hasRole,
+    isAdmin,
+    isCR,
+    isStudent,
   };
 
   return (
