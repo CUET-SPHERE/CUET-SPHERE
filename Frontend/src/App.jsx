@@ -31,18 +31,7 @@ import AdminProfilePage from './pages/admin/AdminProfilePage';
 import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
 
 // Route Protection Components
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useUser();
-  return isAuthenticated ? children : <Navigate to="/login" />;
-};
-
-const AdminRoute = ({ children }) => {
-  const { isAuthenticated, user } = useUser();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-  return user.role === 'admin' ? children : <Navigate to="/dashboard" />;
-};
+import ProtectedRoute from './components/ProtectedRoute';
 
 const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useUser();
@@ -57,7 +46,7 @@ function AppContent() {
     if (!isAuthenticated) {
       return <LoggedOutNavbar />;
     }
-    if (user.role === 'admin') {
+    if (user?.role === 'SYSTEM_ADMIN') {
       return <AdminNavbar />;
     }
     return <LoggedInNavbar />;
@@ -84,10 +73,10 @@ function AppContent() {
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/admin/feed" element={<AdminRoute><AdminFeedPage /></AdminRoute>} />
-          <Route path="/admin/profile" element={<AdminRoute><AdminProfilePage /></AdminRoute>} />
-          <Route path="/admin/notifications" element={<AdminRoute><AdminNotificationsPage /></AdminRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/feed" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><AdminFeedPage /></ProtectedRoute>} />
+          <Route path="/admin/profile" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><AdminProfilePage /></ProtectedRoute>} />
+          <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><AdminNotificationsPage /></ProtectedRoute>} />
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUET Department Code Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .dept-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .dept-table th, .dept-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .dept-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .dept-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 CUET Department Code Mapping Test</h1>
+        
+        <div class="test-section">
+            <h3>📋 Department Code Reference</h3>
+            <table class="dept-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Department Name</th>
+                        <th>Course Code Prefix</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>01</td><td>Civil Engineering</td><td>CE-</td></tr>
+                    <tr><td>02</td><td>Mechanical Engineering</td><td>ME-</td></tr>
+                    <tr><td>03</td><td>Electrical & Electronics Engineering</td><td>EEE-</td></tr>
+                    <tr><td>04</td><td>Computer Science & Engineering</td><td>CSE-</td></tr>
+                    <tr><td>05</td><td>Water Resources Engineering</td><td>WRE-</td></tr>
+                    <tr><td>06</td><td>Petroleum & Mining Engineering</td><td>PME-</td></tr>
+                    <tr><td>07</td><td>Mechatronics and Industrial Engineering</td><td>MIE-</td></tr>
+                    <tr><td>08</td><td>Electronics & Telecommunication Engineering</td><td>ETE-</td></tr>
+                    <tr><td>09</td><td>Urban & Regional Planning</td><td>URP-</td></tr>
+                    <tr><td>10</td><td>Architecture</td><td>ARCH-</td></tr>
+                    <tr><td>11</td><td>Biomedical Engineering</td><td>BME-</td></tr>
+                    <tr><td>12</td><td>Nuclear Engineering</td><td>NE-</td></tr>
+                    <tr><td>13</td><td>Materials Science & Engineering</td><td>MSE-</td></tr>
+                    <tr><td>14</td><td>Physics</td><td>PHY-</td></tr>
+                    <tr><td>15</td><td>Chemistry</td><td>CHE-</td></tr>
+                    <tr><td>16</td><td>Mathematics</td><td>MATH-</td></tr>
+                    <tr><td>17</td><td>Humanities</td><td>HUM-</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test Your Department Code</h3>
+            <p>Enter your department code to see what department name it maps to:</p>
+            <input type="text" id="deptCodeInput" class="test-input" placeholder="Enter department code (e.g., 04)" maxlength="2">
+            <button onclick="testDepartmentCode()" class="test-button">Test Department Code</button>
+            <div id="deptCodeResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📚 Test Course Code Validation</h3>
+            <p>Test if a course code matches your department:</p>
+            <input type="text" id="userDeptCode" class="test-input" placeholder="Your department code (e.g., 04)" maxlength="2">
+            <input type="text" id="courseCodeInput" class="test-input" placeholder="Course code to test (e.g., CSE-101)" maxlength="10">
+            <button onclick="testCourseValidation()" class="test-button">Test Course Validation</button>
+            <div id="courseValidationResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💡 Troubleshooting Tips</h3>
+            <ul>
+                <li><strong>If you're getting "You can only upload resources for your department" error:</strong>
+                    <ul>
+                        <li>Make sure your department code in the database matches the codes above</li>
+                        <li>Ensure you're trying to upload a course that belongs to your department</li>
+                        <li>For CSE students (code 04), you can only upload CSE-* courses</li>
+                        <li>For EEE students (code 03), you can only upload EEE-* courses</li>
+                    </ul>
+                </li>
+                <li><strong>Common Course Codes by Department:</strong>
+                    <ul>
+                        <li><strong>CSE (04):</strong> CSE-101, CSE-201, CSE-301, CSE-401</li>
+                        <li><strong>EEE (03):</strong> EEE-101, EEE-201, EEE-301</li>
+                        <li><strong>CE (01):</strong> CE-101, CE-201, CE-301</li>
+                        <li><strong>ME (02):</strong> ME-101, ME-201</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const departmentMapping = {
+            "01": "Civil Engineering",
+            "02": "Mechanical Engineering",
+            "03": "Electrical & Electronics Engineering",
+            "04": "Computer Science & Engineering",
+            "05": "Water Resources Engineering",
+            "06": "Petroleum & Mining Engineering",
+            "07": "Mechatronics and Industrial Engineering",
+            "08": "Electronics & Telecommunication Engineering",
+            "09": "Urban & Regional Planning",
+            "10": "Architecture",
+            "11": "Biomedical Engineering",
+            "12": "Nuclear Engineering",
+            "13": "Materials Science & Engineering",
+            "14": "Physics",
+            "15": "Chemistry",
+            "16": "Mathematics",
+            "17": "Humanities"
+        };
+
+        const coursePrefixMapping = {
+            "01": "CE-",
+            "02": "ME-",
+            "03": "EEE-",
+            "04": "CSE-",
+            "05": "WRE-",
+            "06": "PME-",
+            "07": "MIE-",
+            "08": "ETE-",
+            "09": "URP-",
+            "10": "ARCH-",
+            "11": "BME-",
+            "12": "NE-",
+            "13": "MSE-",
+            "14": "PHY-",
+            "15": "CHE-",
+            "16": "MATH-",
+            "17": "HUM-"
+        };
+
+        function testDepartmentCode() {
+            const deptCode = document.getElementById('deptCodeInput').value.trim();
+            const resultDiv = document.getElementById('deptCodeResult');
+            
+            if (!deptCode) {
+                resultDiv.innerHTML = '<div class="result error">Please enter a department code</div>';
+                return;
+            }
+
+            const deptName = departmentMapping[deptCode];
+            const coursePrefix = coursePrefixMapping[deptCode];
+            
+            if (deptName) {
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ Department Code ${deptCode} maps to:</strong><br>
+                        <strong>Department:</strong> ${deptName}<br>
+                        <strong>Course Prefix:</strong> ${coursePrefix}<br>
+                        <strong>Example Courses:</strong> ${coursePrefix}101, ${coursePrefix}201, ${coursePrefix}301
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Invalid Department Code:</strong> ${deptCode}<br>
+                        Valid codes are: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17
+                    </div>
+                `;
+            }
+        }
+
+        function testCourseValidation() {
+            const userDeptCode = document.getElementById('userDeptCode').value.trim();
+            const courseCode = document.getElementById('courseCodeInput').value.trim();
+            const resultDiv = document.getElementById('courseValidationResult');
+            
+            if (!userDeptCode || !courseCode) {
+                resultDiv.innerHTML = '<div class="result error">Please enter both department code and course code</div>';
+                return;
+            }
+
+            const userDeptName = departmentMapping[userDeptCode];
+            const expectedPrefix = coursePrefixMapping[userDeptCode];
+            
+            if (!userDeptName) {
+                resultDiv.innerHTML = '<div class="result error">Invalid department code</div>';
+                return;
+            }
+
+            const coursePrefix = courseCode.split('-')[0];
+            const isValid = coursePrefix === expectedPrefix;
+            
+            if (isValid) {
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ VALID:</strong> Course ${courseCode} belongs to your department (${userDeptName})<br>
+                        <strong>Your Department:</strong> ${userDeptName} (Code: ${userDeptCode})<br>
+                        <strong>Course Prefix:</strong> ${coursePrefix} (Expected: ${expectedPrefix})
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ INVALID:</strong> Course ${courseCode} does NOT belong to your department<br>
+                        <strong>Your Department:</strong> ${userDeptName} (Code: ${userDeptCode})<br>
+                        <strong>Course Prefix:</strong> ${coursePrefix} (Expected: ${expectedPrefix})<br>
+                        <strong>You can only upload courses starting with:</strong> ${expectedPrefix}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            console.log("Department Code Test Page Loaded");
+            console.log("Available department codes:", Object.keys(departmentMapping));
+        };
+    </script>
+</body>
+</html>

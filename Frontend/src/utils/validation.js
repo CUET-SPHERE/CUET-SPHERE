@@ -50,16 +50,12 @@ export const validateSignupForm = (formData) => {
     errors.fullName = 'Full name is required.';
   }
 
-  if (!/^\d{7}$/.test(formData.studentId)) {
-    errors.studentId = 'Student ID must be exactly 7 digits.';
-  } else if (!extractDepartment(formData.studentId)) {
-    errors.studentId = 'Invalid department code in Student ID.';
-  }
-
   if (!formData.email.trim()) {
     errors.email = 'Email is required.';
   } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
     errors.email = 'Email address is invalid.';
+  } else if (!formData.email.endsWith('@student.cuet.ac.bd')) {
+    errors.email = 'Email must be a valid CUET student email (@student.cuet.ac.bd).';
   }
 
   if (!formData.password) {
@@ -74,10 +70,6 @@ export const validateSignupForm = (formData) => {
 
   if (!formData.hall) {
     errors.hall = 'Please select your hall of residence.';
-  }
-
-  if (!formData.gender) {
-    errors.gender = 'Please select your gender.';
   }
 
   return errors;

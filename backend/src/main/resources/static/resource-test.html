@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Management Test - CUET Sphere</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .resource-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .resource-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .resource-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .resource-actions {
+            margin-top: 10px;
+        }
+        .resource-actions button {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Resource Management Test - CUET Sphere</h1>
+        
+        <!-- Authentication Section -->
+        <div class="form-group">
+            <label for="jwtToken">JWT Token:</label>
+            <input type="text" id="jwtToken" placeholder="Enter your JWT token for authentication">
+            <button onclick="saveToken()">Save Token</button>
+            <button onclick="clearToken()" class="btn-danger">Clear Token</button>
+        </div>
+
+        <!-- Create Resource Form -->
+        <h2>Create New Resource (CR Only)</h2>
+        <div class="form-group">
+            <label for="resourceTitle">Resource Title:</label>
+            <input type="text" id="resourceTitle" placeholder="Enter resource title">
+        </div>
+
+        <div class="form-group">
+            <label for="resourceType">Resource Type:</label>
+            <select id="resourceType">
+                <option value="LECTURE_NOTE">Lecture Note</option>
+                <option value="ASSIGNMENT">Assignment</option>
+                <option value="LAB_MANUAL">Lab Manual</option>
+                <option value="BOOK">Book</option>
+                <option value="PRESENTATION">Presentation</option>
+                <option value="QUESTION_PAPER">Question Paper</option>
+                <option value="SOLUTION">Solution</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="courseCode">Course Code:</label>
+            <input type="text" id="courseCode" placeholder="e.g., CSE-101">
+        </div>
+
+        <div class="form-group">
+            <label for="semesterName">Semester:</label>
+            <select id="semesterName">
+                <option value="1-1">1-1</option>
+                <option value="1-2">1-2</option>
+                <option value="2-1">2-1</option>
+                <option value="2-2">2-2</option>
+                <option value="3-1">3-1</option>
+                <option value="3-2">3-2</option>
+                <option value="4-1">4-1</option>
+                <option value="4-2">4-2</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="filePath">Google Drive Link:</label>
+            <input type="text" id="filePath" placeholder="https://drive.google.com/file/d/...">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description (Optional):</label>
+            <textarea id="description" placeholder="Enter resource description..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <button onclick="createResource()" class="btn-success">Create Resource</button>
+            <button onclick="clearForm()">Clear Form</button>
+        </div>
+    </div>
+
+    <!-- Resource Management Section -->
+    <div class="container">
+        <h2>Resource Management</h2>
+        
+        <!-- Search and Filters -->
+        <div class="search-box">
+            <label for="searchQuery">Search Resources:</label>
+            <input type="text" id="searchQuery" placeholder="Search by title...">
+            <button onclick="searchResources()">Search</button>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label for="filterCourse">Filter by Course:</label>
+                <input type="text" id="filterCourse" placeholder="Course code">
+                <button onclick="filterByCourse()">Filter</button>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterType">Filter by Type:</label>
+                <select id="filterType">
+                    <option value="">All Types</option>
+                    <option value="LECTURE_NOTE">Lecture Note</option>
+                    <option value="ASSIGNMENT">Assignment</option>
+                    <option value="LAB_MANUAL">Lab Manual</option>
+                    <option value="BOOK">Book</option>
+                    <option value="PRESENTATION">Presentation</option>
+                    <option value="QUESTION_PAPER">Question Paper</option>
+                    <option value="SOLUTION">Solution</option>
+                    <option value="OTHER">Other</option>
+                </select>
+                <button onclick="filterByType()">Filter</button>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-group">
+            <button onclick="loadAllResources()" class="btn-success">Load All Resources</button>
+            <button onclick="loadMyResources()" class="btn-warning">Load My Resources (CR Only)</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <!-- Results Section -->
+        <div id="result"></div>
+        <div id="resourceGrid" class="resource-grid"></div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost:5454';
+        let currentResources = [];
+
+        // Token management
+        function saveToken() {
+            const token = document.getElementById('jwtToken').value;
+            if (token) {
+                localStorage.setItem('jwt_token', token);
+                showResult('Token saved successfully.', 'success');
+            } else {
+                showResult('Please enter a valid token.', 'error');
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('jwt_token');
+            document.getElementById('jwtToken').value = '';
+            showResult('Token cleared.', 'info');
+        }
+
+        function getToken() {
+            return localStorage.getItem('jwt_token') || document.getElementById('jwtToken').value;
+        }
+
+        // Form management
+        function clearForm() {
+            document.getElementById('resourceTitle').value = '';
+            document.getElementById('resourceType').value = 'LECTURE_NOTE';
+            document.getElementById('courseCode').value = '';
+            document.getElementById('semesterName').value = '1-1';
+            document.getElementById('filePath').value = '';
+            document.getElementById('description').value = '';
+        }
+
+        function clearResults() {
+            document.getElementById('result').textContent = '';
+            document.getElementById('resourceGrid').innerHTML = '';
+            currentResources = [];
+        }
+
+        // API calls
+        async function createResource() {
+            const token = getToken();
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            const resourceData = {
+                title: document.getElementById('resourceTitle').value,
+                resourceType: document.getElementById('resourceType').value,
+                courseCode: document.getElementById('courseCode').value,
+                semesterName: document.getElementById('semesterName').value,
+                filePath: document.getElementById('filePath').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(resourceData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResult(`Resource created successfully!\nResource ID: ${result.resourceId}\nTitle: ${result.title}`, 'success');
+                    clearForm();
+                } else {
+                    showResult(`Failed to create resource: ${result.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadAllResources() {
+            const token = getToken();
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const resources = await response.json();
+                    currentResources = resources;
+                    displayResources(resources);
+                    showResult(`Loaded ${resources.length} resources.`, 'success');
+                } else {
+                    showResult('Failed to load resources.', 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadMyResources() {
+            const token = getToken();
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources/my`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentResources = result;
+                    displayResources(result);
+                    showResult(`Loaded ${result.length} of your resources.`, 'success');
+                } else {
+                    showResult(`Failed to load your resources: ${result.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function searchResources() {
+            const token = getToken();
+            const query = document.getElementById('searchQuery').value;
+            
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            if (!query) {
+                showResult('Please enter a search term.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources/search?q=${encodeURIComponent(query)}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const resources = await response.json();
+                    currentResources = resources;
+                    displayResources(resources);
+                    showResult(`Found ${resources.length} resources matching "${query}".`, 'success');
+                } else {
+                    showResult('Failed to search resources.', 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function filterByCourse() {
+            const token = getToken();
+            const courseCode = document.getElementById('filterCourse').value;
+            
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            if (!courseCode) {
+                showResult('Please enter a course code.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources/course/${encodeURIComponent(courseCode)}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const resources = await response.json();
+                    currentResources = resources;
+                    displayResources(resources);
+                    showResult(`Found ${resources.length} resources for course ${courseCode}.`, 'success');
+                } else {
+                    showResult('Failed to filter resources by course.', 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function filterByType() {
+            const token = getToken();
+            const resourceType = document.getElementById('filterType').value;
+            
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            if (!resourceType) {
+                loadAllResources();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources/type/${resourceType}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const resources = await response.json();
+                    currentResources = resources;
+                    displayResources(resources);
+                    showResult(`Found ${resources.length} resources of type ${resourceType}.`, 'success');
+                } else {
+                    showResult('Failed to filter resources by type.', 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteResource(resourceId) {
+            const token = getToken();
+            if (!token) {
+                showResult('Please provide a JWT token first.', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this resource?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/api/resources/${resourceId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showResult('Resource deleted successfully.', 'success');
+                    loadAllResources(); // Reload the list
+                } else {
+                    const result = await response.json();
+                    showResult(`Failed to delete resource: ${result.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Display functions
+        function displayResources(resources) {
+            const grid = document.getElementById('resourceGrid');
+            grid.innerHTML = '';
+
+            if (resources.length === 0) {
+                grid.innerHTML = '<p>No resources found.</p>';
+                return;
+            }
+
+            resources.forEach(resource => {
+                const card = document.createElement('div');
+                card.className = 'resource-card';
+                card.innerHTML = `
+                    <h3>${resource.title}</h3>
+                    <div class="resource-meta">
+                        <strong>Type:</strong> ${resource.resourceType}<br>
+                        <strong>Course:</strong> ${resource.courseCode} - ${resource.courseName}<br>
+                        <strong>Semester:</strong> ${resource.semesterName}<br>
+                        <strong>Uploaded by:</strong> ${resource.uploaderName}<br>
+                        <strong>Date:</strong> ${new Date(resource.createdAt).toLocaleDateString()}
+                    </div>
+                    <p>${resource.description || 'No description'}</p>
+                    <div class="resource-actions">
+                        <button onclick="window.open('${resource.filePath}', '_blank')" class="btn-success">View File</button>
+                        <button onclick="deleteResource(${resource.resourceId})" class="btn-danger">Delete</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved token
+            const savedToken = localStorage.getItem('jwt_token');
+            if (savedToken) {
+                document.getElementById('jwtToken').value = savedToken;
+            }
+            
+            showResult('Welcome to the Resource Management Test!\n\nFeatures:\n- Create resources (CR only)\n- View all resources for your batch/department\n- Search resources by title\n- Filter by course, type, etc.\n- Delete resources (CR only)\n\nIMPORTANT: You need to provide a valid JWT token for authentication.\n\nNote: This is a test interface for development purposes.', 'info');
+        });
+    </script>
+</body>
+</html>

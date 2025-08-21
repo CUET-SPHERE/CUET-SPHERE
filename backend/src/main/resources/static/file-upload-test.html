@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Test - CUET Sphere</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"], input[type="text"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .upload-progress {
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>File Upload Test - CUET Sphere</h1>
+        
+        <div class="form-group">
+            <label for="fileInput">Select File:</label>
+            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+            <div class="file-info" id="fileInfo" style="display: none;"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="messageInput">Notice Message:</label>
+            <textarea id="messageInput" placeholder="Enter your notice message here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="noticeTypeSelect">Notice Type:</label>
+            <select id="noticeTypeSelect">
+                <option value="GENERAL">General</option>
+                <option value="URGENT">Urgent</option>
+                <option value="ACADEMIC">Academic</option>
+                <option value="EVENT">Event</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <button onclick="uploadFile()" id="uploadBtn">Upload File</button>
+            <button onclick="createNotice()" id="createBtn" disabled>Create Notice</button>
+            <button onclick="testValidation()" id="testBtn">Test Validation</button>
+            <button onclick="clearForm()">Clear Form</button>
+            <button onclick="clearToken()">Clear Token</button>
+        </div>
+
+        <div class="upload-progress" id="uploadProgress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="progressText">Uploading...</div>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let uploadedFileUrl = null;
+        const baseUrl = 'http://localhost:5454';
+
+        // File input change handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                displayFileInfo(file);
+            } else {
+                document.getElementById('fileInfo').style.display = 'none';
+            }
+        });
+
+        function displayFileInfo(file) {
+            const fileInfo = document.getElementById('fileInfo');
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            
+            fileInfo.innerHTML = `
+                <strong>File Name:</strong> ${file.name}<br>
+                <strong>File Size:</strong> ${sizeInMB} MB<br>
+                <strong>File Type:</strong> ${file.type || 'Unknown'}
+            `;
+            fileInfo.style.display = 'block';
+        }
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+        }
+
+        function showProgress(show) {
+            const progressDiv = document.getElementById('uploadProgress');
+            progressDiv.style.display = show ? 'block' : 'none';
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = `Uploading... ${percent}%`;
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showResult('Please select a file first.', 'error');
+                return;
+            }
+
+            // Validate file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                showResult('File size exceeds 10MB limit.', 'error');
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+                'image/gif'
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+                showResult('File type not allowed. Allowed types: PDF, DOC, DOCX, JPG, PNG, GIF', 'error');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const createBtn = document.getElementById('createBtn');
+
+            try {
+                uploadBtn.disabled = true;
+                showProgress(true);
+                updateProgress(0);
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Simulate progress (since we can't track actual upload progress with fetch)
+                const progressInterval = setInterval(() => {
+                    updateProgress(Math.min(90, Math.random() * 100));
+                }, 200);
+
+                const response = await fetch(`${baseUrl}/api/upload/file`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                updateProgress(100);
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    uploadedFileUrl = result.fileUrl;
+                    showResult(`File uploaded successfully!\nFile URL: ${result.fileUrl}`, 'success');
+                    createBtn.disabled = false;
+                } else {
+                    showResult(`Upload failed: ${result.error || 'Unknown error'}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`Upload error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                showProgress(false);
+            }
+        }
+
+        async function createNotice() {
+            const message = document.getElementById('messageInput').value.trim();
+            const noticeType = document.getElementById('noticeTypeSelect').value;
+
+            if (!message) {
+                showResult('Please enter a notice message.', 'error');
+                return;
+            }
+
+            if (!uploadedFileUrl) {
+                showResult('Please upload a file first.', 'error');
+                return;
+            }
+
+            const createBtn = document.getElementById('createBtn');
+
+            try {
+                createBtn.disabled = true;
+
+                const noticeData = {
+                    message: message,
+                    attachment: uploadedFileUrl,
+                    noticeType: noticeType
+                };
+
+                // Get JWT token from localStorage or prompt user
+                let token = localStorage.getItem('jwt_token');
+                if (!token) {
+                    token = prompt('Please enter your JWT token for authentication:');
+                    if (token) {
+                        localStorage.setItem('jwt_token', token);
+                    } else {
+                        showResult('Authentication token required. Please provide a valid JWT token.', 'error');
+                        return;
+                    }
+                }
+
+                const response = await fetch(`${baseUrl}/api/notices`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(noticeData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResult(`Notice created successfully!\nNotice ID: ${result.noticeId}\nMessage: ${result.message}\nAttachment: ${result.attachment}`, 'success');
+                } else {
+                    showResult(`Notice creation failed: ${result.error || result.message || 'Unknown error'}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`Notice creation error: ${error.message}`, 'error');
+            } finally {
+                createBtn.disabled = false;
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('messageInput').value = '';
+            document.getElementById('noticeTypeSelect').value = 'GENERAL';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('result').textContent = '';
+            document.getElementById('createBtn').disabled = true;
+            uploadedFileUrl = null;
+        }
+
+        function clearToken() {
+            localStorage.removeItem('jwt_token');
+            showResult('Authentication token cleared.', 'info');
+        }
+
+        async function testValidation() {
+            const message = document.getElementById('messageInput').value.trim();
+            const noticeType = document.getElementById('noticeTypeSelect').value;
+
+            if (!message) {
+                showResult('Please enter a notice message first.', 'error');
+                return;
+            }
+
+            const testData = {
+                message: message,
+                attachment: uploadedFileUrl || "https://example.com/test.pdf",
+                noticeType: noticeType
+            };
+
+            try {
+                const response = await fetch(`${baseUrl}/api/notices/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showResult(`Validation test successful!\nResponse: ${JSON.stringify(result, null, 2)}`, 'success');
+                } else {
+                    showResult(`Validation test failed: ${JSON.stringify(result, null, 2)}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`Test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            showResult('Welcome to the File Upload Test!\n\n1. Select a file (PDF, DOC, DOCX, JPG, PNG, GIF)\n2. Click "Upload File" to upload to S3\n3. Enter notice message and select type\n4. Click "Create Notice" to create notice with attachment\n\nIMPORTANT: You need to provide a valid JWT token for authentication.\nThe system will prompt you for the token when you try to create a notice.\n\nNote: This is a test interface for development purposes.', 'info');
+        });
+    </script>
+</body>
+</html>

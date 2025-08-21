@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, User, Mail, Hash, Eye, EyeOff, Lock, Users, Building } from 'lucide-react';
 import { validateSignupForm, extractBatch, extractDepartment, HALLS, BOYS_HALLS, GIRLS_HALLS, GENDERS } from '../utils/validation';
 import { useUser } from '../contexts/UserContext';
+import ApiService from '../services/api';
 
 // --- Component Definitions Moved Outside ---
 // This prevents them from being re-created on every render, fixing the focus loss issue.
@@ -40,12 +41,11 @@ const SignupPage = () => {
   const { login } = useUser();
   const [formData, setFormData] = useState({
     fullName: '',
-    studentId: '',
     email: '',
     password: '',
     confirmPassword: '',
     hall: '',
-    gender: ''
+    bio: ''
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -57,15 +57,6 @@ const SignupPage = () => {
     
     // Create updated form data
     const updatedFormData = { ...formData, [name]: value };
-    
-    // Auto-fill gender based on hall selection
-    if (name === 'hall') {
-      if (GIRLS_HALLS.includes(value)) {
-        updatedFormData.gender = 'Female';
-      } else if (BOYS_HALLS.includes(value)) {
-        updatedFormData.gender = 'Male';
-      }
-    }
     
     setFormData(updatedFormData);
     
@@ -87,47 +78,37 @@ const SignupPage = () => {
     }
 
     const { confirmPassword, ...signupData } = formData;
-    const derivedData = {
-      batch: extractBatch(signupData.studentId),
-      department: extractDepartment(signupData.studentId),
-    };
 
-    const finalUserData = { ...signupData, ...derivedData };
+    try {
+      const response = await ApiService.signup(signupData);
+      
+      if (response.success) {
+        // Transform the response to match frontend expectations
+        const userData = {
+          fullName: response.fullName,
+          email: response.email,
+          role: response.role,
+          token: response.token,
+          // Add other fields that might be needed
+          studentId: response.studentId || '',
+          batch: response.batch || '',
+          department: response.department || '',
+          hall: response.hall || '',
+          bio: response.bio || '',
+        };
 
-    if (import.meta.env.VITE_PROJECT_STATE === 'development') {
-      console.log('DEV MODE: Simulating signup with data:', finalUserData);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      login({ ...finalUserData, role: 'student' });
-      navigate('/dashboard');
-    } else {
-      try {
-        const response = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalUserData),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          setErrors(data.errors || { submit: data.message || 'An unknown error occurred.' });
-        } else {
-          login(data.user);
-          navigate('/dashboard');
-        }
-      } catch (error) {
-        console.error('Signup API error:', error);
-        setErrors({ submit: 'Could not connect to the server. Please try again later.' });
+        login(userData);
+        navigate('/dashboard');
+      } else {
+        setErrors({ submit: response.message || 'Signup failed. Please try again.' });
       }
+    } catch (error) {
+      console.error('Signup API error:', error);
+      setErrors({ submit: error.message || 'Could not connect to the server. Please try again later.' });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
-
-  const { batch, department } = useMemo(() => ({
-    batch: extractBatch(formData.studentId),
-    department: extractDepartment(formData.studentId),
-  }), [formData.studentId]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -142,38 +123,28 @@ const SignupPage = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputField id="fullName" name="fullName" label="Full Name" type="text" value={formData.fullName} onChange={handleInputChange} error={errors.fullName} placeholder="Enter your full name" icon={<User className="h-5 w-5 text-gray-400" />} />
-            <InputField id="studentId" name="studentId" label="Student ID" type="text" value={formData.studentId} onChange={handleInputChange} error={errors.studentId} placeholder="e.g., 2004001" icon={<Hash className="h-5 w-5 text-gray-400" />} maxLength={7} />
           </div>
 
-          {(batch || department) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Batch</label>
-                <input type="text" value={batch} readOnly className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white cursor-not-allowed" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
-                <input type="text" value={department} readOnly className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white cursor-not-allowed" />
-              </div>
-            </div>
-          )}
-
-          <InputField id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleInputChange} error={errors.email} placeholder="you@example.com" icon={<Mail className="h-5 w-5 text-gray-400" />} />
+          <InputField id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleInputChange} error={errors.email} placeholder="you@student.cuet.ac.bd" icon={<Mail className="h-5 w-5 text-gray-400" />} />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SelectField id="hall" name="hall" label="Hall" value={formData.hall} onChange={handleInputChange} error={errors.hall} icon={<Building className="h-5 w-5 text-gray-400" />}>
               <option value="">Select your hall</option>
-              {formData.gender === 'Female' 
-                ? GIRLS_HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
-                : formData.gender === 'Male'
-                ? BOYS_HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
-                : HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)
-              }
+              {HALLS.map((hall) => <option key={hall} value={hall}>{hall}</option>)}
             </SelectField>
-            <SelectField id="gender" name="gender" label="Gender" value={formData.gender} onChange={handleInputChange} error={errors.gender} icon={<Users className="h-5 w-5 text-gray-400" />}>
-              <option value="">Select gender</option>
-              {GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
-            </SelectField>
+          </div>
+
+          <div>
+            <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio (Optional)</label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleInputChange}
+              rows={3}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9E7FFF] focus:border-[#9E7FFF] dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Tell us about yourself..."
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
