@@ -37,3 +37,6 @@ npm run dev
 ## Project Structure
 - `Frontend/` - Contains all frontend React application code
 - (Add other relevant directories as needed)
+
+# Backend run command
+- **Command:** .\mvnw.cmd spring-boot:run
