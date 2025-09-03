@@ -10,7 +10,7 @@ class WebSocketService {
     return new Promise((resolve, reject) => {
       try {
         // Create SockJS connection
-        const socket = new SockJS('http://localhost:5454/ws');
+        const socket = new SockJS(`${import.meta.env.VITE_API_URL || 'http://localhost:5454'}/ws`);
         
         // Create STOMP client
         this.stompClient = Stomp.over(socket);

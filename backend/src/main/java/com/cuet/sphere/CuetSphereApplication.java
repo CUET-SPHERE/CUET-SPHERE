@@ -19,5 +19,4 @@ public class CuetSphereApplication {
 		
 		System.out.println("=== CUET SPHERE APPLICATION STARTED SUCCESSFULLY ===");
 	}
-
 }
