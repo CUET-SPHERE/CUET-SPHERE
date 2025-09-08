@@ -51,6 +51,11 @@ public class PostController {
         Post post = new Post();
         post.setTitle(request.title);
         post.setContent(request.content);
+        post.setMediaUrl(request.mediaUrl);
+        post.setUserId(request.userId != null ? request.userId : 1L); // Default to user ID 1 if not provided
+        post.setTags(request.tags);
+        post.setCreatedAt(java.time.LocalDateTime.now());
+        post.setUpdatedAt(java.time.LocalDateTime.now());
         Post createdPost = postService.createPost(post);
         return ResponseEntity.created(URI.create("/api/posts/" + createdPost.getId())).body(createdPost);
     }
@@ -61,6 +66,9 @@ public class PostController {
         if (post == null) return ResponseEntity.notFound().build();
         post.setTitle(request.title);
         post.setContent(request.content);
+        post.setMediaUrl(request.mediaUrl);
+        post.setTags(request.tags);
+        post.setUpdatedAt(java.time.LocalDateTime.now());
         return ResponseEntity.ok(postService.createPost(post));
     }
 

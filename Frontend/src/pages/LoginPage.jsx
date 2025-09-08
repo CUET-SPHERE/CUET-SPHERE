@@ -71,7 +71,7 @@ const LoginPage = () => {
         if (response.role === 'SYSTEM_ADMIN') {
           navigate('/admin/dashboard');
         } else {
-          navigate('/dashboard');
+          navigate('/feed');
         }
       } else {
         setErrors({ submit: response.message || "Login failed. Please try again." });

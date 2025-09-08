@@ -116,3 +116,15 @@ npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173`
+
+`If database connection fails , try this`
+# Add IP to RDS Security Group
+1. Go to AWS Console → RDS → Databases → [Your DB Instance].
+2. Under Connectivity & Security, find the VPC security groups section.
+Click the security group link.
+3. You’ll be redirected to the EC2 Security Groups page.
+4. Under Inbound rules, click Edit inbound rules → Add rule.
+Type: MySQL/Aurora (port 3306)
+Source: My IP → it will auto-detect and set your current IP.
+Or choose Custom and paste the IP you found earlier.
+5. Save the rule.

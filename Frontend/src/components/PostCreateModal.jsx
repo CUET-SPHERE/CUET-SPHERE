@@ -1,45 +1,76 @@
 import React, { useState } from 'react';
 import { X, Image, Paperclip } from 'lucide-react';
 import TagInput from './TagInput';
+import { useUser } from '../contexts/UserContext';
+import AuthDebug from './AuthDebug';
+import ApiTest from './ApiTest';
 
 // This could be fetched from a DB in a real app
 const MOCK_EXISTING_TAGS = ['help', 'resource', 'question', 'announcement', 'data-structures', 'exam-prep', 'physics', 'algorithms', 'study-group'];
 
 function PostCreateModal({ open, onClose, onCreate }) {
+  const { isAuthenticated, user } = useUser();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState([]);
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !content) {
-      setError('Title and content are required.');
-      return;
-    }
-    if (tags.length === 0) {
-      setError('Please add at least one tag to your post.');
-      return;
-    }
-    onCreate({
-      title,
-      content,
-      tags,
-      attachment: file ? file.name : null,
-      image: imageUrl || null,
-    });
-    // Reset form
-    setTitle('');
-    setContent('');
-    setTags([]);
-    setFile(null);
-    setImageUrl('');
+    setLoading(true);
     setError('');
-    onClose();
+    
+    try {
+      // Check if user is authenticated
+      if (!isAuthenticated || !user) {
+        setError('You must be logged in to create a post. Please sign in first.');
+        setLoading(false);
+        return;
+      }
+
+      if (!title || !content) {
+        setError('Title and content are required.');
+        setLoading(false);
+        return;
+      }
+      if (tags.length === 0) {
+        setError('Please add at least one tag to your post.');
+        setLoading(false);
+        return;
+      }
+
+      const postData = {
+        title,
+        content,
+        tags,
+        mediaUrl: imageUrl || null,
+        userId: user.id || 1, // Use actual user ID from context
+      };
+
+      console.log('PostCreateModal: Creating post with data:', postData);
+      console.log('PostCreateModal: User context:', { isAuthenticated, user });
+
+      await onCreate(postData);
+
+      // Reset form
+      setTitle('');
+      setContent('');
+      setTags([]);
+      setFile(null);
+      setImageUrl('');
+      setError('');
+      onClose();
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setError(err.message || 'Failed to create post. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,6 +85,12 @@ function PostCreateModal({ open, onClose, onCreate }) {
           >
             <X className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Debug Info */}
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <AuthDebug />
+          <ApiTest />
         </div>
 
         {/* Form */}
@@ -159,9 +196,10 @@ function PostCreateModal({ open, onClose, onCreate }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+              disabled={loading}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors shadow-sm"
             >
-              Create Post
+              {loading ? 'Creating...' : 'Create Post'}
             </button>
           </div>
         </form>

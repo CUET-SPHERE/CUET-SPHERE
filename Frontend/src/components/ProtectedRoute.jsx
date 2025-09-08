@@ -24,11 +24,11 @@ const ProtectedRoute = ({ children, requiredRole = null, redirectTo = '/login' }
       case 'SYSTEM_ADMIN':
         return <Navigate to="/admin/dashboard" replace />;
       case 'CR':
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/feed" replace />;
       case 'STUDENT':
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/feed" replace />;
       default:
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/feed" replace />;
     }
   }
 

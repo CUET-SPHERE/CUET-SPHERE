@@ -18,30 +18,44 @@ export const UserProvider = ({ children }) => {
   const [postDeleteCount, setPostDeleteCount] = useState(0);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        // Check if token exists and is not expired
-        if (parsedUser.token) {
-          setUser(parsedUser);
-          setIsAuthenticated(true);
+    const initializeUser = () => {
+      try {
+        console.log('Initializing user context...'); // Debug log
+        const storedUser = localStorage.getItem('user');
+        console.log('Stored user data:', storedUser); // Debug log
+        
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('Parsed user data:', parsedUser); // Debug log
+          
+          // Check if token exists
+          if (parsedUser.token) {
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+            console.log('User authenticated:', parsedUser); // Debug log
+          } else {
+            console.log('No token found, clearing user data'); // Debug log
+            localStorage.removeItem('user');
+          }
         } else {
-          // Clear invalid user data
-          localStorage.removeItem('user');
+          console.log('No user data found in localStorage'); // Debug log
         }
+        
+        const storedDeleteCount = localStorage.getItem('postDeleteCount');
+        if (storedDeleteCount) {
+          setPostDeleteCount(parseInt(storedDeleteCount, 10));
+        }
+      } catch (error) {
+        console.error("Failed to parse data from localStorage", error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('postDeleteCount');
+      } finally {
+        setIsLoading(false);
+        console.log('User context initialization complete'); // Debug log
       }
-      const storedDeleteCount = localStorage.getItem('postDeleteCount');
-      if (storedDeleteCount) {
-        setPostDeleteCount(parseInt(storedDeleteCount, 10));
-      }
-    } catch (error) {
-      console.error("Failed to parse data from localStorage", error);
-      localStorage.removeItem('user');
-      localStorage.removeItem('postDeleteCount');
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    initializeUser();
   }, []);
 
   const login = (userData) => {
@@ -128,7 +142,16 @@ export const UserProvider = ({ children }) => {
 
   return (
     <UserContext.Provider value={value}>
-      {!isLoading && children}
+      {isLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </UserContext.Provider>
   );
 };

@@ -34,8 +34,9 @@ import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated } = useUser();
-  return !isAuthenticated ? children : <Navigate to="/dashboard" />;
+  const { isAuthenticated, user } = useUser();
+  const redirectTo = user?.role === 'SYSTEM_ADMIN' ? '/admin/dashboard' : '/feed';
+  return !isAuthenticated ? children : <Navigate to={redirectTo} />;
 };
 
 function AppContent() {
@@ -64,9 +65,17 @@ function AppContent() {
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
-          {/* Student & CR Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
-          <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+          {/* Admin Only Dashboard Route */}
+          <Route path="/dashboard" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><StudentDashboard /></ProtectedRoute>} />
+          {/* Protected User Routes */}
+          <Route 
+            path="/feed" 
+            element={
+              <ProtectedRoute>
+                <FeedPage />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
           <Route path="/group" element={<ProtectedRoute><MyGroupPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
@@ -79,7 +88,7 @@ function AppContent() {
           <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><AdminNotificationsPage /></ProtectedRoute>} />
 
           {/* Fallback Route */}
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} />} />
+          <Route path="*" element={<Navigate to={isAuthenticated ? (user?.role === 'SYSTEM_ADMIN' ? "/admin/dashboard" : "/feed") : "/"} />} />
         </Routes>
       </main>
       {showFooter && <Footer />}
@@ -93,7 +102,9 @@ function App() {
       <UserProvider>
         <NotificationsProvider>
           <Router>
-            <AppContent />
+            <div className="app-container">
+              <AppContent />
+            </div>
           </Router>
         </NotificationsProvider>
       </UserProvider>

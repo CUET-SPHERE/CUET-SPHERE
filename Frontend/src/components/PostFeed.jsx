@@ -1,23 +1,45 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Plus, Tag } from 'lucide-react';
-import { mockPosts as initialMockPosts } from '../mock/mockPosts';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Plus, Tag, Loader } from 'lucide-react';
 import PostCard from './PostCard';
 import PostCreateModal from './PostCreateModal';
-import { mockUser } from '../mock/mockUser';
 import { useUser } from '../contexts/UserContext';
+import { postService } from '../services/postService';
 
 function PostFeed({ isManageMode = false }) {
-  const [posts, setPosts] = useState(initialMockPosts);
+  const [posts, setPosts] = useState([]);
   const [selectedTag, setSelectedTag] = useState('All');
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { incrementPostDeleteCount } = useUser();
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await postService.getAllPosts();
+      setPosts(data || []);
+    } catch (err) {
+      console.error('Error fetching posts:', err);
+      setError(err.message || 'Failed to fetch posts');
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get all unique tags and their counts
   const allTags = useMemo(() => {
     const tagCounts = posts.reduce((acc, post) => {
-      post.tags.forEach(tag => {
-        acc[tag] = (acc[tag] || 0) + 1;
+      post.tags?.forEach(tag => {
+        if (tag) {
+          acc[tag] = (acc[tag] || 0) + 1;
+        }
       });
       return acc;
     }, {});
@@ -36,39 +58,35 @@ function PostFeed({ isManageMode = false }) {
   const filteredPosts = posts.filter(
     (post) =>
       (selectedTag === 'All' || (post.tags && post.tags.includes(selectedTag))) &&
-      (search === '' ||
-        post.title.toLowerCase().includes(search.toLowerCase()) ||
-        post.content.toLowerCase().includes(search.toLowerCase()) ||
-        post.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
-  );
-
-  // Handle new post creation
-  const handleCreatePost = (newPost) => {
-    setPosts([
-      {
-        id: posts.length + 1,
-        author: mockUser.full_name,
-        authorEmail: mockUser.email,
-        studentId: mockUser.student_id,
-        profilePicture: null,
-        timestamp: new Date().toISOString(),
-        upvotes: 0,
-        downvotes: 0,
-        commentsCount: 0,
-        bookmarked: false,
-        comments: [],
-        image: null,
-        ...newPost,
-      },
-      ...posts,
-    ]);
+        (search === '' ||
+        post.title?.toLowerCase().includes(search.toLowerCase()) ||
+        post.content?.toLowerCase().includes(search.toLowerCase()) ||
+        post.tags?.some(tag => tag?.toLowerCase().includes(search.toLowerCase())))
+  );  // Handle new post creation
+  const handleCreatePost = async (newPost) => {
+    try {
+      console.log('PostFeed: Creating post with data:', newPost);
+      const createdPost = await postService.createPost(newPost);
+      console.log('PostFeed: Post created successfully:', createdPost);
+      setPosts([createdPost, ...posts]);
+    } catch (err) {
+      console.error('PostFeed: Error creating post:', err);
+      // Re-throw the error so the modal can handle it
+      throw err;
+    }
   };
 
   // Handle post deletion from admin
-  const handleDeletePost = (postId) => {
+  const handleDeletePost = async (postId) => {
     if (window.confirm('Are you sure you want to permanently delete this post? This action cannot be undone.')) {
-      setPosts(posts.filter(p => p.id !== postId));
-      incrementPostDeleteCount();
+      try {
+        await postService.deletePost(postId);
+        setPosts(posts.filter(p => p.id !== postId));
+        incrementPostDeleteCount();
+      } catch (err) {
+        console.error('Error deleting post:', err);
+        // You might want to show an error toast or message here
+      }
     }
   };
 
@@ -146,7 +164,18 @@ function PostFeed({ isManageMode = false }) {
       {/* Scrollable Content */}
       <div className="px-4 py-6">
         <div className="space-y-6">
-          {filteredPosts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Error loading posts</h3>
+              <p className="text-gray-500 dark:text-gray-400">{error}</p>
+            </div>
+          ) : filteredPosts.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 dark:text-gray-500 text-6xl mb-4">📝</div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts found</h3>

@@ -98,7 +98,7 @@ const SignupPage = () => {
         };
 
         login(userData);
-        navigate('/dashboard');
+        navigate('/feed');
       } else {
         setErrors({ submit: response.message || 'Signup failed. Please try again.' });
       }

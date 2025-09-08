@@ -6,13 +6,24 @@ import { useUser } from '../contexts/UserContext';
 import { useNotifications } from '../contexts/NotificationsContext';
 
 // Tabs for logged in users
-const navTabs = [
-  { label: 'Dashboard', to: '/dashboard' },
-  { label: 'Feed', to: '/feed' },
-  { label: 'Resources', to: '/resources' },
-  { label: 'My Group', to: '/group' },
-  { label: 'Profile', to: '/profile' },
-];
+const getNavTabs = (userRole) => {
+  const baseTabs = [
+    { label: 'Feed', to: '/feed' },
+    { label: 'Resources', to: '/resources' },
+    { label: 'My Group', to: '/group' },
+    { label: 'Profile', to: '/profile' },
+  ];
+  
+  // Only show Dashboard tab for SYSTEM_ADMIN
+  if (userRole === 'SYSTEM_ADMIN') {
+    return [
+      { label: 'Dashboard', to: '/dashboard' },
+      ...baseTabs
+    ];
+  }
+  
+  return baseTabs;
+};
 
 export function LoggedInNavbar() {
   const location = useLocation();
@@ -21,13 +32,14 @@ export function LoggedInNavbar() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const { unreadCount: notificationCount } = useNotifications();
+  const navTabs = getNavTabs(user?.role);
 
   return (
     <nav className="bg-white dark:bg-surface shadow-sm border-b border-gray-200 dark:border-border-color sticky top-0 z-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 justify-between">
           {/* Logo */}
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to={user?.role === 'SYSTEM_ADMIN' ? '/dashboard' : '/feed'} className="flex items-center gap-2">
             <GraduationCap className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               CUETSphere
@@ -171,7 +183,7 @@ export function LoggedOutNavbar() {
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <NavLink to="/dashboard">Dashboard</NavLink>
+                {user?.role === 'SYSTEM_ADMIN' && <NavLink to="/dashboard">Dashboard</NavLink>}
                 <div className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-neutral-700 rounded-lg">
                   <span className="text-sm text-gray-700 dark:text-text-secondary">
                     {user?.fullName}
@@ -228,9 +240,11 @@ export function LoggedOutNavbar() {
           <div className="md:hidden py-4 space-y-2">
             {isAuthenticated ? (
               <>
-                <NavLink to="/dashboard" onClick={() => setIsMenuOpen(false)}>
-                  Dashboard
-                </NavLink>
+                {user?.role === 'SYSTEM_ADMIN' && (
+                  <NavLink to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                    Dashboard
+                  </NavLink>
+                )}
                 <div className="px-4 py-2 bg-gray-100 dark:bg-neutral-700 rounded-lg">
                   <span className="text-sm text-gray-700 dark:text-text-secondary">
                     {user?.fullName}

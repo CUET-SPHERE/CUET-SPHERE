@@ -1,4 +1,4 @@
-const API_BASE_URL = '';
+const API_BASE_URL = 'http://localhost:5454';
 const DEV_MODE = false; // Set to false to use real APIs
 
 // Helper function to get auth token
@@ -13,11 +13,19 @@ const getAuthToken = () => {
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
+  console.log('API Response:', response); // Debug log
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = await response.json().catch(() => ({
+      message: `HTTP error! status: ${response.status}`
+    }));
+    console.error('API Error:', errorData); // Debug log
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
-  return response.json();
+
+  const data = await response.json();
+  console.log('API Success Data:', data); // Debug log
+  return data;
 };
 
 // Mock data for development
@@ -61,13 +69,13 @@ class ApiService {
     if (DEV_MODE) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Check if email already exists
       const existingUser = mockUsers.find(user => user.email === userData.email);
       if (existingUser) {
         throw new Error('Email already exists');
       }
-      
+
       // Create new user
       const newUser = {
         id: mockUsers.length + 1,
@@ -77,9 +85,9 @@ class ApiService {
         batch: '22',
         department: 'Computer Science & Engineering'
       };
-      
+
       mockUsers.push(newUser);
-      
+
       return {
         success: true,
         message: 'User created successfully',
@@ -93,7 +101,7 @@ class ApiService {
         hall: newUser.hall
       };
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: {
@@ -108,24 +116,24 @@ class ApiService {
     if (DEV_MODE) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Find user by email
       const user = mockUsers.find(u => u.email === credentials.email);
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       // Mock password validation (in real app, this would be server-side)
       const mockPasswords = {
         'rony@student.cuet.ac.bd': 'rony123',
         'cr@student.cuet.ac.bd': 'cr123',
-        'u2204015@student.cuet.ac.bd': 'admin123'
+        'u2204015@student.cuet.ac.bd': 'asdf'
       };
-      
+
       if (mockPasswords[credentials.email] !== credentials.password) {
         throw new Error('Invalid password');
       }
-      
+
       return {
         success: true,
         message: 'Signin successful',
@@ -139,7 +147,7 @@ class ApiService {
         hall: user.hall
       };
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/auth/signin`, {
       method: 'POST',
       headers: {
@@ -156,7 +164,7 @@ class ApiService {
       await new Promise(resolve => setTimeout(resolve, 500));
       return mockUsers;
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
       method: 'GET',
@@ -171,11 +179,11 @@ class ApiService {
   static async getUsersByDepartmentAndBatch(department, batch) {
     if (DEV_MODE) {
       await new Promise(resolve => setTimeout(resolve, 500));
-      return mockUsers.filter(user => 
+      return mockUsers.filter(user =>
         user.department === department && user.batch === batch
       );
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/admin/users/department/${department}/batch/${batch}`, {
       method: 'GET',
@@ -192,7 +200,7 @@ class ApiService {
       await new Promise(resolve => setTimeout(resolve, 500));
       return mockUsers.find(user => user.email === email);
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/admin/users/${email}`, {
       method: 'GET',
@@ -207,25 +215,25 @@ class ApiService {
   static async assignCrRole(userEmail) {
     if (DEV_MODE) {
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const user = mockUsers.find(u => u.email === userEmail);
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       user.role = 'CR';
-      
+
       return {
         success: true,
         message: 'CR role assigned successfully',
         user: user
       };
     }
-    
+
     const token = getAuthToken();
     // Get current user info to get department and batch
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    
+
     const response = await fetch(`${API_BASE_URL}/api/admin/assign-cr`, {
       method: 'POST',
       headers: {
@@ -244,21 +252,21 @@ class ApiService {
   static async removeCrRole(userEmail) {
     if (DEV_MODE) {
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const user = mockUsers.find(u => u.email === userEmail);
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       user.role = 'STUDENT';
-      
+
       return {
         success: true,
         message: 'CR role removed successfully',
         user: user
       };
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/admin/remove-cr/${userEmail}`, {
       method: 'DELETE',
@@ -277,7 +285,7 @@ class ApiService {
         message: 'System information retrieved successfully'
       };
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/admin/system-info`, {
       method: 'GET',
@@ -305,7 +313,7 @@ class ApiService {
       };
       return { success: true, noticeId: newNotice.noticeId, notice: newNotice };
     }
-    
+
     const token = getAuthToken();
     console.log('Creating notice with data:', noticeData);
     const response = await fetch(`${API_BASE_URL}/api/notices`, {
@@ -335,7 +343,7 @@ class ApiService {
         hasPrevious: page > 0
       };
     }
-    
+
     const token = getAuthToken();
     console.log('Fetching notices with page:', page, 'size:', size);
     const response = await fetch(`${API_BASE_URL}/api/notices?page=${page}&size=${size}`, {
@@ -378,7 +386,7 @@ class ApiService {
       await new Promise(resolve => setTimeout(resolve, 500));
       return { success: true, message: 'Notice deleted successfully' };
     }
-    
+
     const token = getAuthToken();
     console.log('Deleting notice with ID:', noticeId);
     const response = await fetch(`${API_BASE_URL}/api/notices/${noticeId}`, {
@@ -396,14 +404,14 @@ class ApiService {
     if (DEV_MODE) {
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
-        { 
-          noticeId: 1, 
-          title: 'Class Test Schedule', 
-          message: 'Class test for Data Structures will be held on Friday.', 
-          senderName: 'Admin', 
-          senderEmail: 'u2204015@student.cuet.ac.bd', 
-          createdAt: new Date().toISOString(), 
-          department: '04', 
+        {
+          noticeId: 1,
+          title: 'Class Test Schedule',
+          message: 'Class test for Data Structures will be held on Friday.',
+          senderName: 'Admin',
+          senderEmail: 'u2204015@student.cuet.ac.bd',
+          createdAt: new Date().toISOString(),
+          department: '04',
           batch: '22',
           noticeType: 'ACADEMIC',
           attachment: null
@@ -472,7 +480,7 @@ class ApiService {
         }
       ];
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/resources`, {
       method: 'GET',
@@ -529,7 +537,7 @@ class ApiService {
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      
+
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
           const progress = (event.loaded / event.total) * 100;
