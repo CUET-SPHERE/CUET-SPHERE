@@ -13,6 +13,8 @@ import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import VerifyOtpPage from './pages/VerifyOtpPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Student/CR Pages
 import StudentDashboard from './pages/StudentDashboard';
@@ -64,6 +66,8 @@ function AppContent() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+          <Route path="/verify-otp" element={<PublicRoute><VerifyOtpPage /></PublicRoute>} />
+          <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
 
           {/* Admin Only Dashboard Route */}
           <Route path="/dashboard" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><StudentDashboard /></ProtectedRoute>} />

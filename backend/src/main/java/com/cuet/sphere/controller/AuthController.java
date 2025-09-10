@@ -24,8 +24,14 @@ import com.cuet.sphere.repository.UserRepository;
 import com.cuet.sphere.response.AuthResponse;
 import com.cuet.sphere.response.SigninRequest;
 import com.cuet.sphere.service.CustomUserDetailsService;
+import com.cuet.sphere.service.PasswordResetService;
+import com.cuet.sphere.dto.ForgotPasswordRequest;
+import com.cuet.sphere.dto.VerifyOtpRequest;
+import com.cuet.sphere.dto.ResetPasswordRequest;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/auth")
@@ -40,6 +46,8 @@ public class AuthController {
     private CustomUserDetailsService customUserDetailsService;
     @Autowired
     private AuthenticationManager authenticationManager;
+    @Autowired
+    private PasswordResetService passwordResetService;
     
     @Value("${system.admin.email:u2204015@student.cuet.ac.bd}")
     private String systemAdminEmail;
@@ -274,6 +282,151 @@ public class AuthController {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace();
             throw e;
+        }
+    }
+
+    // Password Reset Endpoints
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            System.out.println("PROCESSING: Forgot password request for: " + request.getEmail());
+            
+            passwordResetService.requestPasswordReset(request.getEmail());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "If an account with this email exists, you will receive an OTP shortly.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (UserException e) {
+            System.err.println("ERROR: Forgot password error: " + e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Unexpected error in forgot password: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "An unexpected error occurred. Please try again later.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, Object>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        try {
+            System.out.println("VERIFYING: OTP verification request for: " + request.getEmail());
+            
+            String resetToken = passwordResetService.verifyOtpAndGenerateResetToken(
+                request.getEmail(), 
+                request.getOtp()
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "OTP verified successfully");
+            response.put("resetToken", resetToken);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (UserException e) {
+            System.err.println("ERROR: OTP verification error: " + e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Unexpected error in OTP verification: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "An unexpected error occurred. Please try again later.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, Object>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            System.out.println("PROCESSING: Password reset request for: " + request.getEmail());
+            
+            passwordResetService.resetPassword(
+                request.getEmail(),
+                request.getResetToken(),
+                request.getNewPassword()
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Password reset successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (UserException e) {
+            System.err.println("❌ Password reset error: " + e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            System.err.println("❌ Unexpected error in password reset: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "An unexpected error occurred. Please try again later.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    // Admin endpoint to check OTP statistics
+    @GetMapping("/admin/otp-stats")
+    public ResponseEntity<String> getOtpStats() {
+        try {
+            passwordResetService.logOtpStatistics();
+            return ResponseEntity.ok("OTP statistics logged to console");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error getting OTP statistics: " + e.getMessage());
+        }
+    }
+    
+    // Admin endpoint to manually cleanup expired OTPs
+    @PostMapping("/admin/cleanup-otps")
+    public ResponseEntity<Map<String, Object>> cleanupExpiredOtps() {
+        try {
+            int deletedCount = passwordResetService.manualCleanupExpiredOtps();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Cleanup completed");
+            response.put("deletedCount", deletedCount);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Cleanup failed: " + e.getMessage());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }

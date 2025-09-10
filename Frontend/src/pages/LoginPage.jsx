@@ -4,6 +4,7 @@ import { GraduationCap, Mail, Eye, EyeOff } from "lucide-react";
 import { validateLoginForm } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import ApiService from "../services/api";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -97,28 +99,7 @@ const LoginPage = () => {
           </p>
         </div>
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-            Test Login Credentials:
-          </h3>
-          <div className="text-xs text-blue-600 dark:text-blue-300 space-y-2">
-            <div>
-              <p><strong>Role:</strong> Student</p>
-              <p><strong>Email:</strong> rony@student.cuet.ac.bd</p>
-              <p><strong>Password:</strong> rony123</p>
-            </div>
-            <div>
-              <p><strong>Role:</strong> CR</p>
-              <p><strong>Email:</strong> cr@student.cuet.ac.bd</p>
-              <p><strong>Password:</strong> cr123</p>
-            </div>
-            <div>
-              <p><strong>Role:</strong> Admin</p>
-              <p><strong>Email:</strong> u2204015@student.cuet.ac.bd</p>
-              <p><strong>Password:</strong> asdf</p>
-            </div>
-          </div>
-        </div>
+
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -184,6 +165,15 @@ const LoginPage = () => {
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  className="text-sm text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                >
+                  Forgot Password?
+                </button>
+              </div>
             </div>
           </div>
 
@@ -226,6 +216,12 @@ const LoginPage = () => {
           </div>
         </form>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+      />
     </div>
   );
 };

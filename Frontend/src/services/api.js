@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5454';
+import EmailService from './emailService';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5454';
 const DEV_MODE = false; // Set to false to use real APIs
 
 // Helper function to get auth token
@@ -150,6 +152,40 @@ class ApiService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
+    });
+    return handleResponse(response);
+  }
+
+  // Password Reset APIs
+  static async requestPasswordReset(email) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse(response);
+  }
+
+  static async verifyOtp(email, otp, type = 'password-reset') {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, otp, type }),
+    });
+    return handleResponse(response);
+  }
+
+  static async resetPassword({ email, resetToken, newPassword }) {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, resetToken, newPassword }),
     });
     return handleResponse(response);
   }
