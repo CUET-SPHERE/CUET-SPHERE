@@ -263,9 +263,20 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
     setShowFullContent(!showFullContent);
   };
 
-  // Load comments when showComments is toggled
+  // Load comments initially when component mounts
   useEffect(() => {
-    if (showComments && comments.length === 0) {
+    // If post already has comments from the backend, use them
+    if (post.comments && post.comments.length > 0) {
+      setComments(post.comments);
+    } else {
+      // Otherwise load comments from API
+      loadComments();
+    }
+  }, [post.id]);
+
+  // Load comments when showComments is toggled (if not already loaded)
+  useEffect(() => {
+    if (showComments && comments.length === 0 && (!post.comments || post.comments.length === 0)) {
       loadComments();
     }
   }, [showComments]);
@@ -297,7 +308,21 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
 
   const loadVotes = async () => {
     try {
-      const currentUserId = 1; // This would come from user context
+      // Get current user ID from localStorage
+      const getCurrentUserId = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return parsedUser.id || 1;
+          } catch (e) {
+            console.error('Error parsing user data for ID:', e);
+          }
+        }
+        return 1;
+      };
+      
+      const currentUserId = getCurrentUserId();
       
       // Load all votes for the post to get counts
       const votes = await voteService.getVotesForPost(post.id);
@@ -322,7 +347,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
 
   const handleUpvote = async () => {
     try {
-      const result = await voteService.upvote(post.id, 1); // userId = 1 for now
+      const result = await voteService.upvote(post.id); // Will use current user ID
       
       if (result.removed) {
         // Vote was removed
@@ -341,7 +366,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
 
   const handleDownvote = async () => {
     try {
-      const result = await voteService.downvote(post.id, 1); // userId = 1 for now
+      const result = await voteService.downvote(post.id); // Will use current user ID
       
       if (result.removed) {
         // Vote was removed
@@ -366,9 +391,22 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
     if (newComment.trim()) {
       try {
         setLoading(true);
+        const getCurrentUserId = () => {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            try {
+              const parsedUser = JSON.parse(userData);
+              return parsedUser.id || 1;
+            } catch (e) {
+              console.error('Error parsing user data for ID:', e);
+            }
+          }
+          return 1;
+        };
+
         const commentData = {
           text: newComment.trim(),
-          userId: 1 // This would come from current user context
+          userId: getCurrentUserId()
         };
         
         const createdComment = await commentService.createComment(post.id, commentData);
@@ -403,9 +441,22 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const handleReplyToComment = async (parentCommentId, replyContent) => {
     try {
       setLoading(true);
+      const getCurrentUserId = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return parsedUser.id || 1;
+          } catch (e) {
+            console.error('Error parsing user data for ID:', e);
+          }
+        }
+        return 1;
+      };
+
       const replyData = {
         text: replyContent,
-        userId: 1 // This would come from current user context
+        userId: getCurrentUserId()
       };
       
       const createdReply = await replyService.createReply(parentCommentId, replyData);
@@ -447,9 +498,22 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const handleEditComment = async (commentId, newContent) => {
     try {
       setLoading(true);
+      const getCurrentUserId = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return parsedUser.id || 1;
+          } catch (e) {
+            console.error('Error parsing user data for ID:', e);
+          }
+        }
+        return 1;
+      };
+
       const commentData = {
         text: newContent,
-        userId: 1 // This would come from current user context
+        userId: getCurrentUserId()
       };
       
       await commentService.updateComment(commentId, commentData);

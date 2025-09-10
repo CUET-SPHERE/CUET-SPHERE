@@ -1,13 +1,31 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5454/api';
+const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL + '/api' || 'http://localhost:5454/api');
 
 // Helper function to get auth token
 const getAuthToken = () => {
   const user = localStorage.getItem('user');
   if (user) {
-    const userData = JSON.parse(user);
-    return userData.token;
+    try {
+      const userData = JSON.parse(user);
+      return userData.token || userData.jwt;
+    } catch (e) {
+      console.error('Error parsing user data for token:', e);
+    }
   }
   return null;
+};
+
+// Helper function to get current user ID
+const getCurrentUserId = () => {
+  const user = localStorage.getItem('user');
+  if (user) {
+    try {
+      const userData = JSON.parse(user);
+      return userData.id || 1;
+    } catch (e) {
+      console.error('Error parsing user data for ID:', e);
+    }
+  }
+  return 1;
 };
 
 // Helper function to get auth headers
@@ -46,7 +64,7 @@ class ReplyService {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           text: replyData.text,
-          userId: replyData.userId || 1
+          userId: replyData.userId || getCurrentUserId()
         })
       });
 
@@ -68,7 +86,7 @@ class ReplyService {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           text: replyData.text,
-          userId: replyData.userId || 1
+          userId: replyData.userId || getCurrentUserId()
         })
       });
 

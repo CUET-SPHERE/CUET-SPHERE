@@ -1,46 +1,103 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockNotifications } from '../mock/mockNotifications';
+import NotificationService from '../services/notificationService';
+import { useUser } from './UserContext';
 
 const NotificationsContext = createContext();
 
 export function NotificationsProvider({ children }) {
-   const [notifications, setNotifications] = useState(mockNotifications);
+   const [notifications, setNotifications] = useState([]);
    const [unreadCount, setUnreadCount] = useState(0);
+   const [loading, setLoading] = useState(true);
+   const { user } = useUser();
 
+   // Load notifications on mount and when user changes
    useEffect(() => {
-      setUnreadCount(notifications.filter(n => !n.read).length);
-   }, [notifications]);
+      if (user) {
+         loadNotifications();
+         loadUnreadCount();
+      } else {
+         setNotifications([]);
+         setUnreadCount(0);
+         setLoading(false);
+      }
+   }, [user]);
 
-   const addNotification = (notification) => {
-      setNotifications(prev => [
-         {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            read: false,
-            ...notification
-         },
-         ...prev
-      ]);
+   const loadNotifications = async () => {
+      try {
+         setLoading(true);
+         const data = await NotificationService.getUserNotifications();
+         setNotifications(data || []);
+      } catch (error) {
+         console.error('Error loading notifications:', error);
+         setNotifications([]);
+      } finally {
+         setLoading(false);
+      }
    };
 
-   const markAsRead = (id) => {
-      setNotifications(prev =>
-         prev.map(n => (n.id === id ? { ...n, read: true } : n))
-      );
+   const loadUnreadCount = async () => {
+      try {
+         const count = await NotificationService.getUnreadCount();
+         setUnreadCount(count || 0);
+      } catch (error) {
+         console.error('Error loading unread count:', error);
+         setUnreadCount(0);
+      }
    };
 
-   const markAllAsRead = () => {
-      setNotifications(prev =>
-         prev.map(n => ({ ...n, read: true }))
-      );
+   // Refresh notifications (called after actions that might create notifications)
+   const refreshNotifications = () => {
+      if (user) {
+         loadNotifications();
+         loadUnreadCount();
+      }
    };
 
-   const deleteNotification = (id) => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
+   const markAsRead = async (id) => {
+      try {
+         await NotificationService.markAsRead(id);
+         setNotifications(prev =>
+            prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+         );
+         setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+         console.error('Error marking notification as read:', error);
+      }
    };
 
-   const clearAll = () => {
-      setNotifications([]);
+   const markAllAsRead = async () => {
+      try {
+         await NotificationService.markAllAsRead();
+         setNotifications(prev =>
+            prev.map(n => ({ ...n, isRead: true }))
+         );
+         setUnreadCount(0);
+      } catch (error) {
+         console.error('Error marking all notifications as read:', error);
+      }
+   };
+
+   const deleteNotification = async (id) => {
+      try {
+         await NotificationService.deleteNotification(id);
+         const notification = notifications.find(n => n.id === id);
+         setNotifications(prev => prev.filter(n => n.id !== id));
+         if (notification && !notification.isRead) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+         }
+      } catch (error) {
+         console.error('Error deleting notification:', error);
+      }
+   };
+
+   const clearAll = async () => {
+      try {
+         await NotificationService.clearAllNotifications();
+         setNotifications([]);
+         setUnreadCount(0);
+      } catch (error) {
+         console.error('Error clearing all notifications:', error);
+      }
    };
 
    return (
@@ -48,11 +105,12 @@ export function NotificationsProvider({ children }) {
          value={{
             notifications,
             unreadCount,
-            addNotification,
+            loading,
             markAsRead,
             markAllAsRead,
             deleteNotification,
-            clearAll
+            clearAll,
+            refreshNotifications
          }}
       >
          {children}

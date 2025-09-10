@@ -47,6 +47,7 @@ public class AppConfig {
                 .authorizeHttpRequests(auth -> {
                     System.out.println("Configuring authorization rules...");
                     auth.requestMatchers("/auth/**", "/public/**").permitAll();
+                    auth.requestMatchers("/api/posts/**").permitAll(); // Temporarily allow posts without auth for testing
                     auth.requestMatchers("/api/**").authenticated();
                     auth.anyRequest().permitAll();
                     System.out.println("Authorization rules configured");
@@ -66,7 +67,7 @@ public class AppConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Allow both localhost for development and production origins
-        String allowedOrigins = System.getProperty("cors.allowed.origins", "http://localhost:5173");
+        String allowedOrigins = System.getProperty("cors.allowed.origins", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173");
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

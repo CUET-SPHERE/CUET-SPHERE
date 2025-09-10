@@ -17,4 +17,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAllByOrderByFullNameAsc();
     List<User> findByBatchAndDepartmentOrderByFullNameAsc(String batch, String department);
     List<User> findByDepartmentAndBatch(String department, String batch);
+    List<User> findByRole(User.Role role);
 }

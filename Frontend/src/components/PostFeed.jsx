@@ -12,7 +12,11 @@ function PostFeed({ isManageMode = false }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { incrementPostDeleteCount } = useUser();
+  const { incrementPostDeleteCount, user, isAuthenticated } = useUser();
+
+  // Debug logging
+  console.log('PostFeed - User:', user);
+  console.log('PostFeed - IsAuthenticated:', isAuthenticated);
 
   useEffect(() => {
     fetchPosts();
@@ -22,10 +26,12 @@ function PostFeed({ isManageMode = false }) {
     try {
       setLoading(true);
       setError(null);
+      console.log('PostFeed: Starting to fetch posts...');
       const data = await postService.getAllPosts();
+      console.log('PostFeed: Posts received:', data);
       setPosts(data || []);
     } catch (err) {
-      console.error('Error fetching posts:', err);
+      console.error('PostFeed: Error fetching posts:', err);
       setError(err.message || 'Failed to fetch posts');
       setPosts([]);
     } finally {
@@ -170,7 +176,13 @@ function PostFeed({ isManageMode = false }) {
             <div className="text-center py-12">
               <div className="text-red-500 text-6xl mb-4">⚠️</div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Error loading posts</h3>
-              <p className="text-gray-500 dark:text-gray-400">{error}</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+              <button 
+                onClick={fetchPosts}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
             </div>
           ) : filteredPosts.length === 0 ? (
             <div className="text-center py-12">

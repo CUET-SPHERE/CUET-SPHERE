@@ -1,5 +1,6 @@
 // API base URL - adjust this to match your backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5454/api';
+// Use relative URL in development to leverage Vite proxy, full URL in production
+const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL + '/api' || 'http://localhost:5454/api');
 
 class PostService {
   // Helper method to get auth headers
@@ -14,6 +15,7 @@ class PostService {
         token = parsedUser.token || parsedUser.jwt;
       } catch (e) {
         // Error parsing user data - silently continue
+        console.error('Error parsing user data:', e);
       }
     }
     
@@ -22,21 +24,56 @@ class PostService {
       token = localStorage.getItem('jwt_token');
     }
     
-    return {
+    console.log('Auth token found:', token ? 'Yes' : 'No'); // Debug log
+    console.log('Token value:', token); // Debug log
+    
+    const headers = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     };
+    
+    console.log('Final headers:', headers); // Debug log
+    return headers;
+  }
+
+  // Helper method to get current user ID
+  getCurrentUserId() {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        return parsedUser.id || 1; // Fallback to 1 if no ID found
+      } catch (e) {
+        console.error('Error parsing user data for ID:', e);
+      }
+    }
+    return 1; // Default fallback
   }
   async getAllPosts() {
     try {
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('DEV mode:', import.meta.env.DEV);
+      console.log('Fetching posts from:', `${API_BASE_URL}/posts`);
+      console.log('Auth headers:', this.getAuthHeaders());
+      
       const response = await fetch(`${API_BASE_URL}/posts`, {
         headers: this.getAuthHeaders()
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error(`Failed to fetch posts: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch posts: ${response.status} - ${errorText}`);
       }
-      return await response.json();
+      
+      const data = await response.json();
+      console.log('Posts data received:', data);
+      return data;
     } catch (error) {
+      console.error('getAllPosts error:', error);
       throw error;
     }
   }
@@ -48,7 +85,7 @@ class PostService {
         title: postData.title,
         content: postData.content,
         mediaUrl: postData.mediaUrl,
-        userId: postData.userId || 1,
+        userId: postData.userId || this.getCurrentUserId(),
         tags: postData.tags || []
       };
 

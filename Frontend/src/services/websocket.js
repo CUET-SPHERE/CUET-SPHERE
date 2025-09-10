@@ -9,6 +9,13 @@ class WebSocketService {
   connect() {
     return new Promise((resolve, reject) => {
       try {
+        // Import SockJS and Stomp dynamically if not available
+        if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
+          console.warn('SockJS or Stomp not available, WebSocket features disabled');
+          resolve();
+          return;
+        }
+
         // Create SockJS connection
         const socket = new SockJS(`${import.meta.env.VITE_API_URL || 'http://localhost:5454'}/ws`);
         
@@ -93,6 +100,32 @@ class WebSocketService {
       return subscription;
     } catch (error) {
       console.error('Error subscribing to all notices:', error);
+      return null;
+    }
+  }
+
+  subscribeToNotifications(userId, callback) {
+    if (!this.connected || !this.stompClient) {
+      console.warn('WebSocket not connected');
+      return null;
+    }
+
+    try {
+      const destination = `/user/${userId}/queue/notifications`;
+      const subscription = this.stompClient.subscribe(destination, (message) => {
+        try {
+          const notification = JSON.parse(message.body);
+          callback(notification);
+        } catch (error) {
+          console.error('Error parsing notification message:', error);
+        }
+      });
+
+      this.subscriptions.set(`notifications_${userId}`, subscription);
+      console.log(`Subscribed to notifications for user ${userId}`);
+      return subscription;
+    } catch (error) {
+      console.error('Error subscribing to notifications:', error);
       return null;
     }
   }

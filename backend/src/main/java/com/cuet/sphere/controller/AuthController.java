@@ -25,6 +25,7 @@ import com.cuet.sphere.response.AuthResponse;
 import com.cuet.sphere.response.SigninRequest;
 import com.cuet.sphere.service.CustomUserDetailsService;
 import com.cuet.sphere.service.PasswordResetService;
+import com.cuet.sphere.service.NotificationService;
 import com.cuet.sphere.dto.ForgotPasswordRequest;
 import com.cuet.sphere.dto.VerifyOtpRequest;
 import com.cuet.sphere.dto.ResetPasswordRequest;
@@ -48,6 +49,8 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
     @Autowired
     private PasswordResetService passwordResetService;
+    @Autowired
+    private NotificationService notificationService;
     
     @Value("${system.admin.email:u2204015@student.cuet.ac.bd}")
     private String systemAdminEmail;
@@ -167,6 +170,15 @@ public class AuthController {
             System.out.println("Saving user to database...");
             User savedUser = userRepository.save(createdUser);
             System.out.println("User saved with ID: " + savedUser.getId());
+            
+            // Send welcome notification and email
+            try {
+                notificationService.createWelcomeNotification(savedUser);
+                System.out.println("Welcome notification sent to user: " + savedUser.getEmail());
+            } catch (Exception e) {
+                System.err.println("Error sending welcome notification: " + e.getMessage());
+                // Don't fail signup if notification fails
+            }
 
             System.out.println("Creating authentication token...");
             // Use the raw password for authentication, not the hashed one
