@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { X, Image, Paperclip } from 'lucide-react';
 import TagInput from './TagInput';
 import { useUser } from '../contexts/UserContext';
-import AuthDebug from './AuthDebug';
-import ApiTest from './ApiTest';
 
 // This could be fetched from a DB in a real app
 const MOCK_EXISTING_TAGS = ['help', 'resource', 'question', 'announcement', 'data-structures', 'exam-prep', 'physics', 'algorithms', 'study-group'];
@@ -44,18 +42,13 @@ function PostCreateModal({ open, onClose, onCreate }) {
         return;
       }
 
-      const postData = {
+      await onCreate({
         title,
         content,
         tags,
         mediaUrl: imageUrl || null,
         userId: user.id || 1, // Use actual user ID from context
-      };
-
-      console.log('PostCreateModal: Creating post with data:', postData);
-      console.log('PostCreateModal: User context:', { isAuthenticated, user });
-
-      await onCreate(postData);
+      });
 
       // Reset form
       setTitle('');
@@ -66,7 +59,6 @@ function PostCreateModal({ open, onClose, onCreate }) {
       setError('');
       onClose();
     } catch (err) {
-      console.error('Error creating post:', err);
       setError(err.message || 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
@@ -85,12 +77,6 @@ function PostCreateModal({ open, onClose, onCreate }) {
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
-
-        {/* Debug Info */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <AuthDebug />
-          <ApiTest />
         </div>
 
         {/* Form */}

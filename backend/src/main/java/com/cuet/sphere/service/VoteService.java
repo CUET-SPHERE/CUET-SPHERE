@@ -23,5 +23,21 @@ public class VoteService {
     public void deleteVote(Long id) {
         voteRepository.deleteById(id);
     }
+
+    public Vote findByPostIdAndUserId(Long postId, Long userId) {
+        return voteRepository.findByPost_IdAndUserId(postId, userId);
+    }
+
+    public void deleteByPostIdAndUserId(Long postId, Long userId) {
+        Vote existingVote = voteRepository.findByPost_IdAndUserId(postId, userId);
+        if (existingVote != null) {
+            voteRepository.deleteById(existingVote.getId());
+        }
+    }
+
+    public Optional<Vote> getUserVoteForPost(Long postId, Long userId) {
+        Vote vote = voteRepository.findByPost_IdAndUserId(postId, userId);
+        return Optional.ofNullable(vote);
+    }
 }
 

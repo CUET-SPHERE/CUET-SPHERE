@@ -1,5 +1,7 @@
 package com.cuet.sphere.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,13 +14,16 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "post_id")
+    @JsonBackReference("post-comments")
     private Post post;
 
     private String text;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private Long userId;
 
     @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("comment-replies")
     private List<Reply> replies;
 
     // Getters and setters
@@ -29,6 +34,8 @@ public class Comment {
     public void setText(String text) { this.text = text; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public List<Reply> getReplies() { return replies; }

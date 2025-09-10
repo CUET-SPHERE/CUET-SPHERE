@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2 } from 'lucide-react';
 import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl } from '../utils/formatters';
+import commentService from '../services/commentService';
+import replyService from '../services/replyService';
+import voteService from '../services/voteService';
 
 // Avatar component
 function Avatar({ src, name, size = 'md' }) {
@@ -239,14 +242,16 @@ function PostImage({ src, alt }) {
 }
 
 function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
-  const [upvotes, setUpvotes] = useState(post.upvotes);
-  const [downvotes, setDownvotes] = useState(post.downvotes);
-  const [bookmarked, setBookmarked] = useState(post.bookmarked);
+  const [upvotes, setUpvotes] = useState(post.upvotes || 0);
+  const [downvotes, setDownvotes] = useState(post.downvotes || 0);
+  const [bookmarked, setBookmarked] = useState(post.bookmarked || false);
   const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState(post.comments || []);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [showFullContent, setShowFullContent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const MAX_CONTENT_LENGTH = 200; // Adjust as needed
 
@@ -258,25 +263,98 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
     setShowFullContent(!showFullContent);
   };
 
-  const handleUpvote = () => {
-    if (userVote === 'up') {
-      setUpvotes(upvotes - 1);
-      setUserVote(null);
-    } else {
-      setUpvotes(upvotes + 1);
-      if (userVote === 'down') setDownvotes(downvotes - 1);
-      setUserVote('up');
+  // Load comments when showComments is toggled
+  useEffect(() => {
+    if (showComments && comments.length === 0) {
+      loadComments();
+    }
+  }, [showComments]);
+
+  // Load votes when component mounts
+  useEffect(() => {
+    loadVotes();
+  }, []);
+
+  const loadComments = async () => {
+    try {
+      setLoading(true);
+      const fetchedComments = await commentService.getCommentsForPost(post.id);
+      
+      // The backend now returns CommentDTOs with proper user information and nested replies
+      const processedComments = (fetchedComments || []).map(comment => ({
+        ...comment,
+        // Ensure replies are properly structured
+        replies: comment.replies || []
+      }));
+      
+      setComments(processedComments);
+    } catch (err) {
+      setError('Failed to load comments');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDownvote = () => {
-    if (userVote === 'down') {
-      setDownvotes(downvotes - 1);
-      setUserVote(null);
-    } else {
-      setDownvotes(downvotes + 1);
-      if (userVote === 'up') setUpvotes(upvotes - 1);
-      setUserVote('down');
+  const loadVotes = async () => {
+    try {
+      const currentUserId = 1; // This would come from user context
+      
+      // Load all votes for the post to get counts
+      const votes = await voteService.getVotesForPost(post.id);
+      const upvoteCount = votes.filter(vote => vote.voteType === 'UPVOTE').length;
+      const downvoteCount = votes.filter(vote => vote.voteType === 'DOWNVOTE').length;
+      setUpvotes(upvoteCount);
+      setDownvotes(downvoteCount);
+      
+      // Load current user's vote separately for better performance
+      try {
+        const userVoteObj = await voteService.getUserVoteForPost(post.id, currentUserId);
+        if (userVoteObj) {
+          setUserVote(userVoteObj.voteType === 'UPVOTE' ? 'up' : 'down');
+        }
+      } catch (userVoteErr) {
+        // User hasn't voted, which is fine
+      }
+    } catch (err) {
+      // Silently fail for votes - not critical
+    }
+  };
+
+  const handleUpvote = async () => {
+    try {
+      const result = await voteService.upvote(post.id, 1); // userId = 1 for now
+      
+      if (result.removed) {
+        // Vote was removed
+        setUpvotes(upvotes - 1);
+        setUserVote(null);
+      } else {
+        // Vote was created or updated
+        setUpvotes(upvotes + 1);
+        if (userVote === 'down') setDownvotes(downvotes - 1);
+        setUserVote('up');
+      }
+    } catch (err) {
+      setError('Failed to vote');
+    }
+  };
+
+  const handleDownvote = async () => {
+    try {
+      const result = await voteService.downvote(post.id, 1); // userId = 1 for now
+      
+      if (result.removed) {
+        // Vote was removed
+        setDownvotes(downvotes - 1);
+        setUserVote(null);
+      } else {
+        // Vote was created or updated
+        setDownvotes(downvotes + 1);
+        if (userVote === 'up') setUpvotes(upvotes - 1);
+        setUserVote('down');
+      }
+    } catch (err) {
+      setError('Failed to vote');
     }
   };
 
@@ -284,19 +362,33 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
     setBookmarked(!bookmarked);
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (newComment.trim()) {
-      const comment = {
-        id: comments.length + 1,
-        author: 'Muhammad Rony', // This would come from current user context
-        authorEmail: 'rony@student.cuet.ac.bd',
-        studentId: '2204005',
-        profilePicture: null,
-        content: newComment.trim(),
-        timestamp: new Date().toISOString()
-      };
-      setComments([...comments, comment]);
-      setNewComment('');
+      try {
+        setLoading(true);
+        const commentData = {
+          text: newComment.trim(),
+          userId: 1 // This would come from current user context
+        };
+        
+        const createdComment = await commentService.createComment(post.id, commentData);
+        
+        // Add the new comment to the list
+        // The backend now returns a CommentDTO with all user information
+        const newCommentObj = {
+          ...createdComment,
+          // The DTO should already have author, authorEmail, studentId, etc.
+          // But ensure replies array exists
+          replies: createdComment.replies || []
+        };
+        
+        setComments([...comments, newCommentObj]);
+        setNewComment('');
+      } catch (err) {
+        setError('Failed to add comment');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -308,78 +400,111 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   };
 
   // Comment management functions
-  const handleReplyToComment = (parentCommentId, replyContent) => {
-    const newReply = {
-      id: Date.now(), // Simple ID generation
-      author: 'Muhammad Rony',
-      authorEmail: 'rony@student.cuet.ac.bd',
-      studentId: '2204005',
-      profilePicture: null,
-      content: replyContent,
-      timestamp: new Date().toISOString(),
-      isEdited: false,
-      replies: []
-    };
+  const handleReplyToComment = async (parentCommentId, replyContent) => {
+    try {
+      setLoading(true);
+      const replyData = {
+        text: replyContent,
+        userId: 1 // This would come from current user context
+      };
+      
+      const createdReply = await replyService.createReply(parentCommentId, replyData);
+      
+      // The backend now returns a ReplyDTO with all user information
+      const newReply = {
+        ...createdReply,
+        // The DTO should already have author, authorEmail, studentId, etc.
+        isEdited: false,
+        replies: [] // Replies don't have nested replies in this implementation
+      };
 
-    const updateCommentsWithReply = (comments) => {
-      return comments.map(comment => {
-        if (comment.id === parentCommentId) {
-          return {
-            ...comment,
-            replies: [...(comment.replies || []), newReply]
-          };
-        }
-        if (comment.replies && comment.replies.length > 0) {
-          return {
-            ...comment,
-            replies: updateCommentsWithReply(comment.replies)
-          };
-        }
-        return comment;
-      });
-    };
-
-    setComments(updateCommentsWithReply(comments));
-  };
-
-  const handleEditComment = (commentId, newContent) => {
-    const updateCommentsWithEdit = (comments) => {
-      return comments.map(comment => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            content: newContent,
-            isEdited: true
-          };
-        }
-        if (comment.replies && comment.replies.length > 0) {
-          return {
-            ...comment,
-            replies: updateCommentsWithEdit(comment.replies)
-          };
-        }
-        return comment;
-      });
-    };
-
-    setComments(updateCommentsWithEdit(comments));
-  };
-
-  const handleDeleteComment = (commentId) => {
-    if (window.confirm('Are you sure you want to delete this comment?')) {
-      const deleteCommentFromTree = (comments) => {
-        return comments.filter(comment => {
-          if (comment.id === commentId) {
-            return false;
+      const updateCommentsWithReply = (comments) => {
+        return comments.map(comment => {
+          if (comment.id === parentCommentId) {
+            return {
+              ...comment,
+              replies: [...(comment.replies || []), newReply]
+            };
           }
           if (comment.replies && comment.replies.length > 0) {
-            comment.replies = deleteCommentFromTree(comment.replies);
+            return {
+              ...comment,
+              replies: updateCommentsWithReply(comment.replies)
+            };
           }
-          return true;
+          return comment;
         });
       };
 
-      setComments(deleteCommentFromTree(comments));
+      setComments(updateCommentsWithReply(comments));
+    } catch (err) {
+      setError('Failed to add reply');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditComment = async (commentId, newContent) => {
+    try {
+      setLoading(true);
+      const commentData = {
+        text: newContent,
+        userId: 1 // This would come from current user context
+      };
+      
+      await commentService.updateComment(commentId, commentData);
+      
+      const updateCommentsWithEdit = (comments) => {
+        return comments.map(comment => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              content: newContent,
+              isEdited: true
+            };
+          }
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: updateCommentsWithEdit(comment.replies)
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments(updateCommentsWithEdit(comments));
+    } catch (err) {
+      setError('Failed to edit comment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (window.confirm('Are you sure you want to delete this comment?')) {
+      try {
+        setLoading(true);
+        await commentService.deleteComment(commentId);
+        
+        const deleteCommentFromTree = (comments) => {
+          return comments.filter(comment => {
+            if (comment.id === commentId) {
+              return false;
+            }
+            if (comment.replies && comment.replies.length > 0) {
+              comment.replies = deleteCommentFromTree(comment.replies);
+            }
+            return true;
+          });
+        };
+
+        setComments(deleteCommentFromTree(comments));
+      } catch (err) {
+        setError('Failed to delete comment');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -497,6 +622,19 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg mx-6 mb-4">
+          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          <button 
+            onClick={() => setError(null)}
+            className="text-red-600 dark:text-red-400 text-xs underline mt-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Comments Section */}
       {showComments && (
         <div className="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 p-6">
@@ -515,10 +653,11 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
                 />
                 <button
                   onClick={handleAddComment}
-                  disabled={!newComment.trim()}
+                  disabled={!newComment.trim() || loading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                   <Send className="h-4 w-4" />
+                  {loading && <span className="text-xs">...</span>}
                 </button>
               </div>
             </div>
@@ -526,7 +665,11 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
 
           {/* Comments List */}
           <div className="space-y-1">
-            {comments.length === 0 ? (
+            {loading && comments.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+                Loading comments...
+              </p>
+            ) : comments.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
                 No comments yet. Be the first to comment!
               </p>

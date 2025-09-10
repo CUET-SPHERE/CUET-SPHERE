@@ -1,5 +1,6 @@
 package com.cuet.sphere.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,9 +24,11 @@ public class Post {
     private List<String> tags;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("post-comments")
     private List<Comment> comments;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("post-votes")
     private List<Vote> votes;
 
     public Long getId() { return id; }
@@ -47,4 +50,20 @@ public class Post {
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public List<Vote> getVotes() { return votes; }
     public void setVotes(List<Vote> votes) { this.votes = votes; }
+    
+    // Computed properties for frontend
+    public int getUpvotes() {
+        if (votes == null) return 0;
+        return (int) votes.stream().filter(vote -> Boolean.TRUE.equals(vote.getUpvote())).count();
+    }
+    
+    public int getDownvotes() {
+        if (votes == null) return 0;
+        return (int) votes.stream().filter(vote -> Boolean.FALSE.equals(vote.getUpvote())).count();
+    }
+    
+    public int getCommentCount() {
+        if (comments == null) return 0;
+        return comments.size();
+    }
 }

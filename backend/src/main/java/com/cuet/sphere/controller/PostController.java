@@ -1,5 +1,7 @@
 package com.cuet.sphere.controller;
 
+import com.cuet.sphere.dto.CommentDTO;
+import com.cuet.sphere.dto.ReplyDTO;
 import com.cuet.sphere.model.Comment;
 import com.cuet.sphere.model.Post;
 import com.cuet.sphere.model.Reply;
@@ -7,6 +9,7 @@ import com.cuet.sphere.model.Vote;
 import com.cuet.sphere.response.CommentRequest;
 import com.cuet.sphere.response.PostRequest;
 import com.cuet.sphere.response.ReplyRequest;
+import com.cuet.sphere.response.VoteRequest;
 import com.cuet.sphere.service.CommentService;
 import com.cuet.sphere.service.PostService;
 import com.cuet.sphere.service.ReplyService;
@@ -19,6 +22,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
+@CrossOrigin(origins = "*")
 public class PostController {
 
     private final PostService postService;
@@ -79,17 +83,61 @@ public class PostController {
     }
 
     @GetMapping("/{postId}/comments")
-    public ResponseEntity<List<Comment>> getCommentsForPost(@PathVariable Long postId) {
+    public ResponseEntity<List<CommentDTO>> getCommentsForPost(@PathVariable Long postId) {
         Post post = postService.getPost(postId).orElse(null);
         if (post == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(post.getComments());
+        
+        List<CommentDTO> commentDTOs = post.getComments().stream()
+            .map(comment -> commentService.convertToDTO(comment))
+            .collect(java.util.stream.Collectors.toList());
+            
+        return ResponseEntity.ok(commentDTOs);
+    }
+
+    @PostMapping("/{postId}/comments")
+    public ResponseEntity<CommentDTO> createComment(@PathVariable Long postId, @RequestBody CommentRequest request) {
+        Post post = postService.getPost(postId).orElse(null);
+        if (post == null) return ResponseEntity.notFound().build();
+        
+        Comment comment = new Comment();
+        comment.setText(request.text);
+        comment.setUserId(request.userId != null ? request.userId : 1L);
+        comment.setPost(post);
+        comment.setCreatedAt(java.time.LocalDateTime.now());
+        comment.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        Comment createdComment = commentService.createComment(comment);
+        CommentDTO commentDTO = commentService.convertToDTO(createdComment);
+        return ResponseEntity.created(URI.create("/api/posts/" + postId + "/comments/" + createdComment.getId())).body(commentDTO);
     }
 
     @GetMapping("/comments/{commentId}/replies")
-    public ResponseEntity<List<Reply>> getRepliesForComment(@PathVariable Long commentId) {
+    public ResponseEntity<List<ReplyDTO>> getRepliesForComment(@PathVariable Long commentId) {
         Comment comment = commentService.getComment(commentId).orElse(null);
         if (comment == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(comment.getReplies());
+        
+        List<ReplyDTO> replyDTOs = comment.getReplies().stream()
+            .map(reply -> replyService.convertToDTO(reply))
+            .collect(java.util.stream.Collectors.toList());
+            
+        return ResponseEntity.ok(replyDTOs);
+    }
+
+    @PostMapping("/comments/{commentId}/replies")
+    public ResponseEntity<ReplyDTO> createReply(@PathVariable Long commentId, @RequestBody ReplyRequest request) {
+        Comment comment = commentService.getComment(commentId).orElse(null);
+        if (comment == null) return ResponseEntity.notFound().build();
+        
+        Reply reply = new Reply();
+        reply.setText(request.text);
+        reply.setUserId(request.userId != null ? request.userId : 1L);
+        reply.setComment(comment);
+        reply.setCreatedAt(java.time.LocalDateTime.now());
+        reply.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        Reply createdReply = replyService.createReply(reply);
+        ReplyDTO replyDTO = replyService.convertToDTO(createdReply);
+        return ResponseEntity.created(URI.create("/api/posts/comments/" + commentId + "/replies/" + createdReply.getId())).body(replyDTO);
     }
 
     @GetMapping("/{postId}/votes")
@@ -97,6 +145,42 @@ public class PostController {
         Post post = postService.getPost(postId).orElse(null);
         if (post == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(post.getVotes());
+    }
+
+    @PostMapping("/{postId}/vote")
+    public ResponseEntity<Vote> createOrUpdateVote(@PathVariable Long postId, @RequestBody VoteRequest request) {
+        Post post = postService.getPost(postId).orElse(null);
+        if (post == null) return ResponseEntity.notFound().build();
+        
+        Long userId = request.userId != null ? request.userId : 1L;
+        
+        // Check if user already voted on this post
+        Vote existingVote = voteService.findByPostIdAndUserId(postId, userId);
+        
+        if (existingVote != null) {
+            if (existingVote.getVoteType().equals(request.voteType)) {
+                // Same vote type clicked - remove the vote
+                voteService.deleteVote(existingVote.getId());
+                return ResponseEntity.noContent().build();
+            } else {
+                // Different vote type - update existing vote
+                existingVote.setVoteType(request.voteType);
+                existingVote.setUpdatedAt(java.time.LocalDateTime.now());
+                Vote updatedVote = voteService.createVote(existingVote);
+                return ResponseEntity.ok(updatedVote);
+            }
+        } else {
+            // Create new vote
+            Vote vote = new Vote();
+            vote.setUserId(userId);
+            vote.setPost(post);
+            vote.setVoteType(request.voteType);
+            vote.setCreatedAt(java.time.LocalDateTime.now());
+            vote.setUpdatedAt(java.time.LocalDateTime.now());
+            
+            Vote createdVote = voteService.createVote(vote);
+            return ResponseEntity.created(URI.create("/api/posts/" + postId + "/votes/" + createdVote.getId())).body(createdVote);
+        }
     }
 
     @PutMapping("/comments/{commentId}")
@@ -131,5 +215,15 @@ public class PostController {
     public ResponseEntity<Void> deleteVote(@PathVariable Long postId, @PathVariable Long voteId) {
         voteService.deleteVote(voteId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{postId}/votes/user/{userId}")
+    public ResponseEntity<Vote> getUserVoteForPost(@PathVariable Long postId, @PathVariable Long userId) {
+        Post post = postService.getPost(postId).orElse(null);
+        if (post == null) return ResponseEntity.notFound().build();
+        
+        return voteService.getUserVoteForPost(postId, userId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

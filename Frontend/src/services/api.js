@@ -13,18 +13,14 @@ const getAuthToken = () => {
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
-  console.log('API Response:', response); // Debug log
-
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({
       message: `HTTP error! status: ${response.status}`
     }));
-    console.error('API Error:', errorData); // Debug log
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('API Success Data:', data); // Debug log
   return data;
 };
 
@@ -315,7 +311,6 @@ class ApiService {
     }
 
     const token = getAuthToken();
-    console.log('Creating notice with data:', noticeData);
     const response = await fetch(`${API_BASE_URL}/api/notices`, {
       method: 'POST',
       headers: {
@@ -325,7 +320,6 @@ class ApiService {
       body: JSON.stringify(noticeData),
     });
     const result = await handleResponse(response);
-    console.log('Create notice API response:', result);
     return result;
   }
 
@@ -345,14 +339,12 @@ class ApiService {
     }
 
     const token = getAuthToken();
-    console.log('Fetching notices with page:', page, 'size:', size);
     const response = await fetch(`${API_BASE_URL}/api/notices?page=${page}&size=${size}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
     const result = await handleResponse(response);
-    console.log('API response for notices:', result);
     return result;
   }
 
@@ -388,7 +380,6 @@ class ApiService {
     }
 
     const token = getAuthToken();
-    console.log('Deleting notice with ID:', noticeId);
     const response = await fetch(`${API_BASE_URL}/api/notices/${noticeId}`, {
       method: 'DELETE',
       headers: {
@@ -396,7 +387,6 @@ class ApiService {
       },
     });
     const result = await handleResponse(response);
-    console.log('Delete notice API response:', result);
     return result;
   }
 

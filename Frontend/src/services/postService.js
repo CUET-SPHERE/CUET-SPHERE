@@ -13,7 +13,7 @@ class PostService {
         const parsedUser = JSON.parse(userData);
         token = parsedUser.token || parsedUser.jwt;
       } catch (e) {
-        console.error('Error parsing user data:', e);
+        // Error parsing user data - silently continue
       }
     }
     
@@ -21,8 +21,6 @@ class PostService {
     if (!token) {
       token = localStorage.getItem('jwt_token');
     }
-    
-    console.log('PostService: Using token:', token ? 'Token found' : 'No token');
     
     return {
       'Content-Type': 'application/json',
@@ -39,15 +37,12 @@ class PostService {
       }
       return await response.json();
     } catch (error) {
-      console.error('Error fetching posts:', error);
       throw error;
     }
   }
 
   async createPost(postData) {
     try {
-      console.log('PostService: Starting createPost with data:', postData);
-      
       // Transform the data to match backend expectations
       const requestData = {
         title: postData.title,
@@ -57,30 +52,19 @@ class PostService {
         tags: postData.tags || []
       };
 
-      console.log('PostService: Transformed request data:', requestData);
-      console.log('PostService: API URL:', `${API_BASE_URL}/posts`);
-      console.log('PostService: Headers:', this.getAuthHeaders());
-
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(requestData),
       });
       
-      console.log('PostService: Response status:', response.status);
-      console.log('PostService: Response headers:', response.headers);
-      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('PostService: Error response:', errorText);
         throw new Error(`Failed to create post: ${response.status} - ${errorText}`);
       }
       
-      const result = await response.json();
-      console.log('PostService: Success response:', result);
-      return result;
+      return await response.json();
     } catch (error) {
-      console.error('PostService: Error creating post:', error);
       throw error;
     }
   }
@@ -98,7 +82,6 @@ class PostService {
       
       return true;
     } catch (error) {
-      console.error('Error deleting post:', error);
       throw error;
     }
   }
@@ -113,7 +96,6 @@ class PostService {
       }
       return await response.json();
     } catch (error) {
-      console.error('Error fetching post:', error);
       throw error;
     }
   }
@@ -132,7 +114,6 @@ class PostService {
       
       return await response.json();
     } catch (error) {
-      console.error('Error updating post:', error);
       throw error;
     }
   }

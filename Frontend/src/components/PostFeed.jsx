@@ -65,12 +65,9 @@ function PostFeed({ isManageMode = false }) {
   );  // Handle new post creation
   const handleCreatePost = async (newPost) => {
     try {
-      console.log('PostFeed: Creating post with data:', newPost);
       const createdPost = await postService.createPost(newPost);
-      console.log('PostFeed: Post created successfully:', createdPost);
       setPosts([createdPost, ...posts]);
     } catch (err) {
-      console.error('PostFeed: Error creating post:', err);
       // Re-throw the error so the modal can handle it
       throw err;
     }

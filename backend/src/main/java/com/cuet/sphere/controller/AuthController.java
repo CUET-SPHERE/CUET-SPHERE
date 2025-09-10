@@ -6,6 +6,7 @@ import com.cuet.sphere.model.User;
 import com.cuet.sphere.model.User.Role;
 import com.cuet.sphere.util.StudentEmailParser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ import com.cuet.sphere.response.AuthResponse;
 import com.cuet.sphere.response.SigninRequest;
 import com.cuet.sphere.service.CustomUserDetailsService;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -38,10 +40,39 @@ public class AuthController {
     private CustomUserDetailsService customUserDetailsService;
     @Autowired
     private AuthenticationManager authenticationManager;
+    
+    @Value("${system.admin.email:u2204015@student.cuet.ac.bd}")
+    private String systemAdminEmail;
 
     @GetMapping("/test")
     public ResponseEntity<String> testEndpoint() {
-        return ResponseEntity.ok("Auth endpoint is working!");
+        return ResponseEntity.ok("Auth endpoint is working! System admin email: " + systemAdminEmail);
+    }
+
+    @PostMapping("/make-admin")
+    public ResponseEntity<String> makeUserAdmin(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Email is required");
+            }
+
+            User user = userRepository.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not found with email: " + email);
+            }
+
+            // Update user role to SYSTEM_ADMIN
+            user.setRole(User.Role.SYSTEM_ADMIN);
+            userRepository.save(user);
+
+            System.out.println("✅ Updated user " + email + " to SYSTEM_ADMIN role");
+            return ResponseEntity.ok("User " + email + " has been updated to SYSTEM_ADMIN role successfully");
+
+        } catch (Exception e) {
+            System.err.println("Error updating user role: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error updating user role: " + e.getMessage());
+        }
     }
 
     @PostMapping("/signup")
@@ -57,9 +88,31 @@ public class AuthController {
             String password = user.getPassword();
             String hashedPassword = passwordEncoder.encode(password);
             String fullName = user.getFullName();
-            Role role = user.getRole() != null ? user.getRole() : Role.STUDENT;
             String hall = user.getHall();
             String bio = user.getBio();
+            
+            // Determine role based on email
+            Role role;
+            System.out.println("=== EMAIL COMPARISON DEBUG ===");
+            System.out.println("Input email: '" + email + "'");
+            System.out.println("System admin email: '" + systemAdminEmail + "'");
+            
+            // Clean and compare emails (trim whitespace and convert to lowercase)
+            String cleanInputEmail = email != null ? email.trim().toLowerCase() : "";
+            String cleanSystemEmail = systemAdminEmail != null ? systemAdminEmail.trim().toLowerCase() : "";
+            boolean isSystemAdmin = cleanInputEmail.equals(cleanSystemEmail);
+            
+            System.out.println("Clean input email: '" + cleanInputEmail + "'");
+            System.out.println("Clean system email: '" + cleanSystemEmail + "'");
+            System.out.println("Is system admin: " + isSystemAdmin);
+            
+            if (isSystemAdmin) {
+                role = Role.SYSTEM_ADMIN;
+                System.out.println("✅ System admin email detected. Assigning SYSTEM_ADMIN role.");
+            } else {
+                role = user.getRole() != null ? user.getRole() : Role.STUDENT;
+                System.out.println("❌ Regular user email. Assigning role: " + role);
+            }
 
             // Validate email format and extract batch, department, student ID
             if (email == null || !email.contains("@student.cuet.ac.bd")) {
