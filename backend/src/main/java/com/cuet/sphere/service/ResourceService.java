@@ -26,6 +26,9 @@ public class ResourceService {
     @Autowired
     private DepartmentRepository departmentRepository;
     
+    @Autowired
+    private S3Service s3Service;
+    
     public ResourceResponse createResource(ResourceRequest resourceRequest, User uploader) throws UserException {
         // Check if uploader is CR
         if (!uploader.isCR()) {
@@ -96,9 +99,20 @@ public class ResourceService {
         if (resourceRequest.getTitle() != null) {
             resource.setTitle(resourceRequest.getTitle());
         }
-        if (resourceRequest.getFilePath() != null) {
+        
+        // Handle file path update - delete old file from S3 if new file is provided
+        if (resourceRequest.getFilePath() != null && !resourceRequest.getFilePath().equals(resource.getFilePath())) {
+            // Delete old file from S3 if it exists
+            if (resource.getFilePath() != null && !resource.getFilePath().isEmpty()) {
+                try {
+                    s3Service.deleteFile(resource.getFilePath());
+                } catch (Exception e) {
+                    // Failed to delete old resource file from S3
+                }
+            }
             resource.setFilePath(resourceRequest.getFilePath());
         }
+        
         if (resourceRequest.getDescription() != null) {
             resource.setDescription(resourceRequest.getDescription());
         }
@@ -117,6 +131,15 @@ public class ResourceService {
         // Check if user is the uploader or has CR role
         if (!resource.getUploader().getId().equals(user.getId()) && !user.isCR()) {
             throw new UserException("You can only delete your own resources");
+        }
+        
+        // Delete the file from S3 if it exists
+        if (resource.getFilePath() != null && !resource.getFilePath().isEmpty()) {
+            try {
+                s3Service.deleteFile(resource.getFilePath());
+            } catch (Exception e) {
+                // Failed to delete resource file from S3
+            }
         }
         
         resourceRepository.delete(resource);

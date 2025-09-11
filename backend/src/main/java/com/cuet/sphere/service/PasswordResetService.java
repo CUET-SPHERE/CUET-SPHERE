@@ -41,7 +41,7 @@ public class PasswordResetService {
     
     @Transactional
     public void requestPasswordReset(String email) throws UserException {
-        System.out.println("PROCESSING: Password reset request for: " + email);
+        // Processing password reset request
         
         // Validate email format
         if (email == null || email.trim().isEmpty()) {
@@ -54,7 +54,7 @@ public class PasswordResetService {
         User user = userRepository.findUserByEmail(email);
         if (user == null) {
             // For security, we don't reveal if email exists or not
-            System.out.println("WARNING: Password reset requested for non-existent email: " + email);
+            // Password reset requested for non-existent email
             // Still return success to prevent email enumeration attacks
             return;
         }
@@ -84,18 +84,17 @@ public class PasswordResetService {
         boolean emailSent = emailService.sendPasswordResetOtp(email, otp);
         
         if (!emailSent) {
-            System.err.println("ERROR: Failed to send OTP email to: " + email);
+            // Failed to send OTP email
             // Don't throw exception here - OTP is still valid in database
             // User can still use it if they received it through other means
         }
         
-        System.out.println("SUCCESS: Password reset OTP generated and sent to: " + email);
-        System.out.println("EXPIRES: OTP expires at: " + expiresAt);
+        // Password reset OTP generated and sent
     }
     
     @Transactional
     public String verifyOtpAndGenerateResetToken(String email, String otp) throws UserException {
-        System.out.println("VERIFYING: OTP for email: " + email);
+        // Verifying OTP
         
         if (email == null || email.trim().isEmpty()) {
             throw new UserException("Email is required");
@@ -119,7 +118,7 @@ public class PasswordResetService {
         );
         
         if (otpEntityOpt.isEmpty()) {
-            System.out.println("ERROR: Invalid or expired OTP for email: " + email);
+            // Invalid or expired OTP
             throw new UserException("Invalid or expired OTP. Please request a new one.");
         }
         
@@ -127,7 +126,7 @@ public class PasswordResetService {
         
         // Double-check validity (extra safety)
         if (!otpEntity.isValid()) {
-            System.out.println("ERROR: OTP is not valid (used or expired) for email: " + email);
+            // OTP is not valid (used or expired)
             throw new UserException("Invalid or expired OTP. Please request a new one.");
         }
         
@@ -138,15 +137,14 @@ public class PasswordResetService {
         // Generate reset token (UUID)
         String resetToken = UUID.randomUUID().toString();
         
-        System.out.println("SUCCESS: OTP verified successfully for email: " + email);
-        System.out.println("TOKEN: Generated reset token: " + resetToken.substring(0, 8) + "...");
+        // OTP verified successfully, reset token generated
         
         return resetToken;
     }
     
     @Transactional
     public void resetPassword(String email, String resetToken, String newPassword) throws UserException {
-        System.out.println("PROCESSING: Password reset for email: " + email);
+        // Processing password reset
         
         if (email == null || email.trim().isEmpty()) {
             throw new UserException("Email is required");
@@ -191,7 +189,7 @@ public class PasswordResetService {
         // Clean up all OTPs for this email
         otpRepository.deleteByEmail(email);
         
-        System.out.println("SUCCESS: Password reset successfully for email: " + email);
+        // Password reset successfully
     }
     
     private String generateSecureOtp() {
@@ -225,10 +223,10 @@ public class PasswordResetService {
         try {
             int deletedCount = otpRepository.deleteExpiredOtps(LocalDateTime.now());
             if (deletedCount > 0) {
-                System.out.println("CLEANUP: Cleaned up " + deletedCount + " expired OTPs");
+                // Cleaned up expired OTPs
             }
         } catch (Exception e) {
-            System.err.println("ERROR: Error during OTP cleanup: " + e.getMessage());
+            // Error during OTP cleanup
         }
     }
     
@@ -243,12 +241,9 @@ public class PasswordResetService {
             long totalOtps = otpRepository.count();
             long expiredOtps = otpRepository.findExpiredOtps(LocalDateTime.now()).size();
             
-            System.out.println("STATS: OTP Statistics:");
-            System.out.println("   Total OTPs: " + totalOtps);
-            System.out.println("   Expired OTPs: " + expiredOtps);
-            System.out.println("   Active OTPs: " + (totalOtps - expiredOtps));
+            // OTP statistics calculated
         } catch (Exception e) {
-            System.err.println("ERROR: Error getting OTP statistics: " + e.getMessage());
+            // Error getting OTP statistics
         }
     }
 }

@@ -23,6 +23,9 @@ public class PostService {
     
     @Autowired
     private CommentService commentService;
+    
+    @Autowired
+    private S3Service s3Service;
 
     public Post createPost(Post post) {
         return postRepository.save(post);
@@ -53,10 +56,43 @@ public class PostService {
     }
 
     public void deletePost(Long id) {
+        // Get post before deletion to clean up S3 files
+        Optional<Post> postOpt = postRepository.findById(id);
+        if (postOpt.isPresent()) {
+            Post post = postOpt.get();
+            
+            // Delete media file from S3 if exists
+            if (post.getMediaUrl() != null && !post.getMediaUrl().isEmpty()) {
+                try {
+                    s3Service.deleteFile(post.getMediaUrl());
+                } catch (Exception e) {
+                    // Failed to delete post media from S3
+                }
+            }
+        }
+        
         postRepository.deleteById(id);
     }
 
     public Post updatePost(Post post) {
+        // If updating media URL, delete old media from S3
+        if (post.getId() != null) {
+            Optional<Post> existingPostOpt = postRepository.findById(post.getId());
+            if (existingPostOpt.isPresent()) {
+                Post existingPost = existingPostOpt.get();
+                
+                // Check if media URL is being changed
+                if (existingPost.getMediaUrl() != null && 
+                    !existingPost.getMediaUrl().equals(post.getMediaUrl())) {
+                    try {
+                        s3Service.deleteFile(existingPost.getMediaUrl());
+                    } catch (Exception e) {
+                        // Failed to delete old post media from S3
+                    }
+                }
+            }
+        }
+        
         return postRepository.save(post);
     }
     
@@ -97,7 +133,7 @@ public class PostService {
             }
         } catch (Exception e) {
             // Handle any database errors gracefully
-            System.err.println("Error accessing user for post " + post.getId() + ": " + e.getMessage());
+            // Error accessing user for post
             dto.setAuthor("Unknown User");
             dto.setAuthorEmail("unknown@example.com");
             dto.setStudentId("0000000");
@@ -112,7 +148,7 @@ public class PostService {
                             try {
                                 return commentService.convertToDTO(comment);
                             } catch (Exception e) {
-                                System.err.println("Error converting comment " + comment.getId() + " to DTO: " + e.getMessage());
+                                // Error converting comment to DTO
                                 return null;
                             }
                         })
@@ -123,7 +159,7 @@ public class PostService {
                 dto.setComments(new ArrayList<>());
             }
         } catch (Exception e) {
-            System.err.println("Error loading comments for post " + post.getId() + ": " + e.getMessage());
+            // Error loading comments for post
             dto.setComments(new ArrayList<>());
         }
         

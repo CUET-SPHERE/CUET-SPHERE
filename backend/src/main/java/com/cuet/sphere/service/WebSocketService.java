@@ -36,9 +36,9 @@ public class WebSocketService {
         try {
             String destination = "/user/" + userId + "/queue/notifications";
             messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", notification);
-            System.out.println("Sent notification to user " + userId + ": " + notification.getTitle());
+            // Notification sent to user
         } catch (Exception e) {
-            System.err.println("Error sending notification to user " + userId + ": " + e.getMessage());
+            // Error sending notification to user
         }
     }
     
@@ -46,9 +46,9 @@ public class WebSocketService {
     public void sendNotificationToAll(NotificationDTO notification) {
         try {
             messagingTemplate.convertAndSend("/topic/notifications", notification);
-            System.out.println("Sent notification to all users: " + notification.getTitle());
+            // Notification sent to all users
         } catch (Exception e) {
-            System.err.println("Error sending notification to all users: " + e.getMessage());
+            // Error sending notification to all users
         }
     }
 }

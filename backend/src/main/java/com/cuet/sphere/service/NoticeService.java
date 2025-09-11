@@ -30,8 +30,8 @@ public class NoticeService {
     // @Autowired
     // private WebSocketService webSocketService;
     
-    // @Autowired
-    // private S3Service s3Service;
+    @Autowired
+    private S3Service s3Service;
     
     @Autowired
     private UserRepository userRepository;
@@ -166,17 +166,14 @@ public class NoticeService {
         }
         
         // Delete the attachment file from S3 if it exists (optional - don't fail if S3 is not available)
-        // Temporarily comment out S3 deletion to isolate the issue
-        // if (notice.getAttachment() != null && !notice.getAttachment().isEmpty()) {
-        //     try {
-        //         if (s3Service != null) {
-        //             s3Service.deleteFile(notice.getAttachment());
-        //         }
-        //     } catch (Exception e) {
-        //         // Log error but don't fail notice deletion
-        //         System.err.println("S3 file deletion failed: " + e.getMessage());
-        //     }
-        // }
+        if (notice.getAttachment() != null && !notice.getAttachment().isEmpty()) {
+            try {
+                s3Service.deleteFile(notice.getAttachment());
+            } catch (Exception e) {
+                // Log error but don't fail notice deletion
+                System.err.println("S3 file deletion failed: " + e.getMessage());
+            }
+        }
         
         // Delete the notice from database
         noticeRepository.delete(notice);

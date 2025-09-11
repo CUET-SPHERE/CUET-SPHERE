@@ -4,19 +4,38 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+
 
 @Service
 public class S3Service {
-    @Autowired
-    private Path localStorageDirectory;
 
+    @Autowired(required = false)
+    private S3Client s3Client;
+
+    @Value("${aws.s3.bucket.name}")
+    private String bucketName;
+
+    @Value("${aws.s3.bucket.url}")
+    private String bucketUrl;
+    
+    @Value("${local.storage.path}")
+    private String localStoragePath;
+    
     @Value("${local.storage.url}")
     private String localStorageUrl;
+    
+
 
     public String uploadFile(MultipartFile file) throws IOException {
         // Generate unique file name to avoid conflicts
@@ -25,19 +44,106 @@ public class S3Service {
         if (originalFilename != null && originalFilename.contains(".")) {
             fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String fileName = "notices_" + UUID.randomUUID().toString() + fileExtension;
-        Path targetPath = localStorageDirectory.resolve(fileName);
-        Files.createDirectories(localStorageDirectory);
-        file.transferTo(targetPath.toFile());
-        return localStorageUrl + "/" + fileName;
+        String fileName = "notices/" + UUID.randomUUID().toString() + fileExtension;
+
+        // Try S3 first, fallback to local storage
+        if (s3Client != null && bucketUrl != null && !bucketUrl.isEmpty()) {
+            try {
+                // Upload file to S3
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(fileName)
+                        .contentType(file.getContentType())
+                        .build();
+
+                PutObjectResponse response = s3Client.putObject(putObjectRequest, 
+                        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                String s3Url = bucketUrl + "/" + fileName;
+                return s3Url;
+            } catch (Exception e) {
+                // S3 upload failed, falling back to local storage
+            }
+        }
+        
+        // Fallback to local storage
+        return uploadToLocalStorage(file, fileName);
     }
 
     public String uploadFile(MultipartFile file, String fileName) throws IOException {
-        // Upload file to local storage with custom filename
-        String key = "profile_" + fileName;
-        Path targetPath = localStorageDirectory.resolve(key);
-        Files.createDirectories(localStorageDirectory);
-        file.transferTo(targetPath.toFile());
-        return localStorageUrl + "/" + key;
+        // Upload file to S3 with custom filename
+        String key = "profile/" + fileName;
+
+        // Try S3 first, fallback to local storage
+        if (s3Client != null && bucketUrl != null && !bucketUrl.isEmpty()) {
+            try {
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(file.getContentType())
+                        .build();
+
+                PutObjectResponse response = s3Client.putObject(putObjectRequest, 
+                        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                String s3Url = bucketUrl + "/" + key;
+                return s3Url;
+            } catch (Exception e) {
+                // S3 profile upload failed, falling back to local storage
+            }
+        }
+        
+        // Fallback to local storage
+        return uploadToLocalStorage(file, key);
+    }
+
+    public void deleteFile(String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return;
+        }
+        
+        // Check if it's an S3 URL
+        if (bucketUrl != null && fileUrl.startsWith(bucketUrl)) {
+            String key = fileUrl.substring(bucketUrl.length() + 1); // Remove the bucket URL and leading slash
+            
+            try {
+                if (s3Client != null) {
+                    s3Client.deleteObject(builder -> builder
+                            .bucket(bucketName)
+                            .key(key)
+                            .build());
+                    // File deleted from S3
+                }
+            } catch (Exception e) {
+                // Error deleting file from S3
+            }
+        }
+        // Check if it's a local storage URL
+        else if (localStorageUrl != null && fileUrl.startsWith(localStorageUrl)) {
+            String relativePath = fileUrl.substring(localStorageUrl.length() + 1);
+            Path filePath = Paths.get(localStoragePath, relativePath);
+            
+            try {
+                Files.deleteIfExists(filePath);
+                // File deleted from local storage
+            } catch (Exception e) {
+                // Error deleting file from local storage
+            }
+        }
+    }
+    
+    private String uploadToLocalStorage(MultipartFile file, String fileName) throws IOException {
+        // Create directories if they don't exist
+        Path uploadPath = Paths.get(localStoragePath);
+        Path filePath = uploadPath.resolve(fileName);
+        
+        // Create parent directories
+        Files.createDirectories(filePath.getParent());
+        
+        // Copy file to local storage
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        
+        String localUrl = localStorageUrl + "/" + fileName;
+        return localUrl;
     }
 }

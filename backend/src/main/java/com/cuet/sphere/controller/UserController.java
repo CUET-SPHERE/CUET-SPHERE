@@ -2,6 +2,7 @@ package com.cuet.sphere.controller;
 
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.UserRepository;
+import com.cuet.sphere.service.UserService;
 import com.cuet.sphere.exception.UserException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private UserService userService;
 
     @PutMapping("/profile")
     public ResponseEntity<Map<String, Object>> updateUserProfile(@RequestBody Map<String, Object> profileData) {
@@ -44,14 +48,21 @@ public class UserController {
             if (profileData.containsKey("hall")) {
                 user.setHall((String) profileData.get("hall"));
             }
+            // Handle profile picture update with S3 cleanup
             if (profileData.containsKey("profilePicture")) {
-                user.setProfilePicture((String) profileData.get("profilePicture"));
+                String newProfilePictureUrl = (String) profileData.get("profilePicture");
+                System.out.println("Updating profile picture for user: " + user.getEmail() + " with URL: " + newProfilePictureUrl);
+                user = userService.updateProfilePicture(user, newProfilePictureUrl);
+                System.out.println("Profile picture updated successfully");
             }
+            
+            // Handle background image update with S3 cleanup
             if (profileData.containsKey("backgroundImage")) {
-                user.setBackgroundImage((String) profileData.get("backgroundImage"));
+                String newBackgroundImageUrl = (String) profileData.get("backgroundImage");
+                user = userService.updateBackgroundImage(user, newBackgroundImageUrl);
             }
 
-            // Save updated user
+            // Save updated user (if not already saved by S3 methods)
             User updatedUser = userRepository.save(user);
 
             Map<String, Object> response = new HashMap<>();
@@ -82,6 +93,10 @@ public class UserController {
             if (user == null) {
                 return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
             }
+
+            System.out.println("Getting profile for user: " + user.getEmail());
+            System.out.println("Profile picture URL: " + user.getProfilePicture());
+            System.out.println("Background image URL: " + user.getBackgroundImage());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

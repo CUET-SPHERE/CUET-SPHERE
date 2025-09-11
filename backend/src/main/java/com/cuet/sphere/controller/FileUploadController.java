@@ -70,6 +70,7 @@ public class FileUploadController {
             String filename = type + "_" + System.currentTimeMillis() + fileExtension;
 
             String fileUrl = s3Service.uploadFile(file, filename);
+            System.out.println("Profile picture uploaded successfully: " + fileUrl);
             return ResponseEntity.ok(FileUploadResponse.success(fileUrl));
             
         } catch (IOException e) {
