@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { Megaphone, Users, Plus, Edit, Trash2, Paperclip } from 'lucide-react';
+import { Megaphone, Users, Plus, Edit, Trash2, Paperclip, Calendar } from 'lucide-react';
 import ApiService from '../services/api';
 import webSocketService from '../services/websocket';
 
@@ -14,6 +14,7 @@ function MyGroupPage() {
   const [newNotice, setNewNotice] = useState({ title: '', message: '', noticeType: 'GENERAL' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const noticesContainerRef = useRef(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -21,6 +22,36 @@ function MyGroupPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  // Helper function to group notices by date
+  const groupNoticesByDate = (notices) => {
+    const groups = {};
+    
+    notices.forEach(notice => {
+      const date = new Date(notice.createdAt);
+      const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      
+      if (!groups[dateStr]) {
+        groups[dateStr] = [];
+      }
+      
+      groups[dateStr].push(notice);
+    });
+    
+    // Sort notices within each group by createdAt (oldest first so newest are at bottom)
+    Object.keys(groups).forEach(dateStr => {
+      groups[dateStr].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    });
+    
+    // Convert to array of {date, notices} objects
+    return Object.keys(groups).map(date => ({
+      date,
+      notices: groups[date]
+    })).sort((a, b) => {
+      // Sort by date (oldest first) to make it like WhatsApp with newest dates at the bottom
+      return new Date(a.date) - new Date(b.date);
+    });
+  };
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -48,49 +79,85 @@ function MyGroupPage() {
 
   const setupWebSocket = async () => {
     try {
-      console.log('Setting up WebSocket...');
+      console.log('Setting up WebSocket connection...');
       await webSocketService.connect();
       setWsConnected(true);
-      console.log('WebSocket connected successfully');
+      console.log('%cWebSocket connected successfully', 'color: green; font-weight: bold');
       
       // Wait a bit for connection to be fully established
       await new Promise(resolve => setTimeout(resolve, 100));
       
       if (user?.role === 'SYSTEM_ADMIN') {
         // Admin can see all notices
-        console.log('Setting up admin WebSocket subscription');
+        console.log('Setting up admin WebSocket subscription for all notices');
         webSocketService.subscribeToAllNotices((notice) => {
-          console.log('Received notice via WebSocket (admin):', notice);
+          console.log('%cReceived notice via WebSocket (admin):', 'color: blue; font-weight: bold', notice);
+          
+          // Ensure notice has a valid createdAt date
+          if (!notice.createdAt) {
+            notice.createdAt = new Date().toISOString();
+          }
+          
+          // Add to state with animation flag for UI feedback
           setNotices(prevNotices => {
             // Check if notice already exists
             const exists = prevNotices.find(n => n.noticeId === notice.noticeId);
             if (!exists) {
-              return [notice, ...prevNotices];
+              // Add isNew flag for animation
+              return [{ ...notice, isNew: true }, ...prevNotices];
             }
             return prevNotices;
           });
+          
+          // Scroll to top to show new notice
+          if (noticesContainerRef.current) {
+            noticesContainerRef.current.scrollTop = 0;
+          }
         });
       } else {
         // Regular users see only notices from their batch and department
         console.log('Setting up user WebSocket subscription for batch:', user.batch, 'department:', user.department);
         webSocketService.subscribeToNotices(user.batch, user.department, (notice) => {
-          console.log('Received notice via WebSocket (user):', notice);
+          console.log('%cReceived notice via WebSocket (user):', 'color: blue; font-weight: bold', notice);
+          
+          // Ensure notice has a valid createdAt date
+          if (!notice.createdAt) {
+            notice.createdAt = new Date().toISOString();
+          }
+          
+          // Add to state with animation flag for UI feedback
           setNotices(prevNotices => {
             // Check if notice already exists
             const exists = prevNotices.find(n => n.noticeId === notice.noticeId);
             if (!exists) {
-              return [notice, ...prevNotices];
+              // Add isNew flag for animation
+              return [{ ...notice, isNew: true }, ...prevNotices];
             }
             return prevNotices;
           });
+          
+          // Scroll to top to show new notice
+          if (noticesContainerRef.current) {
+            noticesContainerRef.current.scrollTop = 0;
+          }
         });
       }
+      
+      // Log WebSocket status periodically for testing
+      const wsStatusInterval = setInterval(() => {
+        const isConnected = webSocketService.isConnected();
+        console.log(`%cWebSocket status: ${isConnected ? 'Connected' : 'Disconnected'}`, 
+          `color: ${isConnected ? 'green' : 'red'}; font-weight: bold`);
+        setWsConnected(isConnected);
+      }, 30000); // Check every 30 seconds
+      
+      return () => clearInterval(wsStatusInterval);
     } catch (error) {
-      console.error('Failed to setup WebSocket:', error);
+      console.error('%cFailed to setup WebSocket:', 'color: red; font-weight: bold', error);
       setWsConnected(false);
       // Fallback to polling if WebSocket fails
       const interval = setInterval(() => {
-        console.log('WebSocket failed, using polling fallback');
+        console.log('%cWebSocket failed, using polling fallback', 'color: orange');
         loadGroupData();
       }, 10000);
       
@@ -127,8 +194,22 @@ function MyGroupPage() {
         setHasMore(false);
       }
       
+      // Ensure all notices have valid createdAt dates for grouping
+      noticesToSet = noticesToSet.map(notice => {
+        if (!notice.createdAt) {
+          // If no createdAt, use current date as fallback
+          return { ...notice, createdAt: new Date().toISOString() };
+        }
+        return notice;
+      });
+      
       if (append) {
-        setNotices(prevNotices => [...prevNotices, ...noticesToSet]);
+        setNotices(prevNotices => {
+          // Combine and deduplicate notices by ID
+          const existingIds = new Set(prevNotices.map(n => n.noticeId));
+          const newNotices = noticesToSet.filter(n => !existingIds.has(n.noticeId));
+          return [...prevNotices, ...newNotices];
+        });
       } else {
         setNotices(noticesToSet);
       }
@@ -150,19 +231,28 @@ function MyGroupPage() {
 
   const loadMoreNotices = async () => {
     if (hasMore && !loadingMore) {
+      console.log('Loading more notices, page:', currentPage + 1);
       await loadGroupData(currentPage + 1, true);
     }
   };
 
   const handleScroll = (e) => {
-    const { scrollTop } = e.target;
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
     setShowScrollTop(scrollTop > 100);
+    
+    // Check if user has scrolled to the bottom (with a small threshold)
+    const scrollThreshold = 50;
+    if (scrollHeight - scrollTop - clientHeight < scrollThreshold) {
+      // User is near the bottom, load more if available
+      if (hasMore && !loadingMore) {
+        loadMoreNotices();
+      }
+    }
   };
 
   const scrollToTop = () => {
-    const container = document.querySelector('.notices-container');
-    if (container) {
-      container.scrollTo({ top: 0, behavior: 'smooth' });
+    if (noticesContainerRef.current) {
+      noticesContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -321,8 +411,15 @@ function MyGroupPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
                 {getDepartmentName(user?.department)} - Batch {user?.batch}
+                {/* WebSocket Connection Indicator */}
+                <div className="ml-3 flex items-center">
+                  <div className={`w-2 h-2 rounded-full mr-1 ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {wsConnected ? 'Live' : 'Offline'}
+                  </span>
+                </div>
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {groupMembers.length} members
@@ -372,27 +469,8 @@ function MyGroupPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Group Stats
-              </h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Members:</span>
-                  <span className="font-semibold">{groupMembers.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Notices:</span>
-                  <span className="font-semibold">{notices.length}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Center - Notices */}
-          <div className="lg:col-span-2">
+          {/* Center - Notices - Now Wider */}
+          <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -409,36 +487,80 @@ function MyGroupPage() {
                 )}
               </div>
               
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2 notices-container" onScroll={handleScroll}>
+              <div 
+                ref={noticesContainerRef}
+                className="max-h-[600px] overflow-y-auto pr-2 notices-container bg-gray-100 dark:bg-gray-800 rounded-lg" 
+                onScroll={handleScroll}
+              >
                 {notices.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No notices yet</p>
                 ) : (
-                  <>
-                    {notices.map((notice) => (
-                      <div key={notice.noticeId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">{notice.title}</h4>
-                            <p className="text-sm text-gray-500">by {notice.senderName}</p>
+                  <div className="p-4 space-y-6">
+                    {groupNoticesByDate(notices).map((group, groupIndex) => (
+                      <div key={group.date} className="space-y-3">
+                        {/* Date header - sticky */}
+                        <div className="sticky top-0 z-10 flex justify-center mb-2">
+                          <div className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full flex items-center shadow-sm">
+                            <Calendar size={12} className="mr-1 text-gray-600 dark:text-gray-300" />
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{group.date}</span>
                           </div>
-                          {canDeleteNotice(notice) && (
-                            <button
-                              onClick={() => handleNoticeDelete(notice.noticeId)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300">{notice.message}</p>
-                        {notice.attachment && (
-                          <div className="mt-2">
-                            <Paperclip className="h-4 w-4 inline mr-1" />
-                            <a href={notice.attachment} className="text-blue-600 hover:underline">
-                              Attachment
-                            </a>
-                          </div>
-                        )}
+                        
+                        {/* Notices for this date */}
+                        {group.notices.map((notice) => {
+                          const isCurrentUserSender = notice.senderEmail === user.email;
+                          return (
+                            <div key={notice.noticeId} className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'} ${notice.isNew ? 'animate-fade-in' : ''}`}>
+                              <div className={`max-w-[80%] ${isCurrentUserSender ? 'bg-primary text-white' : 'bg-white dark:bg-gray-700'} rounded-lg p-3 shadow-sm relative ${notice.isNew ? 'animate-pulse' : ''}`}>
+                                {/* Notice header with sender info and delete button */}
+                                <div className="flex items-start justify-between mb-1">
+                                  <div>
+                                    <h4 className={`font-semibold ${isCurrentUserSender ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{notice.title}</h4>
+                                    <p className={`text-xs ${isCurrentUserSender ? 'text-gray-100' : 'text-gray-500'}`}>by {notice.senderName}</p>
+                                  </div>
+                                  {canDeleteNotice(notice) && (
+                                    <button
+                                      onClick={() => handleNoticeDelete(notice.noticeId)}
+                                      className={`${isCurrentUserSender ? 'text-white hover:text-gray-200' : 'text-red-600 hover:text-red-800'} ml-2`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                                
+                                {/* Notice message */}
+                                <p className={`${isCurrentUserSender ? 'text-white' : 'text-gray-700 dark:text-gray-300'} text-sm whitespace-pre-wrap break-words`}>
+                                  {notice.message}
+                                </p>
+                                
+                                {/* Attachment if any */}
+                                {notice.attachment && (
+                                  <div className="mt-2 flex items-center">
+                                    <Paperclip className="h-3 w-3 inline mr-1" />
+                                    <a href={notice.attachment} className={`${isCurrentUserSender ? 'text-white underline' : 'text-blue-600 hover:underline'} text-xs`}>
+                                      Attachment
+                                    </a>
+                                  </div>
+                                )}
+                                
+                                {/* Timestamp */}
+                                <div className={`text-right mt-1 text-xs ${isCurrentUserSender ? 'text-gray-100' : 'text-gray-500'}`}>
+                                  {new Date(notice.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </div>
+                                
+                                {/* WebSocket Indicator for new messages */}
+                                {notice.isNew && (
+                                  <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full p-1 shadow-md animate-ping-slow">
+                                    <div className="w-2 h-2"></div>
+                                  </div>
+                                )}
+                                
+                                {/* Chat bubble tail */}
+                                <div className={`absolute ${isCurrentUserSender ? 'right-0 -mr-2' : 'left-0 -ml-2'} top-2 w-2 h-2 transform ${isCurrentUserSender ? 'rotate-45 bg-primary' : 'rotate-45 bg-white dark:bg-gray-700'}`}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ))}
                     
@@ -454,14 +576,32 @@ function MyGroupPage() {
                         </button>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Right Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
+            {/* Group Stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Group Stats
+              </h2>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Members:</span>
+                  <span className="font-semibold">{groupMembers.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Notices:</span>
+                  <span className="font-semibold">{notices.length}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Group Members */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Group Members
@@ -488,83 +628,103 @@ function MyGroupPage() {
         </div>
       </div>
 
-      {/* Notice Modal */}
+      {/* Notice Modal - WhatsApp Style */}
       {isNoticeModalOpen && (
         <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={closeNoticeModal}
         >
           <div 
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Post New Notice
-              </h3>
+            {/* Modal Header - WhatsApp Style */}
+            <div className="flex items-center bg-primary p-4">
               <button
                 onClick={closeNoticeModal}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-white mr-2"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
+              <h3 className="text-lg font-semibold text-white flex-1">
+                New Group Notice
+              </h3>
             </div>
-            <form onSubmit={handleNoticeSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Title *
-                </label>
+            
+            <form onSubmit={handleNoticeSubmit} className="p-4">
+              {/* Notice Type Selector - Pills */}
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'GENERAL', label: 'General', color: 'bg-gray-200 text-gray-800' },
+                    { value: 'ACADEMIC', label: 'Academic', color: 'bg-blue-100 text-blue-800' },
+                    { value: 'URGENT', label: 'Urgent', color: 'bg-red-100 text-red-800' },
+                    { value: 'EVENT', label: 'Event', color: 'bg-green-100 text-green-800' }
+                  ].map(type => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setNewNotice({ ...newNotice, noticeType: type.value })}
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${type.color} ${newNotice.noticeType === type.value ? 'ring-2 ring-primary' : ''}`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Title Input */}
+              <div className="mb-4">
                 <input
                   type="text"
                   value={newNotice.title}
                   onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Notice Title *"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Message *
-                </label>
+              
+              {/* Message Input - WhatsApp Style */}
+              <div className="mb-4 relative">
                 <textarea
                   value={newNotice.message}
                   onChange={(e) => setNewNotice({ ...newNotice, message: e.target.value })}
                   rows={4}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
+                  className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Type your message here... *"
                   required
                 />
+                <div className="absolute right-3 bottom-3 flex space-x-2">
+                  <button
+                    type="button"
+                    className="text-gray-500 hover:text-primary"
+                    title="Add attachment (not implemented)"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Type
-                </label>
-                <select
-                  value={newNotice.noticeType}
-                  onChange={(e) => setNewNotice({ ...newNotice, noticeType: e.target.value })}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg"
-                >
-                  <option value="GENERAL">General</option>
-                  <option value="ACADEMIC">Academic</option>
-                  <option value="URGENT">Urgent</option>
-                  <option value="EVENT">Event</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeNoticeModal}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
-                >
-                  Cancel
-                </button>
+              
+              {/* Submit Button - WhatsApp Style */}
+              <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  disabled={isSubmitting}
+                  className="p-3 bg-primary text-white rounded-full hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  disabled={isSubmitting || !newNotice.title.trim() || !newNotice.message.trim()}
                 >
-                  {isSubmitting ? 'Posting...' : 'Post Notice'}
+                  {isSubmitting ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </form>
