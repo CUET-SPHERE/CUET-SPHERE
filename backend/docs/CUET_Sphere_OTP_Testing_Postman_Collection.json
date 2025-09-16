@@ -1,0 +1,511 @@
+{
+   "info": {
+      "_postman_id": "72a6f3e1-5d3f-49a3-8fb0-7a8d40c38fb5",
+      "name": "CUET Sphere OTP Testing",
+      "description": "Collection for testing OTP verification flows in CUET Sphere application",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "_exporter_id": "12345678"
+   },
+   "item": [
+      {
+         "name": "OTP Verification",
+         "item": [
+            {
+               "name": "1. Request Signup OTP",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "// Test for successful response",
+                           "pm.test(\"Status code is 200\", function() {",
+                           "  pm.response.to.have.status(200);",
+                           "});",
+                           "",
+                           "pm.test(\"Success is true\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "});",
+                           "",
+                           "// Check if OTP is included in response (for development)",
+                           "try {",
+                           "  var jsonData = pm.response.json();",
+                           "  if (jsonData.otp) {",
+                           "    pm.environment.set(\"otp\", jsonData.otp);",
+                           "    console.log(\"OTP automatically extracted: \" + jsonData.otp);",
+                           "  }",
+                           "} catch (e) {}"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"email\": \"{{testEmail}}\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/signup-otp",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "signup-otp"
+                     ]
+                  },
+                  "description": "Request an OTP for signup email verification"
+               },
+               "response": []
+            },
+            {
+               "name": "2. Verify Signup OTP",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "pm.test(\"Status code is 200\", function() {",
+                           "  pm.response.to.have.status(200);",
+                           "});",
+                           "",
+                           "pm.test(\"Success is true\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "});"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"otp\": \"{{otp}}\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/verify-signup-otp",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "verify-signup-otp"
+                     ]
+                  },
+                  "description": "Verify OTP for signup process"
+               },
+               "response": []
+            },
+            {
+               "name": "3. Complete Signup",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "pm.test(\"Status code is 201\", function() {",
+                           "  pm.response.to.have.status(201);",
+                           "});",
+                           "",
+                           "pm.test(\"User created successfully\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "  pm.expect(jsonData.token).to.not.be.empty;",
+                           "  pm.expect(jsonData.email).to.equal(pm.environment.get(\"testEmail\"));",
+                           "  ",
+                           "  // Store token for subsequent requests if needed",
+                           "  pm.environment.set(\"authToken\", jsonData.token);",
+                           "});"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"fullName\": \"Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"securePassword123\",\n  \"hall\": \"Bangabandhu Sheikh Mujibur Rahman Hall\",\n  \"bio\": \"This is a test user for API testing\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/signup",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "signup"
+                     ]
+                  },
+                  "description": "Complete the signup process after OTP verification"
+               },
+               "response": []
+            },
+            {
+               "name": "4. Request Password Reset OTP",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "pm.test(\"Status code is 200\", function() {",
+                           "  pm.response.to.have.status(200);",
+                           "});",
+                           "",
+                           "pm.test(\"Success is true\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "});",
+                           "",
+                           "// Check if OTP is included in response (for development)",
+                           "try {",
+                           "  var jsonData = pm.response.json();",
+                           "  if (jsonData.otp) {",
+                           "    pm.environment.set(\"otp\", jsonData.otp);",
+                           "    console.log(\"OTP automatically extracted: \" + jsonData.otp);",
+                           "  }",
+                           "} catch (e) {}"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"email\": \"{{existingEmail}}\",\n  \"type\": \"password-reset\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/forgot-password",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "forgot-password"
+                     ]
+                  },
+                  "description": "Request an OTP for password reset"
+               },
+               "response": []
+            },
+            {
+               "name": "5. Verify Password Reset OTP",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "pm.test(\"Status code is 200\", function() {",
+                           "  pm.response.to.have.status(200);",
+                           "});",
+                           "",
+                           "pm.test(\"Success is true and reset token received\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "  pm.expect(jsonData.resetToken).to.not.be.empty;",
+                           "  ",
+                           "  // Store reset token for the next request",
+                           "  pm.environment.set(\"resetToken\", jsonData.resetToken);",
+                           "});"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"email\": \"{{existingEmail}}\",\n  \"otp\": \"{{otp}}\",\n  \"type\": \"password-reset\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/verify-otp",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "verify-otp"
+                     ]
+                  },
+                  "description": "Verify the OTP for password reset"
+               },
+               "response": []
+            },
+            {
+               "name": "6. Reset Password",
+               "event": [
+                  {
+                     "listen": "test",
+                     "script": {
+                        "exec": [
+                           "pm.test(\"Status code is 200\", function() {",
+                           "  pm.response.to.have.status(200);",
+                           "});",
+                           "",
+                           "pm.test(\"Password reset successful\", function() {",
+                           "  var jsonData = pm.response.json();",
+                           "  pm.expect(jsonData.success).to.be.true;",
+                           "});"
+                        ],
+                        "type": "text/javascript"
+                     }
+                  }
+               ],
+               "request": {
+                  "method": "POST",
+                  "header": [
+                     {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                     }
+                  ],
+                  "body": {
+                     "mode": "raw",
+                     "raw": "{\n  \"email\": \"{{existingEmail}}\",\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"newSecurePassword123\"\n}"
+                  },
+                  "url": {
+                     "raw": "{{baseUrl}}/auth/reset-password",
+                     "host": [
+                        "{{baseUrl}}"
+                     ],
+                     "path": [
+                        "auth",
+                        "reset-password"
+                     ]
+                  },
+                  "description": "Reset the password using the token"
+               },
+               "response": []
+            },
+            {
+               "name": "Negative Tests",
+               "item": [
+                  {
+                     "name": "Invalid OTP",
+                     "event": [
+                        {
+                           "listen": "test",
+                           "script": {
+                              "exec": [
+                                 "pm.test(\"Status code is 400\", function() {",
+                                 "  pm.response.to.have.status(400);",
+                                 "});",
+                                 "",
+                                 "pm.test(\"Success is false\", function() {",
+                                 "  var jsonData = pm.response.json();",
+                                 "  pm.expect(jsonData.success).to.be.false;",
+                                 "});"
+                              ],
+                              "type": "text/javascript"
+                           }
+                        }
+                     ],
+                     "request": {
+                        "method": "POST",
+                        "header": [
+                           {
+                              "key": "Content-Type",
+                              "value": "application/json"
+                           }
+                        ],
+                        "body": {
+                           "mode": "raw",
+                           "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"otp\": \"000000\"\n}"
+                        },
+                        "url": {
+                           "raw": "{{baseUrl}}/auth/verify-signup-otp",
+                           "host": [
+                              "{{baseUrl}}"
+                           ],
+                           "path": [
+                              "auth",
+                              "verify-signup-otp"
+                           ]
+                        },
+                        "description": "Test with an invalid OTP"
+                     },
+                     "response": []
+                  },
+                  {
+                     "name": "Signup with Existing Email",
+                     "event": [
+                        {
+                           "listen": "test",
+                           "script": {
+                              "exec": [
+                                 "pm.test(\"Status code is 400\", function() {",
+                                 "  pm.response.to.have.status(400);",
+                                 "});",
+                                 "",
+                                 "pm.test(\"Success is false\", function() {",
+                                 "  var jsonData = pm.response.json();",
+                                 "  pm.expect(jsonData.success).to.be.false;",
+                                 "});"
+                              ],
+                              "type": "text/javascript"
+                           }
+                        }
+                     ],
+                     "request": {
+                        "method": "POST",
+                        "header": [
+                           {
+                              "key": "Content-Type",
+                              "value": "application/json"
+                           }
+                        ],
+                        "body": {
+                           "mode": "raw",
+                           "raw": "{\n  \"email\": \"{{existingEmail}}\"\n}"
+                        },
+                        "url": {
+                           "raw": "{{baseUrl}}/auth/signup-otp",
+                           "host": [
+                              "{{baseUrl}}"
+                           ],
+                           "path": [
+                              "auth",
+                              "signup-otp"
+                           ]
+                        },
+                        "description": "Attempt to request a signup OTP for an email that already exists"
+                     },
+                     "response": []
+                  },
+                  {
+                     "name": "Invalid Reset Token",
+                     "event": [
+                        {
+                           "listen": "test",
+                           "script": {
+                              "exec": [
+                                 "pm.test(\"Status code is 400\", function() {",
+                                 "  pm.response.to.have.status(400);",
+                                 "});",
+                                 "",
+                                 "pm.test(\"Success is false\", function() {",
+                                 "  var jsonData = pm.response.json();",
+                                 "  pm.expect(jsonData.success).to.be.false;",
+                                 "});"
+                              ],
+                              "type": "text/javascript"
+                           }
+                        }
+                     ],
+                     "request": {
+                        "method": "POST",
+                        "header": [
+                           {
+                              "key": "Content-Type",
+                              "value": "application/json"
+                           }
+                        ],
+                        "body": {
+                           "mode": "raw",
+                           "raw": "{\n  \"email\": \"{{existingEmail}}\",\n  \"resetToken\": \"invalid-token-12345\",\n  \"newPassword\": \"newSecurePassword123\"\n}"
+                        },
+                        "url": {
+                           "raw": "{{baseUrl}}/auth/reset-password",
+                           "host": [
+                              "{{baseUrl}}"
+                           ],
+                           "path": [
+                              "auth",
+                              "reset-password"
+                           ]
+                        },
+                        "description": "Attempt to reset password with an invalid token"
+                     },
+                     "response": []
+                  }
+               ],
+               "description": "Negative test cases for error handling"
+            }
+         ]
+      }
+   ],
+   "event": [
+      {
+         "listen": "prerequest",
+         "script": {
+            "type": "text/javascript",
+            "exec": [
+               ""
+            ]
+         }
+      },
+      {
+         "listen": "test",
+         "script": {
+            "type": "text/javascript",
+            "exec": [
+               ""
+            ]
+         }
+      }
+   ],
+   "variable": [
+      {
+         "key": "baseUrl",
+         "value": "http://localhost:5454",
+         "type": "string"
+      },
+      {
+         "key": "testEmail",
+         "value": "testuser@student.cuet.ac.bd",
+         "type": "string"
+      },
+      {
+         "key": "existingEmail",
+         "value": "u2204015@student.cuet.ac.bd",
+         "type": "string"
+      },
+      {
+         "key": "otp",
+         "value": "",
+         "type": "string"
+      },
+      {
+         "key": "resetToken",
+         "value": "",
+         "type": "string"
+      }
+   ]
+}

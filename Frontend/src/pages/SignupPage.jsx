@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, User, Mail, Hash, Eye, EyeOff, Lock, Users, Building } from 'lucide-react';
 import { validateSignupForm, extractBatch, extractDepartment, HALLS, BOYS_HALLS, GIRLS_HALLS, GENDERS } from '../utils/validation';
-import { useUser } from '../contexts/UserContext';
 import ApiService from '../services/api';
 
 // --- Component Definitions Moved Outside ---
@@ -38,7 +37,6 @@ const SelectField = ({ id, name, label, value, onChange, error, icon, children, 
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const { login } = useUser();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -54,12 +52,12 @@ const SignupPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Create updated form data
     const updatedFormData = { ...formData, [name]: value };
-    
+
     setFormData(updatedFormData);
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -80,30 +78,25 @@ const SignupPage = () => {
     const { confirmPassword, ...signupData } = formData;
 
     try {
-      const response = await ApiService.signup(signupData);
-      
-      if (response.success) {
-        // Transform the response to match frontend expectations
-        const userData = {
-          fullName: response.fullName,
-          email: response.email,
-          role: response.role,
-          token: response.token,
-          // Add other fields that might be needed
-          studentId: response.studentId || '',
-          batch: response.batch || '',
-          department: response.department || '',
-          hall: response.hall || '',
-          bio: response.bio || '',
-        };
+      // Instead of directly signing up, request an OTP
+      const response = await ApiService.requestSignupOtp(signupData);
 
-        login(userData);
-        navigate('/feed');
+      if (response.success) {
+        // Store user data temporarily in sessionStorage
+        sessionStorage.setItem('pendingSignupData', JSON.stringify(signupData));
+
+        // Redirect to OTP verification page
+        navigate('/verify-otp', {
+          state: {
+            email: signupData.email,
+            type: 'signup'
+          }
+        });
       } else {
-        setErrors({ submit: response.message || 'Signup failed. Please try again.' });
+        setErrors({ submit: response.message || 'Signup process failed. Please try again.' });
       }
     } catch (error) {
-      console.error('Signup API error:', error);
+      console.error('Signup OTP request error:', error);
       setErrors({ submit: error.message || 'Could not connect to the server. Please try again later.' });
     } finally {
       setIsSubmitting(false);
@@ -126,7 +119,7 @@ const SignupPage = () => {
           </div>
 
           <InputField id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleInputChange} error={errors.email} placeholder="you@student.cuet.ac.bd" icon={<Mail className="h-5 w-5 text-gray-400" />} />
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SelectField id="hall" name="hall" label="Hall" value={formData.hall} onChange={handleInputChange} error={errors.hall} icon={<Building className="h-5 w-5 text-gray-400" />}>
               <option value="">Select your hall</option>
@@ -183,8 +176,8 @@ const SignupPage = () => {
             <button type="submit" disabled={isSubmitting}
               className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9E7FFF] transition-all duration-200 ${isSubmitting ? 'bg-[#BFB0FF] cursor-not-allowed' : 'bg-[#9E7FFF] hover:bg-[#8A6AE3] transform hover:scale-105'}`}>
               {isSubmitting ? (
-                <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>Creating Account...</>
-              ) : 'Create Account'}
+                <><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>Sending Verification Code...</>
+              ) : 'Continue to Verification'}
             </button>
           </div>
 

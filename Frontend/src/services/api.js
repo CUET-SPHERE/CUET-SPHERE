@@ -63,7 +63,7 @@ const mockUsers = [
 // API service class
 class ApiService {
   // Authentication APIs
-  static async signup(userData) {
+  static async requestSignupOtp(userData) {
     if (DEV_MODE) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -74,6 +74,36 @@ class ApiService {
         throw new Error('Email already exists');
       }
 
+      // Store user data in localStorage temporarily (just for development)
+      localStorage.setItem('pendingSignup', JSON.stringify(userData));
+
+      return {
+        success: true,
+        message: 'OTP sent successfully to your email',
+        email: userData.email
+      };
+    }
+
+    // Store signup data in sessionStorage for later use
+    sessionStorage.setItem('pendingSignupData', JSON.stringify(userData));
+
+    const response = await fetch(`${API_BASE_URL}/auth/signup-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: userData.email }),
+    });
+
+    return handleResponse(response);
+  }
+
+  static async signup(userData, otp) {
+    if (DEV_MODE) {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // In dev mode, we'll pretend OTP was validated already
       // Create new user
       const newUser = {
         id: mockUsers.length + 1,
@@ -100,6 +130,25 @@ class ApiService {
       };
     }
 
+    // First, verify the OTP
+    const verifyResponse = await fetch(`${API_BASE_URL}/auth/verify-signup-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: userData.email,
+        otp: otp
+      }),
+    });
+
+    const verifyResult = await handleResponse(verifyResponse);
+
+    if (!verifyResult.success) {
+      throw new Error(verifyResult.message || 'Invalid OTP. Please try again.');
+    }
+
+    // Now create the account
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: {
@@ -157,19 +206,40 @@ class ApiService {
   }
 
   // Password Reset APIs
-  static async requestPasswordReset(email) {
+  static async requestPasswordReset(email, type = 'password-reset') {
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, type }),
     });
     return handleResponse(response);
   }
 
   static async verifyOtp(email, otp, type = 'password-reset') {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+    if (DEV_MODE && type === 'signup') {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // In dev mode, we'll validate any 6-digit OTP for signup
+      if (otp.length === 6 && /^\d+$/.test(otp)) {
+        const pendingSignup = JSON.parse(localStorage.getItem('pendingSignup') || '{}');
+        return {
+          success: true,
+          message: 'OTP verified successfully',
+          userData: pendingSignup,
+          isSignup: true
+        };
+      } else {
+        throw new Error('Invalid OTP. Please try again.');
+      }
+    }
+
+    // Use different endpoints based on the type
+    const endpoint = type === 'signup' ? 'verify-signup-otp' : 'verify-otp';
+
+    const response = await fetch(`${API_BASE_URL}/auth/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

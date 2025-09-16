@@ -29,6 +29,9 @@ import com.cuet.sphere.service.NotificationService;
 import com.cuet.sphere.dto.ForgotPasswordRequest;
 import com.cuet.sphere.dto.VerifyOtpRequest;
 import com.cuet.sphere.dto.ResetPasswordRequest;
+import com.cuet.sphere.dto.SignupOtpRequest;
+import com.cuet.sphere.dto.SignupVerificationRequest;
+import com.cuet.sphere.service.SignupService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -51,6 +54,9 @@ public class AuthController {
     private PasswordResetService passwordResetService;
     @Autowired
     private NotificationService notificationService;
+    
+    @Autowired
+    private SignupService signupService;
     
     @Value("${system.admin.email:u2204015@student.cuet.ac.bd}")
     private String systemAdminEmail;
@@ -297,6 +303,76 @@ public class AuthController {
         }
     }
 
+    // Signup OTP Endpoints
+    
+    @PostMapping("/signup-otp")
+    public ResponseEntity<Map<String, Object>> requestSignupOtp(@Valid @RequestBody SignupOtpRequest request) {
+        try {
+            System.out.println("PROCESSING: Signup OTP request for: " + request.getEmail());
+            
+            signupService.requestSignupOtp(request.getEmail());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "If this email is valid, you will receive an OTP shortly.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (UserException e) {
+            System.err.println("ERROR: Signup OTP request error: " + e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Unexpected error in signup OTP request: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "An unexpected error occurred. Please try again later.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/verify-signup-otp")
+    public ResponseEntity<Map<String, Object>> verifySignupOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        try {
+            System.out.println("VERIFYING: Signup OTP for: " + request.getEmail());
+            
+            boolean verified = signupService.verifySignupOtp(request.getEmail(), request.getOtp());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Email verified successfully");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (UserException e) {
+            System.err.println("ERROR: Signup OTP verification error: " + e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Unexpected error in signup OTP verification: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "An unexpected error occurred. Please try again later.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
     // Password Reset Endpoints
     
     @PostMapping("/forgot-password")
