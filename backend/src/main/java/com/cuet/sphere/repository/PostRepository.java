@@ -1,6 +1,8 @@
 package com.cuet.sphere.repository;
 
 import com.cuet.sphere.model.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -10,6 +12,18 @@ import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
+    
+    // Paginated query with only user info (no comments to avoid N+1)
+    @Query("""
+        SELECT p FROM Post p 
+        LEFT JOIN FETCH p.user 
+        ORDER BY p.createdAt DESC
+        """)
+    Page<Post> findAllWithUserOnlyPaginated(Pageable pageable);
+    
+    // Count query for pagination
+    @Query("SELECT COUNT(p) FROM Post p")
+    long countAllPosts();
     
     // Simple ordering by creation date (newest first)
     @Query("""

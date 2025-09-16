@@ -19,6 +19,10 @@ import com.cuet.sphere.service.ReplyService;
 import com.cuet.sphere.service.UserService;
 import com.cuet.sphere.service.VoteService;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,11 +54,23 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostDTO>> getAllPosts() {
+    public ResponseEntity<Page<PostDTO>> getAllPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
         try {
-            System.out.println("=== GET /api/posts called ===");
-            List<PostDTO> posts = postService.getAllPostsWithUserInfo();
-            System.out.println("Posts fetched successfully, count: " + (posts != null ? posts.size() : 0));
+            System.out.println("=== GET /api/posts called with pagination ===");
+            System.out.println("Page: " + page + ", Size: " + size + ", Sort: " + sortBy + " " + sortDir);
+            
+            Pageable pageable = PageRequest.of(page, size, 
+                sortDir.equals("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+            
+            Page<PostDTO> posts = postService.getAllPostsPaginated(pageable);
+            System.out.println("Posts fetched successfully, count: " + posts.getContent().size() + 
+                             ", total pages: " + posts.getTotalPages() + 
+                             ", total elements: " + posts.getTotalElements());
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
             System.err.println("Error in getAllPosts: " + e.getMessage());

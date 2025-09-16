@@ -6,7 +6,7 @@ import replyService from '../services/replyService';
 import voteService from '../services/voteService';
 
 // Avatar component
-function Avatar({ src, name, size = 'md' }) {
+const Avatar = React.memo(({ src, name, size = 'md' }) => {
   const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
@@ -31,7 +31,7 @@ function Avatar({ src, name, size = 'md' }) {
       {initials}
     </div>
   );
-}
+});
 
 // Comment component with reply, edit, delete functionality
 function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 }) {
@@ -209,7 +209,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
   );
 }
 
-function PostImage({ src, alt }) {
+const PostImage = React.memo(({ src, alt }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
@@ -230,6 +230,7 @@ function PostImage({ src, alt }) {
       <img
         src={src}
         alt={alt}
+        loading="lazy"
         className={`w-full max-h-96 object-contain ${imageLoading ? 'hidden' : 'block'}`}
         onLoad={() => setImageLoading(false)}
         onError={() => {
@@ -239,9 +240,9 @@ function PostImage({ src, alt }) {
       />
     </div>
   );
-}
+});
 
-function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
+const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDelete, onSelectTag }, ref) => {
   const [upvotes, setUpvotes] = useState(post.upvotes || 0);
   const [downvotes, setDownvotes] = useState(post.downvotes || 0);
   const [bookmarked, setBookmarked] = useState(post.bookmarked || false);
@@ -251,6 +252,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const [newComment, setNewComment] = useState('');
   const [showFullContent, setShowFullContent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   const MAX_CONTENT_LENGTH = 200; // Adjust as needed
@@ -263,23 +265,22 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
     setShowFullContent(!showFullContent);
   };
 
-  // Load comments initially when component mounts
+  // Load comments initially when component mounts - REMOVED FOR LAZY LOADING
   useEffect(() => {
     // If post already has comments from the backend, use them
     if (post.comments && post.comments.length > 0) {
       setComments(post.comments);
-    } else {
-      // Otherwise load comments from API
-      loadComments();
+      setCommentsLoaded(true);
     }
+    // Don't load comments from API immediately - wait for user to request them
   }, [post.id]);
 
-  // Load comments when showComments is toggled (if not already loaded)
+  // Load comments when showComments is toggled and not already loaded
   useEffect(() => {
-    if (showComments && comments.length === 0 && (!post.comments || post.comments.length === 0)) {
+    if (showComments && !commentsLoaded) {
       loadComments();
     }
-  }, [showComments]);
+  }, [showComments, commentsLoaded]);
 
   // Load votes when component mounts
   useEffect(() => {
@@ -289,18 +290,21 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const loadComments = async () => {
     try {
       setLoading(true);
+      setError(null);
       const fetchedComments = await commentService.getCommentsForPost(post.id);
-      
+
       // The backend now returns CommentDTOs with proper user information and nested replies
       const processedComments = (fetchedComments || []).map(comment => ({
         ...comment,
         // Ensure replies are properly structured
         replies: comment.replies || []
       }));
-      
+
       setComments(processedComments);
+      setCommentsLoaded(true);
     } catch (err) {
       setError('Failed to load comments');
+      console.error('Error loading comments:', err);
     } finally {
       setLoading(false);
     }
@@ -321,16 +325,16 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         }
         return 1;
       };
-      
+
       const currentUserId = getCurrentUserId();
-      
+
       // Load all votes for the post to get counts
       const votes = await voteService.getVotesForPost(post.id);
       const upvoteCount = votes.filter(vote => vote.voteType === 'UPVOTE').length;
       const downvoteCount = votes.filter(vote => vote.voteType === 'DOWNVOTE').length;
       setUpvotes(upvoteCount);
       setDownvotes(downvoteCount);
-      
+
       // Load current user's vote separately for better performance
       try {
         const userVoteObj = await voteService.getUserVoteForPost(post.id, currentUserId);
@@ -348,7 +352,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const handleUpvote = async () => {
     try {
       const result = await voteService.upvote(post.id); // Will use current user ID
-      
+
       if (result.removed) {
         // Vote was removed
         setUpvotes(upvotes - 1);
@@ -367,7 +371,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   const handleDownvote = async () => {
     try {
       const result = await voteService.downvote(post.id); // Will use current user ID
-      
+
       if (result.removed) {
         // Vote was removed
         setDownvotes(downvotes - 1);
@@ -408,9 +412,9 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
           text: newComment.trim(),
           userId: getCurrentUserId()
         };
-        
+
         const createdComment = await commentService.createComment(post.id, commentData);
-        
+
         // Add the new comment to the list
         // The backend now returns a CommentDTO with all user information
         const newCommentObj = {
@@ -419,7 +423,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
           // But ensure replies array exists
           replies: createdComment.replies || []
         };
-        
+
         setComments([...comments, newCommentObj]);
         setNewComment('');
       } catch (err) {
@@ -458,9 +462,9 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         text: replyContent,
         userId: getCurrentUserId()
       };
-      
+
       const createdReply = await replyService.createReply(parentCommentId, replyData);
-      
+
       // The backend now returns a ReplyDTO with all user information
       const newReply = {
         ...createdReply,
@@ -515,9 +519,9 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
         text: newContent,
         userId: getCurrentUserId()
       };
-      
+
       await commentService.updateComment(commentId, commentData);
-      
+
       const updateCommentsWithEdit = (comments) => {
         return comments.map(comment => {
           if (comment.id === commentId) {
@@ -550,7 +554,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
       try {
         setLoading(true);
         await commentService.deleteComment(commentId);
-        
+
         const deleteCommentFromTree = (comments) => {
           return comments.filter(comment => {
             if (comment.id === commentId) {
@@ -573,7 +577,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
   };
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
+    <div ref={ref} className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
       <div className="p-6">
         {/* Post Header */}
         <div className="flex items-start justify-between mb-4">
@@ -690,7 +694,7 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
       {error && (
         <div className="p-3 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg mx-6 mb-4">
           <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
-          <button 
+          <button
             onClick={() => setError(null)}
             className="text-red-600 dark:text-red-400 text-xs underline mt-1"
           >
@@ -754,6 +758,6 @@ function PostCard({ post, isManageMode = false, onDelete, onSelectTag }) {
       )}
     </div>
   );
-}
+}));
 
 export default PostCard;

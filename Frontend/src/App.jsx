@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
+import { FeedCacheProvider } from './contexts/FeedCacheContext';
 
 // Navbars
 import { LoggedOutNavbar, LoggedInNavbar } from './components/Navbar';
@@ -72,13 +73,13 @@ function AppContent() {
           {/* Admin Only Dashboard Route */}
           <Route path="/dashboard" element={<ProtectedRoute requiredRole="SYSTEM_ADMIN"><StudentDashboard /></ProtectedRoute>} />
           {/* Protected User Routes */}
-          <Route 
-            path="/feed" 
+          <Route
+            path="/feed"
             element={
               <ProtectedRoute>
                 <FeedPage />
               </ProtectedRoute>
-            } 
+            }
           />
           <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
           <Route path="/group" element={<ProtectedRoute><MyGroupPage /></ProtectedRoute>} />
@@ -105,11 +106,13 @@ function App() {
     <ThemeProvider>
       <UserProvider>
         <NotificationsProvider>
-          <Router>
-            <div className="app-container">
-              <AppContent />
-            </div>
-          </Router>
+          <FeedCacheProvider>
+            <Router>
+              <div className="app-container">
+                <AppContent />
+              </div>
+            </Router>
+          </FeedCacheProvider>
         </NotificationsProvider>
       </UserProvider>
     </ThemeProvider>

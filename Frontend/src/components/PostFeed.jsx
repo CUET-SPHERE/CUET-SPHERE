@@ -1,43 +1,55 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Tag, Loader } from 'lucide-react';
+import { Search, Plus, Tag, Loader, RefreshCw } from 'lucide-react';
 import PostCard from './PostCard';
 import PostCreateModal from './PostCreateModal';
+import PostSkeleton from './PostSkeleton';
 import { useUser } from '../contexts/UserContext';
 import { postService } from '../services/postService';
+import { useDebounce } from '../hooks/useDebounce';
+import { useFeedData } from '../hooks/useFeedData';
 
 function PostFeed({ isManageMode = false }) {
-  const [posts, setPosts] = useState([]);
   const [selectedTag, setSelectedTag] = useState('All');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300); // 300ms delay
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { incrementPostDeleteCount, user, isAuthenticated } = useUser();
+
+  // Use the feed data hook with caching
+  const {
+    posts,
+    currentPage,
+    totalPages,
+    hasMore,
+    isInitialized,
+    loading,
+    loadingMore,
+    error,
+    loadInitialPosts,
+    loadMorePosts,
+    addPost,
+    removePost,
+    refresh,
+    getStats,
+    lastPostElementCallback,
+  } = useFeedData();
 
   // Debug logging
   console.log('PostFeed - User:', user);
   console.log('PostFeed - IsAuthenticated:', isAuthenticated);
+  console.log('PostFeed - Cache Stats:', getStats());
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('PostFeed: Starting to fetch posts...');
-      const data = await postService.getAllPosts();
-      console.log('PostFeed: Posts received:', data);
-      setPosts(data || []);
-    } catch (err) {
-      console.error('PostFeed: Error fetching posts:', err);
-      setError(err.message || 'Failed to fetch posts');
-      setPosts([]);
-    } finally {
-      setLoading(false);
+    // Only load if not initialized or posts are empty
+    if (!isInitialized || posts.length === 0) {
+      loadInitialPosts();
     }
-  };
+  }, [isInitialized, posts.length, loadInitialPosts]);
+
+
+
+
 
   // Get all unique tags and their counts
   const allTags = useMemo(() => {
@@ -61,18 +73,21 @@ function PostFeed({ isManageMode = false }) {
   }, [posts]);
 
   // Filtered posts based on selected tag and search term
-  const filteredPosts = posts.filter(
-    (post) =>
-      (selectedTag === 'All' || (post.tags && post.tags.includes(selectedTag))) &&
-        (search === '' ||
-        post.title?.toLowerCase().includes(search.toLowerCase()) ||
-        post.content?.toLowerCase().includes(search.toLowerCase()) ||
-        post.tags?.some(tag => tag?.toLowerCase().includes(search.toLowerCase())))
-  );  // Handle new post creation
+  const filteredPosts = useMemo(() => {
+    return posts.filter(
+      (post) =>
+        (selectedTag === 'All' || (post.tags && post.tags.includes(selectedTag))) &&
+        (debouncedSearch === '' ||
+          post.title?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          post.content?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          post.tags?.some(tag => tag?.toLowerCase().includes(debouncedSearch.toLowerCase())))
+    );
+  }, [posts, selectedTag, debouncedSearch]);  // Handle new post creation
   const handleCreatePost = async (newPost) => {
     try {
       const createdPost = await postService.createPost(newPost);
-      setPosts([createdPost, ...posts]);
+      // Add new post to cache and display
+      addPost(createdPost);
     } catch (err) {
       // Re-throw the error so the modal can handle it
       throw err;
@@ -84,12 +99,24 @@ function PostFeed({ isManageMode = false }) {
     if (window.confirm('Are you sure you want to permanently delete this post? This action cannot be undone.')) {
       try {
         await postService.deletePost(postId);
-        setPosts(posts.filter(p => p.id !== postId));
+        removePost(postId);
         incrementPostDeleteCount();
       } catch (err) {
         console.error('Error deleting post:', err);
         // You might want to show an error toast or message here
       }
+    }
+  };
+
+  // Refresh feed data
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await refresh();
+    } catch (err) {
+      console.error('Error refreshing feed:', err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -168,17 +195,17 @@ function PostFeed({ isManageMode = false }) {
       <div className="px-4 py-6">
         <div className="space-y-6">
           {loading ? (
-            <div className="text-center py-12">
-              <Loader className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
-            </div>
+            // Show skeleton loading for initial load
+            Array.from({ length: 3 }).map((_, index) => (
+              <PostSkeleton key={index} />
+            ))
           ) : error ? (
             <div className="text-center py-12">
               <div className="text-red-500 text-6xl mb-4">⚠️</div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Error loading posts</h3>
               <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-              <button 
-                onClick={fetchPosts}
+              <button
+                onClick={handleRefresh}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Try Again
@@ -189,19 +216,41 @@ function PostFeed({ isManageMode = false }) {
               <div className="text-gray-400 dark:text-gray-500 text-6xl mb-4">📝</div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts found</h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {search ? 'Try adjusting your search terms' : 'No posts available for this tag.'}
+                {debouncedSearch ? 'Try adjusting your search terms' : 'No posts available for this tag.'}
               </p>
             </div>
           ) : (
-            filteredPosts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                isManageMode={isManageMode}
-                onDelete={handleDeletePost}
-                onSelectTag={setSelectedTag}
-              />
-            ))
+            filteredPosts.map((post, index) => {
+              // Add ref to the last post for infinite scroll
+              const isLastPost = filteredPosts.length === index + 1;
+              return (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  isManageMode={isManageMode}
+                  onDelete={handleDeletePost}
+                  onSelectTag={setSelectedTag}
+                  ref={isLastPost ? lastPostElementCallback : null}
+                />
+              );
+            })
+          )}
+
+          {/* Loading more indicator */}
+          {loadingMore && (
+            <div className="text-center py-6">
+              <Loader className="h-6 w-6 animate-spin mx-auto text-blue-600 mb-2" />
+              <p className="text-gray-500 dark:text-gray-400">Loading more posts...</p>
+            </div>
+          )}
+
+          {/* End of posts indicator */}
+          {!hasMore && posts.length > 0 && !loading && (
+            <div className="text-center py-6">
+              <p className="text-gray-500 dark:text-gray-400">
+                You've reached the end! 🎉
+              </p>
+            </div>
           )}
         </div>
       </div>

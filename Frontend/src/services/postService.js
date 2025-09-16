@@ -8,7 +8,7 @@ class PostService {
     // Try to get token from your existing UserContext system first
     const userData = localStorage.getItem('user');
     let token = null;
-    
+
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
@@ -18,20 +18,20 @@ class PostService {
         console.error('Error parsing user data:', e);
       }
     }
-    
+
     // Fallback to jwt_token if no user data found
     if (!token) {
       token = localStorage.getItem('jwt_token');
     }
-    
+
     console.log('Auth token found:', token ? 'Yes' : 'No'); // Debug log
     console.log('Token value:', token); // Debug log
-    
+
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     };
-    
+
     console.log('Final headers:', headers); // Debug log
     return headers;
   }
@@ -49,26 +49,26 @@ class PostService {
     }
     return 1; // Default fallback
   }
-  async getAllPosts() {
+  async getAllPosts(page = 0, size = 10) {
     try {
       console.log('API_BASE_URL:', API_BASE_URL);
       console.log('DEV mode:', import.meta.env.DEV);
-      console.log('Fetching posts from:', `${API_BASE_URL}/posts`);
+      console.log('Fetching posts from:', `${API_BASE_URL}/posts?page=${page}&size=${size}`);
       console.log('Auth headers:', this.getAuthHeaders());
-      
-      const response = await fetch(`${API_BASE_URL}/posts`, {
+
+      const response = await fetch(`${API_BASE_URL}/posts?page=${page}&size=${size}`, {
         headers: this.getAuthHeaders()
       });
-      
+
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
         throw new Error(`Failed to fetch posts: ${response.status} - ${errorText}`);
       }
-      
+
       const data = await response.json();
       console.log('Posts data received:', data);
       return data;
@@ -94,12 +94,12 @@ class PostService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(requestData),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to create post: ${response.status} - ${errorText}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       throw error;
@@ -112,11 +112,11 @@ class PostService {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to delete post: ${response.status}`);
       }
-      
+
       return true;
     } catch (error) {
       throw error;
@@ -144,11 +144,11 @@ class PostService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(postData),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update post: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       throw error;

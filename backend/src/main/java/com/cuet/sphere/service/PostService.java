@@ -6,6 +6,8 @@ import com.cuet.sphere.model.Post;
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -45,6 +47,12 @@ public class PostService {
         return posts.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    public Page<PostDTO> getAllPostsPaginated(Pageable pageable) {
+        // Use paginated query with only user info to avoid N+1 queries
+        Page<Post> posts = postRepository.findAllWithUserOnlyPaginated(pageable);
+        return posts.map(this::convertToDTOWithoutComments);
     }
     
     public PostDTO getPostWithUserInfo(Long id) {
@@ -162,6 +170,55 @@ public class PostService {
             // Error loading comments for post
             dto.setComments(new ArrayList<>());
         }
+        
+        return dto;
+    }
+    
+    public PostDTO convertToDTOWithoutComments(Post post) {
+        PostDTO dto = new PostDTO();
+        dto.setId(post.getId());
+        dto.setTitle(post.getTitle());
+        dto.setContent(post.getContent());
+        dto.setMediaUrl(post.getMediaUrl());
+        dto.setCreatedAt(post.getCreatedAt());
+        dto.setUpdatedAt(post.getUpdatedAt());
+        dto.setUserId(post.getUserId());
+        dto.setTags(post.getTags());
+        
+        // Set computed fields
+        dto.setUpvotes(post.getUpvotes());
+        dto.setDownvotes(post.getDownvotes());
+        dto.setCommentCount(post.getCommentCount());
+        
+        // Set frontend compatibility fields
+        dto.setTimestamp(post.getCreatedAt());
+        dto.setImage(post.getMediaUrl());
+        
+        // Set user information from the relationship
+        try {
+            User user = post.getUser();
+            if (user != null) {
+                dto.setAuthor(user.getFullName());
+                dto.setAuthorEmail(user.getEmail());
+                dto.setStudentId(user.getFullStudentId());
+                dto.setProfilePicture(user.getProfilePicture());
+            } else {
+                // Fallback for missing user
+                dto.setAuthor("Unknown User");
+                dto.setAuthorEmail("unknown@example.com");
+                dto.setStudentId("0000000");
+                dto.setProfilePicture(null);
+            }
+        } catch (Exception e) {
+            // Handle any database errors gracefully
+            dto.setAuthor("Unknown User");
+            dto.setAuthorEmail("unknown@example.com");
+            dto.setStudentId("0000000");
+            dto.setProfilePicture(null);
+        }
+        
+        // Don't load comments for feed - they will be loaded separately when needed
+        dto.setComments(new ArrayList<>());
         
         return dto;
     }
