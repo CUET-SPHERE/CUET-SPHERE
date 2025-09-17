@@ -28,7 +28,7 @@
 ## 🔧 **Frontend Integration Status**
 
 ### Current Configuration
-- ✅ Backend running on: `http://localhost:5454`
+- ✅ Backend running on: `https://cuet-sphere-service.onrender.com`
 - ✅ Frontend running on: `http://localhost:5173`
 - ✅ Vite proxy configured for API calls
 - ✅ DEV_MODE set to `false` (using real APIs)

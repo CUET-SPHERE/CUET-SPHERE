@@ -1,7 +1,7 @@
 import EmailService from './emailService';
 import profileCache from './profileCache';
 
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:5454');
+const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://cuet-sphere-service.onrender.com');
 const DEV_MODE = false; // Set to false to use real APIs
 
 // Helper function to get auth token

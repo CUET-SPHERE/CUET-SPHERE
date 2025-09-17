@@ -12,14 +12,14 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:5454',
+        target: process.env.VITE_API_URL || 'https://cuet-sphere-service.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       '/auth': {
-        target: process.env.VITE_API_URL || 'http://localhost:5454',
+        target: process.env.VITE_API_URL || 'https://cuet-sphere-service.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       }
     }
   }
