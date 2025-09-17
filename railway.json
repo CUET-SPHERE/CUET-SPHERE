@@ -1,7 +1,6 @@
 {
     "build": {
-        "builder": "paketobuildpacks/builder:base",
-        "run": "cd backend && ./mvnw package -DskipTests",
-        "start": "cd backend && java -jar target/*.jar"
+        "builder": "shell",
+        "start": "cd backend && ./mvnw package -DskipTests && java -jar target/*.jar"
     }
 }
