@@ -1313,6 +1313,93 @@ class ApiService {
     });
     return handleResponse(response);
   }
+
+  // ========== SAVED POSTS FUNCTIONALITY ==========
+
+  // Save a post
+  static async savePost(postId) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Mock successful save
+      return { success: true, message: 'Post saved successfully (dev mode)' };
+    }
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/save`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Failed to save post:', error);
+      throw error;
+    }
+  }
+
+  // Unsave a post
+  static async unsavePost(postId) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Mock successful unsave
+      return { success: true, message: 'Post unsaved successfully (dev mode)' };
+    }
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/save`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Failed to unsave post:', error);
+      throw error;
+    }
+  }
+
+  // Get saved posts for current user
+  static async getSavedPosts(page = 0, size = 10) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Mock saved posts using existing mock data
+      const savedPosts = mockPosts.filter((_, index) => index % 3 === 0); // Every 3rd post is "saved"
+      const startIndex = page * size;
+      const endIndex = startIndex + size;
+      const paginatedPosts = savedPosts.slice(startIndex, endIndex);
+      
+      return {
+        success: true,
+        posts: paginatedPosts.map(post => ({ ...post, saved: true })),
+        totalElements: savedPosts.length,
+        totalPages: Math.ceil(savedPosts.length / size),
+        currentPage: page,
+        hasNext: endIndex < savedPosts.length,
+        hasPrevious: page > 0
+      };
+    }
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/api/posts/saved?page=${page}&size=${size}`, {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Failed to get saved posts:', error);
+      throw error;
+    }
+  }
 }
 
 export default ApiService;

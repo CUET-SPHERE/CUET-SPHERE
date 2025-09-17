@@ -6,8 +6,10 @@ import com.cuet.sphere.dto.ReplyDTO;
 import com.cuet.sphere.model.Comment;
 import com.cuet.sphere.model.Post;
 import com.cuet.sphere.model.Reply;
+import com.cuet.sphere.model.SavedPost;
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.model.Vote;
+import com.cuet.sphere.repository.SavedPostRepository;
 import com.cuet.sphere.response.CommentRequest;
 import com.cuet.sphere.response.PostRequest;
 import com.cuet.sphere.response.ReplyRequest;
@@ -43,14 +45,16 @@ public class PostController {
     private final VoteService voteService;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final SavedPostRepository savedPostRepository;
 
-    public PostController(PostService postService, CommentService commentService, ReplyService replyService, VoteService voteService, UserService userService, NotificationService notificationService) {
+    public PostController(PostService postService, CommentService commentService, ReplyService replyService, VoteService voteService, UserService userService, NotificationService notificationService, SavedPostRepository savedPostRepository) {
         this.postService = postService;
         this.commentService = commentService;
         this.replyService = replyService;
         this.voteService = voteService;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.savedPostRepository = savedPostRepository;
     }
 
     @GetMapping
@@ -382,5 +386,136 @@ public class PostController {
         return voteService.getUserVoteForPost(postId, userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ========== SAVED POSTS ENDPOINTS ==========
+
+    @PostMapping("/{postId}/save")
+    public ResponseEntity<?> savePost(@PathVariable Long postId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = authentication.getName();
+            
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("success", false, "message", "User not authenticated"));
+            }
+            User user = userOpt.get();
+            
+            Post post = postService.getPost(postId).orElse(null);
+            if (post == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("success", false, "message", "Post not found"));
+            }
+            
+            // Check if already saved
+            if (savedPostRepository.existsByUserAndPost(user, post)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(java.util.Map.of("success", false, "message", "Post already saved"));
+            }
+            
+            // Save the post
+            SavedPost savedPost = new SavedPost(user, post);
+            savedPostRepository.save(savedPost);
+            
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true, 
+                "message", "Post saved successfully",
+                "savedAt", savedPost.getSavedAt()
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error saving post: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("success", false, "message", "Failed to save post"));
+        }
+    }
+
+    @DeleteMapping("/{postId}/save")
+    public ResponseEntity<?> unsavePost(@PathVariable Long postId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = authentication.getName();
+            
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("success", false, "message", "User not authenticated"));
+            }
+            User user = userOpt.get();
+            
+            Post post = postService.getPost(postId).orElse(null);
+            if (post == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("success", false, "message", "Post not found"));
+            }
+            
+            // Check if the post is saved
+            Optional<SavedPost> savedPost = savedPostRepository.findByUserAndPost(user, post);
+            if (savedPost.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("success", false, "message", "Post is not saved"));
+            }
+            
+            // Remove the saved post
+            savedPostRepository.delete(savedPost.get());
+            
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true, 
+                "message", "Post unsaved successfully"
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error unsaving post: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("success", false, "message", "Failed to unsave post"));
+        }
+    }
+
+    @GetMapping("/saved")
+    public ResponseEntity<?> getSavedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = authentication.getName();
+            
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("success", false, "message", "User not authenticated"));
+            }
+            User user = userOpt.get();
+            
+            Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "savedAt");
+            Page<Post> savedPosts = savedPostRepository.findPostsByUserIdOrderBySavedAtDesc(user.getId(), pageable);
+            
+            // Convert to DTOs with proper formatting
+            Page<PostDTO> savedPostDTOs = savedPosts.map(post -> {
+                PostDTO dto = postService.convertToDTO(post);
+                dto.setSaved(true); // Mark as saved since these are saved posts
+                return dto;
+            });
+            
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "posts", savedPostDTOs.getContent(),
+                "totalElements", savedPostDTOs.getTotalElements(),
+                "totalPages", savedPostDTOs.getTotalPages(),
+                "currentPage", savedPostDTOs.getNumber(),
+                "hasNext", savedPostDTOs.hasNext(),
+                "hasPrevious", savedPostDTOs.hasPrevious()
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error getting saved posts: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("success", false, "message", "Failed to get saved posts"));
+        }
     }
 }

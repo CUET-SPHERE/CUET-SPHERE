@@ -1,10 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { Megaphone, Users, Plus, Edit, Trash2, Paperclip } from 'lucide-react';
+import { Megaphone, Users, Plus, Edit, Trash2, Paperclip, Upload, X, File, Eye, Download, Loader2 } from 'lucide-react';
 import ApiService from '../services/api';
 import webSocketService from '../services/websocket';
 import ProfileImage from '../components/ProfileImage';
+import FileViewer from '../components/FileViewer';
+import { getApiBaseUrl } from '../services/apiConfig';
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Loading Spinner Component
+const LoadingSpinner = ({ size = 'large', className = '' }) => {
+  const sizeClasses = {
+    small: 'w-5 h-5',
+    medium: 'w-8 h-8', 
+    large: 'w-12 h-12'
+  };
+  
+  return (
+    <div className={`flex items-center justify-center ${className}`}>
+      <Loader2 className={`${sizeClasses[size]} text-blue-600 animate-spin`} />
+    </div>
+  );
+};
+
+// Full Page Loading Component
+const FullPageLoading = () => {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <LoadingSpinner size="large" className="mb-4" />
+        <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">Loading My Group...</p>
+        <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">Please wait while we fetch your group data</p>
+      </div>
+    </div>
+  );
+};
+
+// Helper functions for secure file URLs
+const getSecureAttachmentUrl = (noticeId, action = 'view') => {
+  return `${API_BASE_URL}/api/files/notice/${noticeId}/attachment?action=${action}`;
+};
+
+const getAttachmentFilename = (attachmentUrl) => {
+  if (!attachmentUrl) return 'Attachment';
+  const parts = attachmentUrl.split('/');
+  const filename = parts[parts.length - 1];
+  // Remove query parameters if any
+  return filename.split('?')[0] || 'Attachment';
+};
+
+// Helper function to get auth token
+const getAuthToken = () => {
+  const user = localStorage.getItem('user');
+  if (user) {
+    const userData = JSON.parse(user);
+    return userData.token;
+  }
+  return null;
+};
 
 // Utility functions
 const getInitials = (name) => {
@@ -78,9 +133,14 @@ function MyGroupPage() {
   const [groupMembers, setGroupMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-  const [newNotice, setNewNotice] = useState({ title: '', message: '', noticeType: 'GENERAL' });
+  const [newNotice, setNewNotice] = useState({ title: '', message: '', noticeType: 'GENERAL', attachment: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -92,6 +152,72 @@ function MyGroupPage() {
   // Filter state
   const [selectedNoticeType, setSelectedNoticeType] = useState('ALL');
   const [filteredNotices, setFilteredNotices] = useState([]);
+
+  // File viewer state
+  const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
+  const [viewingFile, setViewingFile] = useState(null);
+
+  // Function to handle authenticated file viewing
+  const viewAttachment = async (noticeId, attachmentUrl) => {
+    console.log('=== viewAttachment function called ===');
+    console.log('Notice ID:', noticeId);
+    console.log('Attachment URL:', attachmentUrl);
+    console.log('setViewingFile function:', typeof setViewingFile);
+    console.log('setIsFileViewerOpen function:', typeof setIsFileViewerOpen);
+    
+    try {
+      if (!attachmentUrl) {
+        console.error('No attachment URL provided');
+        alert('No attachment URL available');
+        return;
+      }
+      
+      // Extract filename from URL
+      const filename = getAttachmentFilename(attachmentUrl);
+      console.log('Extracted filename:', filename);
+      
+      // Set viewing file and open modal
+      const fileData = {
+        url: attachmentUrl,
+        name: filename,
+        type: 'application/octet-stream' // FileViewer will determine type from filename
+      };
+      console.log('Setting viewing file data:', fileData);
+      
+      setViewingFile(fileData);
+      console.log('Called setViewingFile');
+      
+      setIsFileViewerOpen(true);
+      console.log('Called setIsFileViewerOpen(true)');
+      console.log('=== viewAttachment function completed ===');
+      
+    } catch (error) {
+      console.error('Error in viewAttachment:', error);
+      alert('Failed to open attachment: ' + error.message);
+    }
+  };
+
+  // Function to handle authenticated file downloading
+  const downloadAttachment = async (noticeId, filename, attachmentUrl) => {
+    try {
+      if (!attachmentUrl) {
+        alert('No attachment URL available');
+        return;
+      }
+
+      // Create a temporary link for download using S3 URL directly
+      const link = document.createElement('a');
+      link.href = attachmentUrl;
+      link.download = filename || 'attachment';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment: ' + error.message);
+    }
+  };
 
   // Filter notices when notices or selectedNoticeType changes
   useEffect(() => {
@@ -249,8 +375,69 @@ function MyGroupPage() {
 
   const closeNoticeModal = () => {
     setIsNoticeModalOpen(false);
-    setNewNotice({ title: '', message: '', noticeType: 'GENERAL' });
+    setNewNotice({ title: '', message: '', noticeType: 'GENERAL', attachment: '' });
+    setSelectedFile(null);
+    setUploadProgress(0);
+    setIsUploading(false);
     setIsSubmitting(false);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+      }
+      
+      // Check file type
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/gif'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        alert('Only PDF, DOC, DOCX, JPG, PNG, and GIF files are allowed');
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return null;
+    
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      const response = await ApiService.uploadFile(selectedFile, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      if (response && response.fileUrl) {
+        return response.fileUrl;
+      } else {
+        throw new Error(response.error || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setUploadProgress(0);
+    setNewNotice({ ...newNotice, attachment: '' });
   };
 
   const handleNoticeSubmit = async (e) => {
@@ -259,21 +446,42 @@ function MyGroupPage() {
 
     try {
       setIsSubmitting(true);
-      console.log('Submitting notice:', newNotice);
-      console.log('Notice data being sent:', JSON.stringify(newNotice, null, 2));
       
-      const response = await ApiService.createNotice(newNotice);
+      let attachmentUrl = '';
+      
+      // Upload file if selected
+      if (selectedFile) {
+        try {
+          attachmentUrl = await handleFileUpload();
+        } catch (uploadError) {
+          alert('Failed to upload file: ' + uploadError.message);
+          return;
+        }
+      }
+      
+      // Prepare notice data with attachment URL
+      const noticeData = {
+        ...newNotice,
+        attachment: attachmentUrl || newNotice.attachment
+      };
+      
+      console.log('Submitting notice:', noticeData);
+      console.log('Notice data being sent:', JSON.stringify(noticeData, null, 2));
+      
+      const response = await ApiService.createNotice(noticeData);
       console.log('Notice creation response:', response);
       
       if (response && response.success) {
         // Reset form and close modal immediately
-        setNewNotice({ title: '', message: '', noticeType: 'GENERAL' });
+        setNewNotice({ title: '', message: '', noticeType: 'GENERAL', attachment: '' });
+        setSelectedFile(null);
+        setUploadProgress(0);
         setIsNoticeModalOpen(false);
         
         // Add the new notice to local state immediately for real-time feel
         if (response.noticeId) {
           const newNoticeWithId = {
-            ...newNotice,
+            ...noticeData,
             noticeId: response.noticeId,
             senderName: user.fullName,
             senderEmail: user.email,
@@ -393,7 +601,7 @@ function MyGroupPage() {
   if (!isAuthenticated) return <Navigate to="/" />;
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">Loading...</div>;
+    return <FullPageLoading />;
   }
 
   return (
@@ -559,16 +767,44 @@ function MyGroupPage() {
                             
                             {/* Attachment */}
                             {notice.attachment && (
-                              <div className="mt-4 flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
-                                <Paperclip className="h-5 w-5 text-gray-500" />
-                                <a 
-                                  href={notice.attachment} 
-                                  className="text-blue-600 dark:text-blue-400 hover:underline text-base font-medium"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  View Attachment
-                                </a>
+                              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <Paperclip className="h-5 w-5 text-gray-500" />
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {getAttachmentFilename(notice.attachment)}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Attachment
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('View button clicked for notice:', notice.noticeId);
+                                        viewAttachment(notice.noticeId, notice.attachment);
+                                      }}
+                                      className="flex items-center px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                      title="View attachment"
+                                      type="button"
+                                    >
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => downloadAttachment(notice.noticeId, getAttachmentFilename(notice.attachment), notice.attachment)}
+                                      className="flex items-center px-3 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                      title="Download attachment"
+                                    >
+                                      <Download className="h-4 w-4 mr-1" />
+                                      Download
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -582,9 +818,16 @@ function MyGroupPage() {
                         <button
                           onClick={loadMoreNotices}
                           disabled={loadingMore}
-                          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {loadingMore ? 'Loading...' : 'Load More Notices'}
+                          {loadingMore ? (
+                            <>
+                              <LoadingSpinner size="small" />
+                              <span>Loading...</span>
+                            </>
+                          ) : (
+                            'Load More Notices'
+                          )}
                         </button>
                       </div>
                     )}
@@ -709,6 +952,74 @@ function MyGroupPage() {
                   <option value="EVENT">Event</option>
                 </select>
               </div>
+              
+              {/* File Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Attachment (Optional)
+                </label>
+                
+                {!selectedFile ? (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="notice-file-upload"
+                      onChange={handleFileSelect}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="notice-file-upload"
+                      className="w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-400 transition-colors"
+                    >
+                      <Upload className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Choose file (PDF, DOC, DOCX, JPG, PNG, GIF - Max 10MB)
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+                    <div className="flex items-center">
+                      <File className="h-5 w-5 text-blue-500 mr-2" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeSelectedFile}
+                      className="ml-2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                
+                {/* Upload Progress */}
+                {isUploading && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      <div className="flex items-center gap-1">
+                        <LoadingSpinner size="small" />
+                        <span>Uploading...</span>
+                      </div>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -719,16 +1030,30 @@ function MyGroupPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                  disabled={isSubmitting || isUploading}
                 >
-                  {isSubmitting ? 'Posting...' : 'Post Notice'}
+                  {(isUploading || isSubmitting) && <LoadingSpinner size="small" />}
+                  {isUploading ? 'Uploading...' : isSubmitting ? 'Posting...' : 'Post Notice'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* File Viewer Modal */}
+      {console.log('Rendering FileViewer - isFileViewerOpen:', isFileViewerOpen, 'viewingFile:', viewingFile)}
+      <FileViewer
+        isOpen={isFileViewerOpen}
+        onClose={() => {
+          console.log('FileViewer onClose called');
+          setIsFileViewerOpen(false);
+        }}
+        fileUrl={viewingFile?.url}
+        fileName={viewingFile?.name}
+        fileType={viewingFile?.type}
+      />
     </div>
   );
 }
