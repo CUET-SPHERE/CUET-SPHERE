@@ -1,4 +1,5 @@
 import EmailService from './emailService';
+import profileCache from './profileCache';
 
 const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:5454');
 const DEV_MODE = false; // Set to false to use real APIs
@@ -686,6 +687,102 @@ class ApiService {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(profileData),
+    });
+    return handleResponse(response);
+  }
+
+  // Get current user profile
+  static async getCurrentUserProfile() {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      return {
+        ...currentUser,
+        profileImageUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName || 'User')}&background=3b82f6&color=ffffff&size=200`
+      };
+    }
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    return handleResponse(response);
+  }
+
+  // Get profile image URL with caching
+  static async getProfileImageUrl(userEmail) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // Generate a consistent avatar URL for demo
+      const user = mockUsers.find(u => u.email === userEmail);
+      if (user) {
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=ffffff&size=200`;
+      }
+      return null;
+    }
+    
+    // Use cache to prevent repeated API calls
+    return profileCache.getOrFetchProfile(userEmail, async (email) => {
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/api/users/${email}/profile-picture`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        const result = await handleResponse(response);
+        return result.profilePicture;
+      } catch (error) {
+        console.error('Failed to get profile image URL:', error);
+        // Fallback to getUserByEmail
+        try {
+          const userData = await this.getUserByEmail(email);
+          if (userData && userData.profilePicture) {
+            return userData.profilePicture;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+        }
+        return null;
+      }
+    });
+  }
+
+  // Set test profile picture
+  static async setTestProfilePicture(userEmail) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { success: true, message: 'Test profile picture set (dev mode)' };
+    }
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/api/users/${userEmail}/set-test-profile-picture`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const result = await handleResponse(response);
+      
+      // Clear cache for this user so the new profile picture is fetched
+      profileCache.clearUserCache(userEmail);
+      
+      return result;
+    } catch (error) {
+      console.error('Failed to set test profile picture:', error);
+      throw error;
+    }
+  }
+
+  // Set test profile picture (for demo purposes)
+  static async setTestProfilePicture(userEmail) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { success: true, message: 'Test profile picture set' };
+    }
+    
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/users/${userEmail}/set-test-profile-picture`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     });
     return handleResponse(response);
   }

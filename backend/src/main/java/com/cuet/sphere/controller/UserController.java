@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/users")
@@ -108,6 +110,65 @@ public class UserController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Failed to get profile: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @GetMapping("/{email}/profile-picture")
+    public ResponseEntity<Map<String, Object>> getUserProfilePicture(@PathVariable String email) {
+        try {
+            User user = userRepository.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            }
+
+            System.out.println("Getting profile picture for user: " + user.getEmail());
+            System.out.println("Profile picture URL: " + user.getProfilePicture());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("profilePicture", user.getProfilePicture());
+            response.put("fullName", user.getFullName());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Failed to get profile picture: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @PostMapping("/{email}/set-test-profile-picture")
+    public ResponseEntity<Map<String, Object>> setTestProfilePicture(@PathVariable String email) {
+        try {
+            User user = userRepository.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            }
+
+            // Generate a test profile picture URL using UI Avatars
+            String testProfilePictureUrl = String.format("https://ui-avatars.com/api/?name=%s&background=random&color=ffffff&size=200", 
+                URLEncoder.encode(user.getFullName(), StandardCharsets.UTF_8));
+            
+            user.setProfilePicture(testProfilePictureUrl);
+            userRepository.save(user);
+
+            System.out.println("Set test profile picture for user: " + user.getEmail());
+            System.out.println("Test profile picture URL: " + testProfilePictureUrl);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Test profile picture set successfully");
+            response.put("profilePicture", testProfilePictureUrl);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Failed to set test profile picture: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }

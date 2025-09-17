@@ -4,6 +4,73 @@ import { useUser } from '../contexts/UserContext';
 import { Megaphone, Users, Plus, Edit, Trash2, Paperclip } from 'lucide-react';
 import ApiService from '../services/api';
 import webSocketService from '../services/websocket';
+import ProfileImage from '../components/ProfileImage';
+
+// Utility functions
+const getInitials = (name) => {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+};
+
+const formatTimestamp = (timestamp) => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+  
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
+
+const getNoticeTypeStyle = (type) => {
+  switch (type) {
+    case 'URGENT':
+      return {
+        bg: 'bg-red-100 dark:bg-red-900/20',
+        text: 'text-red-800 dark:text-red-400',
+        border: 'border-red-200 dark:border-red-800'
+      };
+    case 'ACADEMIC':
+      return {
+        bg: 'bg-blue-100 dark:bg-blue-900/20',
+        text: 'text-blue-800 dark:text-blue-400',
+        border: 'border-blue-200 dark:border-blue-800'
+      };
+    case 'EVENT':
+      return {
+        bg: 'bg-green-100 dark:bg-green-900/20',
+        text: 'text-green-800 dark:text-green-400',
+        border: 'border-green-200 dark:border-green-800'
+      };
+    default: // GENERAL
+      return {
+        bg: 'bg-gray-100 dark:bg-gray-700',
+        text: 'text-gray-800 dark:text-gray-300',
+        border: 'border-gray-200 dark:border-gray-600'
+      };
+  }
+};
+
+const getNoticeTypeIcon = (type) => {
+  switch (type) {
+    case 'URGENT':
+      return '🚨';
+    case 'ACADEMIC':
+      return '📚';
+    case 'EVENT':
+      return '📅';
+    default: // GENERAL
+      return '📢';
+  }
+};
 
 function MyGroupPage() {
   const { user, isAuthenticated } = useUser();
@@ -21,6 +88,20 @@ function MyGroupPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  // Filter state
+  const [selectedNoticeType, setSelectedNoticeType] = useState('ALL');
+  const [filteredNotices, setFilteredNotices] = useState([]);
+
+  // Filter notices when notices or selectedNoticeType changes
+  useEffect(() => {
+    if (selectedNoticeType === 'ALL') {
+      setFilteredNotices(notices);
+    } else {
+      const filtered = notices.filter(notice => notice.noticeType === selectedNoticeType);
+      setFilteredNotices(filtered);
+    }
+  }, [notices, selectedNoticeType]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -316,7 +397,7 @@ function MyGroupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 pb-24">{/* Updated pb-24 for floating bar space */}
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -339,41 +420,15 @@ function MyGroupPage() {
                 }`}></div>
                 {wsConnected ? 'Live Updates' : 'Polling Mode'}
               </div>
-              
-              {/* Test API Button */}
-              <button
-                onClick={async () => {
-                  try {
-                    console.log('Testing API endpoints...');
-                    
-                    // Test debug endpoint
-                    const debugResponse = await fetch('/api/notices/debug');
-                    const debugData = await debugResponse.json();
-                    console.log('Debug endpoint response:', debugData);
-                    
-                    // Test database endpoint
-                    const dbResponse = await fetch('/api/notices/db-check');
-                    const dbData = await dbResponse.json();
-                    console.log('Database check response:', dbData);
-                    
-                    alert('API test completed. Check console for details.');
-                  } catch (err) {
-                    console.error('API test failed:', err);
-                    alert('API test failed: ' + err.message);
-                  }
-                }}
-                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded-lg hover:bg-yellow-600"
-                title="Test API endpoints"
-              >
-                Test API
-              </button>
+              <Megaphone className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Sidebar - Stacked Stats and Members */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Group Stats */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Group Stats
@@ -389,9 +444,37 @@ function MyGroupPage() {
                 </div>
               </div>
             </div>
+
+            {/* Group Members */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Group Members
+              </h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {groupMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3">
+                    <ProfileImage 
+                      userEmail={member.email}
+                      userName={member.fullName}
+                      size="sm"
+                      showOnlineStatus={true}
+                      isOnline={member.isOnline}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                        {member.fullName}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {member.role}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Center - Notices */}
+          {/* Right - Notices Section */}
           <div className="lg:col-span-2">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
@@ -409,38 +492,89 @@ function MyGroupPage() {
                 )}
               </div>
               
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2 notices-container" onScroll={handleScroll}>
-                {notices.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No notices yet</p>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 notices-container" onScroll={handleScroll}>
+                {filteredNotices.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    {selectedNoticeType === 'ALL' ? 'No notices yet' : `No ${selectedNoticeType.toLowerCase()} notices`}
+                  </p>
                 ) : (
                   <>
-                    {notices.map((notice) => (
-                      <div key={notice.noticeId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">{notice.title}</h4>
-                            <p className="text-sm text-gray-500">by {notice.senderName}</p>
+                    {filteredNotices.map((notice) => {
+                      const typeStyle = getNoticeTypeStyle(notice.noticeType);
+                      const typeIcon = getNoticeTypeIcon(notice.noticeType);
+                      
+                      return (
+                        <div key={notice.noticeId} className="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6 shadow-sm hover:shadow-md transition-shadow">
+                          {/* Header with sender info and actions */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start space-x-4">
+                              {/* Sender Avatar */}
+                              <ProfileImage 
+                                userEmail={notice.senderEmail}
+                                userName={notice.senderName}
+                                size="lg"
+                                className="flex-shrink-0"
+                              />
+                              
+                              {/* Sender info and notice type */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-3 mb-1">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                                    {notice.senderName}
+                                  </h4>
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${typeStyle.bg} ${typeStyle.text}`}>
+                                    {typeIcon} {notice.noticeType}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {formatTimestamp(notice.createdAt || notice.updatedAt)}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Actions */}
+                            {canDeleteNotice(notice) && (
+                              <button
+                                onClick={() => handleNoticeDelete(notice.noticeId)}
+                                className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-2"
+                                title="Delete notice"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
                           </div>
-                          {canDeleteNotice(notice) && (
-                            <button
-                              onClick={() => handleNoticeDelete(notice.noticeId)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                          
+                          {/* Notice content */}
+                          <div className="pl-16">
+                            <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-xl">
+                              {notice.title}
+                            </h3>
+                            <div className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
+                              {notice.message.split('\n').map((line, index) => (
+                                <p key={index} className={index > 0 ? 'mt-3' : ''}>
+                                  {line}
+                                </p>
+                              ))}
+                            </div>
+                            
+                            {/* Attachment */}
+                            {notice.attachment && (
+                              <div className="mt-4 flex items-center space-x-3 p-4 bg-gray-50 dark:bg-gray-600 rounded-lg">
+                                <Paperclip className="h-5 w-5 text-gray-500" />
+                                <a 
+                                  href={notice.attachment} 
+                                  className="text-blue-600 dark:text-blue-400 hover:underline text-base font-medium"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  View Attachment
+                                </a>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300">{notice.message}</p>
-                        {notice.attachment && (
-                          <div className="mt-2">
-                            <Paperclip className="h-4 w-4 inline mr-1" />
-                            <a href={notice.attachment} className="text-blue-600 hover:underline">
-                              Attachment
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                     
                     {/* Load More Button */}
                     {hasMore && (
@@ -459,31 +593,55 @@ function MyGroupPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Right Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Group Members
-              </h3>
-              <div className="space-y-3">
-                {groupMembers.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 text-sm font-semibold">
-                      {member.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white text-sm">
-                        {member.fullName}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {member.role}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Scroll to top button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-xl hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-40"
+          title="Scroll to top"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
+
+      {/* Floating Filter Bar */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-up">
+        <div className="bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 px-2 py-2 backdrop-blur-xl">
+          <div className="flex space-x-1">
+            {[
+              { key: 'ALL', label: 'All', icon: '📋' },
+              { key: 'GENERAL', label: 'General', icon: '📢' },
+              { key: 'ACADEMIC', label: 'Academic', icon: '📚' },
+              { key: 'URGENT', label: 'Urgent', icon: '🚨' },
+              { key: 'EVENT', label: 'Events', icon: '📅' }
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setSelectedNoticeType(filter.key)}
+                className={`relative flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300 min-w-[70px] group ${
+                  selectedNoticeType === filter.key
+                    ? 'bg-blue-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-700/80 hover:scale-102'
+                }`}
+              >
+                <span className="text-lg mb-1 transition-transform group-hover:scale-110">{filter.icon}</span>
+                <span className="text-xs font-medium leading-tight">{filter.label}</span>
+                
+                {/* Count Badge */}
+                <div className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                  selectedNoticeType === filter.key
+                    ? 'bg-white text-blue-500 shadow-md'
+                    : 'bg-blue-500 text-white'
+                }`}>
+                  {filter.key === 'ALL' ? notices.length : notices.filter(n => n.noticeType === filter.key).length}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -570,19 +728,6 @@ function MyGroupPage() {
             </form>
           </div>
         </div>
-      )}
-
-      {/* Scroll to Top Button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-20 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-          title="Scroll to top"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-          </svg>
-        </button>
       )}
     </div>
   );
