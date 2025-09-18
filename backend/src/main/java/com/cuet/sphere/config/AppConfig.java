@@ -2,6 +2,7 @@ package com.cuet.sphere.config;
 
 import com.cuet.sphere.config.JwtTokenValidator;
 import com.cuet.sphere.config.JwtProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +26,9 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 public class AppConfig {
+
+    @Value("${cors.allowed.origins}")
+    private String allowedOrigins;
 
     @Bean
     public JwtTokenValidator jwtTokenValidator() {
@@ -66,8 +70,9 @@ public class AppConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow both localhost for development and production origins
-        String allowedOrigins = System.getProperty("cors.allowed.origins", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173");
+        // Use configured allowed origins from application properties
+        System.out.println("=== CORS Configuration ===");
+        System.out.println("Allowed Origins: " + allowedOrigins);
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -77,6 +82,7 @@ public class AppConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        System.out.println("CORS configuration applied to all endpoints");
         return source;
     }
 
