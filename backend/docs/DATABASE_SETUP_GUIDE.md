@@ -20,10 +20,10 @@ The easiest way - just start your application!
 
 1. **Ensure your `application.properties` is configured correctly:**
    ```properties
-   # Database configuration
-   spring.datasource.url=jdbc:mysql://cuetsphere.chq8ewywywzw.ap-southeast-2.rds.amazonaws.com
-   spring.datasource.username=your_username
-   spring.datasource.password=your_password
+   # Database configuration (use environment variables)
+   spring.datasource.url=${DATABASE_URL}
+   spring.datasource.username=${DATABASE_USERNAME}
+   spring.datasource.password=${DATABASE_PASSWORD}
    spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
    
    # JPA/Hibernate configuration
@@ -33,7 +33,9 @@ The easiest way - just start your application!
    spring.jpa.properties.hibernate.format_sql=true
    ```
 
-2. **Start your Spring Boot application:**
+2. **Create a `.env` file based on `.env.example` with your actual database credentials**
+
+3. **Start your Spring Boot application:**
    ```bash
    mvn spring-boot:run
    ```

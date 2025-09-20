@@ -48,10 +48,11 @@ brevo.api.key=your_brevo_api_key_here
 brevo.sender.email=your_verified_sender_email@domain.com
 brevo.sender.name=CUET Sphere
 
-# Database Configuration (already configured)
-spring.datasource.url=jdbc:mysql://cuetsphere.chq8ewywywzw.ap-southeast-2.rds.amazonaws.com:3306/main_cuetsphere?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-spring.datasource.username=admin
-spring.datasource.password=asdfg1122
+# Database Configuration (configure via .env file)
+# See .env.example for required environment variables
+spring.datasource.url=${DATABASE_URL}
+spring.datasource.username=${DATABASE_USERNAME}
+spring.datasource.password=${DATABASE_PASSWORD}
 ```
 
 #### Start Backend

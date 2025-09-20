@@ -24,27 +24,30 @@ CUET_SPHERE/
 
 ### MySQL Database Configuration
 
-The application uses an AWS RDS MySQL database with the following configuration:
+The application uses an AWS RDS MySQL database. Database credentials are configured via environment variables for security.
 
-- **Host:** `cuetsphere.chq8ewywywzw.ap-southeast-2.rds.amazonaws.com`
-- **Port:** `3306`
-- **Database:** `main_cuetsphere`
-- **Username:** `admin`
-- **Password:** `asdfg1122`
+**Required Environment Variables:**
+- `DB_HOST` - Database hostname
+- `DB_PORT` - Database port (default: 3306)
+- `DB_NAME` - Database name
+- `DB_USERNAME` - Database username
+- `DB_PASSWORD` - Database password
 
 ### Connecting with MySQL Workbench
 
 1. Open MySQL Workbench
 2. Click the "+" icon next to "MySQL Connections"
-3. Enter connection details:
+3. Enter connection details using the environment variables:
    - **Connection Name:** CUET Sphere DB
-   - **Hostname:** `cuetsphere.chq8ewywywzw.ap-southeast-2.rds.amazonaws.com`
-   - **Port:** `3306`
-   - **Username:** `admin`
-   - **Password:** `asdfg1122` (click "Store in Vault")
-   - **Default Schema:** `main_cuetsphere`
+   - **Hostname:** [Value from DB_HOST]
+   - **Port:** [Value from DB_PORT]
+   - **Username:** [Value from DB_USERNAME]
+   - **Password:** [Value from DB_PASSWORD] (click "Store in Vault")
+   - **Default Schema:** [Value from DB_NAME]
 4. Click "Test Connection" to verify
 5. Click "OK" to save
+
+**Note:** Contact your system administrator for the actual database credentials.
 
 ## Backend Setup (Spring Boot)
 
@@ -55,11 +58,22 @@ cd backend
 
 ### 2. Configuration
 
-The `application.properties` file is already configured with:
+Create a `.env` file in the backend directory with your database credentials:
+
+```env
+# Database Configuration
+DB_HOST=your-database-host
+DB_PORT=3306
+DB_NAME=your-database-name
+DB_USERNAME=your-username
+DB_PASSWORD=your-password
+```
+
+The `application.properties` file should be configured to use environment variables:
 ```properties
-spring.datasource.url=jdbc:mysql://cuetsphere.chq8ewywywzw.ap-southeast-2.rds.amazonaws.com:3306/main_cuetsphere?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-spring.datasource.username=admin
-spring.datasource.password=asdfg1122
+spring.datasource.url=jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 spring.jpa.hibernate.ddl-auto=update
@@ -68,6 +82,8 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
 
 server.port=5454
 ```
+
+**⚠️ Important:** Never commit the `.env` file to version control. Add it to your `.gitignore` file.
 
 ### 3. Install Dependencies and Run
 
