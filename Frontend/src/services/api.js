@@ -27,7 +27,24 @@ const handleResponse = async (response) => {
     const errorData = await response.json().catch(() => ({
       message: `HTTP error! status: ${response.status}`
     }));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+
+    // Extract more specific error message from backend
+    let errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
+
+    // Handle specific error cases
+    if (response.status === 500) {
+      if (errorMessage.includes('already exists')) {
+        errorMessage = errorMessage; // Keep the specific duplicate message
+      } else if (errorMessage.includes('Internal server error')) {
+        // Try to extract the actual error from the message
+        const match = errorMessage.match(/Internal server error: (.+)/);
+        if (match) {
+          errorMessage = match[1];
+        }
+      }
+    }
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
@@ -663,6 +680,15 @@ class ApiService {
     // Convert level and term to semester format (e.g. 1-1, 1-2, 2-1, etc.)
     const semester = `${level}-${term}`;
 
+    console.log('Fetching courses from backend:', {
+      department,
+      level,
+      term,
+      semester,
+      hasToken: !!token,
+      url: `${API_BASE_URL}/api/courses/department/${department}/semester/${semester}`
+    });
+
     const response = await fetch(`${API_BASE_URL}/api/courses/department/${department}/semester/${semester}`, {
       method: 'GET',
       headers: {
@@ -673,9 +699,13 @@ class ApiService {
 
     // If backend endpoint doesn't exist yet, fallback to demo data
     try {
-      return await handleResponse(response);
+      console.log('Backend response status:', response.status, response.ok);
+      const result = await handleResponse(response);
+      console.log('Backend courses data:', result);
+      return result;
     } catch (error) {
       console.warn("Course API not available, using fallback data", error);
+      console.error("Backend error details:", error.message);
 
       // Fallback data based on level and term
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -801,39 +831,67 @@ class ApiService {
         body: JSON.stringify(batchData),
       });
 
-      return await handleResponse(response);
+      // Handle both success and error responses specially for batch creation
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: `HTTP error! status: ${response.status}`
+        }));
+
+        // If it's a 400 error with skipped courses info, throw a detailed error
+        if (response.status === 400 && errorData.skippedCourses) {
+          const error = new Error(errorData.error || 'Some courses could not be created');
+          error.skippedCourses = errorData.skippedCourses;
+          error.type = 'DUPLICATE_COURSES';
+          throw error;
+        }
+
+        throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
     } catch (error) {
-      console.warn("Batch Course API not implemented yet:", error);
-      // Return mock response for now - an array of course responses
-      return batchData.courses.map((course, index) => ({
-        courseId: Date.now() + index,
-        courseCode: course.courseCode,
-        courseName: course.courseName,
-        semesterName: course.semesterName,
-        message: 'Course created successfully (mock)'
-      }));
+      // Re-throw detailed errors as-is
+      if (error.type === 'DUPLICATE_COURSES') {
+        throw error;
+      }
+
+      console.warn("Batch Course API error:", error);
+      throw error;
     }
   }
 
-  static async deleteCourse(courseId) {
+  static async deleteCourseByCode(courseCode) {
+    console.log('API.deleteCourseByCode called with courseCode:', courseCode);
     const token = getAuthToken();
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+    console.log('Auth token available:', !!token);
+    console.log('API URL will be:', `${API_BASE_URL}/api/courses/code/${courseCode}`);
 
-      return await handleResponse(response);
-    } catch (error) {
-      console.warn("Course deletion API not implemented yet:", error);
-      // Return mock response for now
-      return {
-        success: true,
-        message: 'Course deleted successfully (mock)'
-      };
-    }
+    const response = await fetch(`${API_BASE_URL}/api/courses/code/${courseCode}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    return await handleResponse(response);
+  }
+
+  static async updateCourseByCode(courseCode, courseData) {
+    console.log('API.updateCourseByCode called with:', { courseCode, courseData });
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/courses/code/${courseCode}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(courseData)
+    });
+
+    return await handleResponse(response);
   }
 
   // File upload APIs

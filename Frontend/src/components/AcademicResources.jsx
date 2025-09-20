@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useResources } from '../contexts/ResourcesContext';
 import API from '../services/api';
@@ -104,11 +104,64 @@ function AcademicResources() {
     }
   }, [selectedLevel, selectedTerm, user.department]);
 
+  // Function to refresh courses when data is out of sync
+  const refreshCourses = useCallback(async () => {
+    if (user && user.department) {
+      try {
+        setLoadingCourses(true);
+        setCourseError('');
+
+        const response = await API.getCoursesByDepartmentAndSemester(
+          user.department,
+          `${selectedLevel}-${selectedTerm}`
+        );
+
+        setCourses(prev => {
+          const newCourses = { ...prev };
+          if (!newCourses[selectedLevel]) {
+            newCourses[selectedLevel] = {};
+          }
+
+          // Update the courses for the current level and term
+          newCourses[selectedLevel][selectedTerm] = response.map(course => ({
+            code: course.courseCode,
+            name: course.courseName,
+            id: course.courseId,
+            semesterId: course.semesterId
+          }));
+          return newCourses;
+        });
+
+      } catch (err) {
+        console.error('Error refreshing courses:', err);
+        setCourseError('Failed to refresh courses. Please try again later.');
+      } finally {
+        setLoadingCourses(false);
+      }
+    }
+  }, [user.department, selectedLevel, selectedTerm]);
+
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isCourseBatchModalOpen, setCourseBatchModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const [editingCourse, setEditingCourse] = useState(null);
+  const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '', show: boolean }
+
+  // Notification helper functions
+  const showSuccessNotification = (message) => {
+    setNotification({ type: 'success', message, show: true });
+    setTimeout(() => setNotification(null), 4000); // Auto hide after 4 seconds
+  };
+
+  const showErrorNotification = (message) => {
+    setNotification({ type: 'error', message, show: true });
+    setTimeout(() => setNotification(null), 6000); // Keep error messages longer
+  };
+
+  const hideNotification = () => {
+    setNotification(null);
+  };
   const [deletingItem, setDeletingItem] = useState(null);
 
   const favouritesFolder = findFolder('favourites');
@@ -123,17 +176,94 @@ function AcademicResources() {
       // && r.term === selectedTerm
     );
 
-  const handleSaveCourse = (courseData) => {
-    setCourses(prev => {
-      const newCourses = { ...prev };
-      const termCourses = [...newCourses[selectedLevel][selectedTerm]];
-      const index = termCourses.findIndex(c => c.code === (editingCourse?.code || courseData.code));
-      if (index > -1) termCourses[index] = courseData;
-      else termCourses.push(courseData);
-      newCourses[selectedLevel][selectedTerm] = termCourses;
-      return newCourses;
-    });
-    setEditingCourse(null);
+  const handleSaveCourse = async (courseData) => {
+    try {
+      if (editingCourse) {
+        // Editing existing course - call update API
+        console.log('Updating existing course:', editingCourse.code, 'with data:', courseData);
+        console.log('API payload will be:', {
+          courseCode: courseData.code,
+          courseName: courseData.name,
+          department: user.department,
+          semesterName: `${selectedLevel}-${selectedTerm}`
+        });
+
+        await API.updateCourseByCode(editingCourse.code, {
+          courseCode: courseData.code,
+          courseName: courseData.name,
+          department: user.department,
+          semesterName: `${selectedLevel}-${selectedTerm}`
+        });
+
+        // Update local state only after successful API call
+        setCourses(prev => {
+          const newCourses = { ...prev };
+          const termCourses = [...newCourses[selectedLevel][selectedTerm]];
+          const index = termCourses.findIndex(c => c.code === editingCourse.code);
+          if (index > -1) {
+            termCourses[index] = courseData;
+          }
+          newCourses[selectedLevel][selectedTerm] = termCourses;
+          return newCourses;
+        });
+
+        showSuccessNotification('Course updated successfully!');
+      } else {
+        // Creating new course - call create API
+        console.log('Creating new course:', courseData);
+        await API.saveCourse({
+          courseCode: courseData.code,
+          courseName: courseData.name,
+          department: user.department,
+          semesterName: `${selectedLevel}-${selectedTerm}`
+        });
+
+        // Update local state only after successful API call
+        setCourses(prev => {
+          const newCourses = { ...prev };
+          const termCourses = [...newCourses[selectedLevel][selectedTerm]];
+          termCourses.push(courseData);
+          newCourses[selectedLevel][selectedTerm] = termCourses;
+          return newCourses;
+        });
+
+        showSuccessNotification('Course created successfully!');
+      }
+
+      setEditingCourse(null);
+    } catch (error) {
+      console.error('Error saving course:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        editingCourse: editingCourse,
+        courseData: courseData
+      });
+
+      // Provide more specific error messages
+      let errorMessage = error.message;
+      if (errorMessage.includes('already exists')) {
+        errorMessage = `Course code "${courseData.code}" already exists in your department. Please choose a different course code.`;
+      } else if (errorMessage.includes('not found')) {
+        // Handle the case where the course to be updated no longer exists
+        errorMessage = `Course "${editingCourse.code}" was not found in the database. It may have been deleted by another user. Refreshing course list...`;
+
+        // Close the editing modal since the course doesn't exist
+        setEditingCourse(null);
+
+        // Refresh the course list to sync with backend
+        setTimeout(() => {
+          refreshCourses();
+        }, 2000);
+
+      } else if (errorMessage.includes('403') || errorMessage.includes('Only CR users')) {
+        errorMessage = `You don't have permission to ${editingCourse ? 'update' : 'create'} courses. Only CR users can perform this action.`;
+      } else if (errorMessage.includes('Department code is required')) {
+        errorMessage = `Department information is missing. Please refresh the page and try again.`;
+      }
+
+      showErrorNotification(`Failed to ${editingCourse ? 'update' : 'create'} course: ${errorMessage}`);
+    }
   };
 
   const handleSaveMultipleCourses = (coursesDataArray) => {
@@ -160,15 +290,56 @@ function AcademicResources() {
     setConfirmModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingItem) return;
     const { type, data } = deletingItem;
+
     if (type === 'course') {
-      setCourses(prev => {
-        const newCourses = { ...prev };
-        newCourses[selectedLevel][selectedTerm] = newCourses[selectedLevel][selectedTerm].filter(c => c.code !== data.code);
-        return newCourses;
-      });
+      try {
+        // Debug: Log the course object to see its structure
+        console.log('Course object being deleted:', data);
+        console.log('Available keys:', Object.keys(data));
+
+        // Delete by course code (the only supported method now)
+        if (data.code) {
+          console.log('Deleting course by code:', data.code);
+          await API.deleteCourseByCode(data.code);
+        } else {
+          console.error('No course code found. Available properties:', Object.keys(data));
+          showErrorNotification('Cannot delete course: No course code found.');
+          setConfirmModalOpen(false);
+          setDeletingItem(null);
+          return;
+        }
+
+        // Only update local state after successful API call
+        setCourses(prev => {
+          const newCourses = { ...prev };
+          newCourses[selectedLevel][selectedTerm] = newCourses[selectedLevel][selectedTerm].filter(c => c.code !== data.code);
+          return newCourses;
+        });
+
+        // Show success feedback
+        console.log('Course deleted successfully from database');
+        showSuccessNotification('Course deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting course:', error);
+
+        // Provide more specific error messages
+        let errorMessage = error.message;
+        if (errorMessage.includes('not found')) {
+          errorMessage = `Course "${data.code}" not found. It may have already been deleted by another user.`;
+        } else if (errorMessage.includes('403') || errorMessage.includes('Only CR users')) {
+          errorMessage = `You don't have permission to delete courses. Only CR users can perform this action.`;
+        } else if (errorMessage.includes('has resources')) {
+          errorMessage = `Cannot delete course "${data.code}" because it has associated resources. Please remove all resources first.`;
+        }
+
+        showErrorNotification(`Failed to delete course: ${errorMessage}`);
+        setConfirmModalOpen(false);
+        setDeletingItem(null);
+        return; // Don't continue if API call failed
+      }
     }
     // Deleting files from resources is not implemented in this flow, as it's managed by context now.
     setConfirmModalOpen(false);
@@ -550,6 +721,64 @@ function AcademicResources() {
         title={`Delete ${deletingItem?.type}`}
         message={`Are you sure you want to permanently delete this ${deletingItem?.type}? This action cannot be undone.`}
       />
+
+      {/* Notification Modal */}
+      {notification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={hideNotification}
+          ></div>
+
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-card-dark rounded-lg shadow-xl max-w-md w-full mx-4 p-6 border border-border-light dark:border-border-dark">
+            <div className="flex items-start">
+              {/* Icon */}
+              <div className={`flex-shrink-0 ${notification.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                {notification.type === 'success' ? (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="ml-3 flex-1">
+                <h3 className={`text-sm font-medium ${notification.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
+                  {notification.type === 'success' ? 'Success' : 'Error'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                  {notification.message}
+                </p>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={hideNotification}
+                className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Progress Bar for Auto-hide */}
+            <div className="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+              <div
+                className={`h-1 rounded-full ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-all ease-linear`}
+                style={{
+                  width: '100%',
+                  animation: `progress-shrink ${notification.type === 'success' ? '4s' : '6s'} linear`
+                }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

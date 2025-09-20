@@ -22,4 +22,10 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     
     @Query("SELECT c FROM Course c WHERE c.department.deptName = :department AND c.courseCode = :courseCode")
     Course findByDepartmentAndCourseCode(@Param("department") String department, @Param("courseCode") String courseCode);
+    
+    @Query("SELECT c FROM Course c WHERE c.department.deptId = :departmentId AND c.courseCode = :courseCode")
+    Course findByDepartmentIdAndCourseCode(@Param("departmentId") Long departmentId, @Param("courseCode") String courseCode);
+    
+    @Query("SELECT COUNT(r) FROM Resource r WHERE r.course.courseId = :courseId")
+    long countResourcesByCourseId(@Param("courseId") Long courseId);
 }

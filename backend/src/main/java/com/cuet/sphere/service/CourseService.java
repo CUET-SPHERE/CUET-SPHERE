@@ -124,28 +124,82 @@ public class CourseService {
     }
     
     /**
-     * Delete a course by ID
+     * Delete a course by course code and department
      */
-    public void deleteCourse(Long courseId, String departmentCode) {
-        Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> new RuntimeException("Course not found with ID: " + courseId));
+    public void deleteCourseByCode(String courseCode, String departmentCode) {
+        logger.info("Attempting to delete course with code: {} by department: {}", courseCode, departmentCode);
         
-        // Check if the course belongs to the user's department
+        // Get department first
         Department department = getDepartmentByCode(departmentCode);
-        if (!course.getDepartment().getDeptId().equals(department.getDeptId())) {
-            throw new RuntimeException("You can only delete courses from your own department");
+        
+        // Find course by both course code AND department to ensure we get the right one
+        Course course = courseRepository.findByDepartmentIdAndCourseCode(department.getDeptId(), courseCode);
+        if (course == null) {
+            throw new RuntimeException("Course not found with code: " + courseCode + " in department: " + departmentCode);
         }
+        
+        logger.info("Found course: {} ({}) in department: {}", course.getCourseName(), course.getCourseCode(), department.getDeptName());
         
         // Check if there are any resources associated with this course
-        // If resources exist, throw an exception
-        if (!course.getResources().isEmpty()) {
-            throw new RuntimeException("Cannot delete course. There are resources associated with it.");
+        // Use a more explicit check to avoid lazy loading issues
+        long resourceCount = courseRepository.countResourcesByCourseId(course.getCourseId());
+        if (resourceCount > 0) {
+            logger.error("Cannot delete course. Found {} resources associated with it.", resourceCount);
+            throw new RuntimeException("Cannot delete course. There are " + resourceCount + " resources associated with it.");
         }
+        
+        logger.info("No resources found. Proceeding with deletion...");
         
         // Delete the course
         courseRepository.delete(course);
+        
+        logger.info("Course deleted successfully: {} ({})", course.getCourseName(), course.getCourseCode());
     }
-    
+
+    /**
+     * Update a course by course code and department
+     */
+    public CourseResponse updateCourseByCode(String courseCode, CourseRequest courseRequest, String departmentCode) {
+        logger.info("Attempting to update course with code: {} by department: {}", courseCode, departmentCode);
+        
+        // Get department first
+        Department department = getDepartmentByCode(departmentCode);
+        
+        // Find course by both course code AND department to ensure we get the right one
+        Course course = courseRepository.findByDepartmentIdAndCourseCode(department.getDeptId(), courseCode);
+        if (course == null) {
+            throw new RuntimeException("Course not found with code: " + courseCode + " in department: " + departmentCode);
+        }
+        
+        logger.info("Found course: {} ({}) in department: {}", course.getCourseName(), course.getCourseCode(), department.getDeptName());
+        
+        // Check if the new course code already exists (if it's being changed)
+        if (!course.getCourseCode().equals(courseRequest.getCourseCode())) {
+            Course existingCourse = courseRepository.findByDepartmentIdAndCourseCode(department.getDeptId(), courseRequest.getCourseCode());
+            if (existingCourse != null && !existingCourse.getCourseId().equals(course.getCourseId())) {
+                throw new RuntimeException("Course with code " + courseRequest.getCourseCode() + " already exists in your department");
+            }
+        }
+        
+        // Update course fields
+        course.setCourseCode(courseRequest.getCourseCode());
+        course.setCourseName(courseRequest.getCourseName());
+        
+        // Set semester if provided
+        if (courseRequest.getSemesterName() != null && !courseRequest.getSemesterName().isEmpty()) {
+            Semester semester = semesterRepository.findBySemesterName(courseRequest.getSemesterName());
+            if (semester != null) {
+                course.setSemester(semester);
+                course.setSemesterName(courseRequest.getSemesterName());
+            }
+        }
+        
+        Course updatedCourse = courseRepository.save(course);
+        logger.info("Course updated successfully: {} ({})", updatedCourse.getCourseName(), updatedCourse.getCourseCode());
+        
+        return convertToCourseResponse(updatedCourse);
+    }
+
     /**
      * Helper method to convert Course to CourseResponse
      */

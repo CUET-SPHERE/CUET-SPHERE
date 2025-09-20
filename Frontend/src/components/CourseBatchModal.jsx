@@ -94,38 +94,28 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
          if (editingCourse) {
             const entry = courseEntries[0]; // Always the first one when editing
             try {
-               // Update the single course
-               const response = await API.saveCourse({
-                  courseId: editingCourse.id,
+               // Update the single course using the updateCourseByCode API
+               console.log('Updating course:', editingCourse.code, 'to:', entry);
+               await API.updateCourseByCode(editingCourse.code, {
                   courseCode: entry.courseCode,
                   courseName: entry.courseName,
                   department: user.department,
-                  batch: user.batch,
-                  semesterName: semesterName,
-                  semesterId: semesterId
+                  semesterName: semesterName
                });
 
                // Format the response for the parent component
                const updatedCourse = {
                   code: entry.courseCode,
                   name: entry.courseName,
-                  id: editingCourse.id
+                  id: editingCourse.id,
+                  semesterId: editingCourse.semesterId || semesterId
                };
 
                onSave(updatedCourse);
                onClose();
             } catch (apiError) {
-               console.warn("Course update API not available:", apiError);
-
-               // Fallback handling
-               const updatedCourse = {
-                  code: entry.courseCode,
-                  name: entry.courseName,
-                  id: editingCourse.id
-               };
-
-               onSave(updatedCourse);
-               onClose();
+               console.error("Course update error:", apiError);
+               setError(apiError.message || 'Failed to update course. Please try again.');
             }
          }
          // Handling for adding one or more new courses
@@ -147,29 +137,61 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
                   semesterId: semesterId
                });
 
-               // Format response for parent component
-               const createdCourses = response.map(course => ({
-                  code: course.courseCode,
-                  name: course.courseName,
-                  id: course.courseId,
-                  semesterId: course.semesterId || semesterId
-               }));
+               // Handle the new CourseBatchResponse format
+               let createdCourses = [];
+
+               if (response.createdCourses) {
+                  // New format: CourseBatchResponse object
+                  createdCourses = response.createdCourses.map(course => ({
+                     code: course.courseCode,
+                     name: course.courseName,
+                     id: course.courseId,
+                     semesterId: course.semesterId || semesterId
+                  }));
+
+                  // If there were skipped courses, show a warning but still proceed
+                  if (response.skippedCourses && response.skippedCourses.length > 0) {
+                     const skippedNames = response.skippedCourses.map(s => s.courseCode).join(', ');
+                     setError(`Warning: ${response.skippedCourses.length} course(s) were skipped (${skippedNames}) - they already exist in the database.`);
+
+                     // If some courses were created, still call onSave
+                     if (createdCourses.length > 0) {
+                        onSave(createdCourses);
+                        // Don't close modal immediately so user can see the warning
+                        setTimeout(() => {
+                           onClose();
+                        }, 3000);
+                        return;
+                     }
+                     // If no courses were created, don't close modal and let user see the error
+                     return;
+                  }
+               } else if (Array.isArray(response)) {
+                  // Old format: direct array of course responses (fallback)
+                  createdCourses = response.map(course => ({
+                     code: course.courseCode,
+                     name: course.courseName,
+                     id: course.courseId,
+                     semesterId: course.semesterId || semesterId
+                  }));
+               }
 
                onSave(createdCourses);
                onClose();
             } catch (apiError) {
-               console.warn("Batch course API not available:", apiError);
+               console.error("Course creation error:", apiError);
 
-               // Fallback to local handling if API fails
-               const mockCreatedCourses = courseEntries.map((entry, index) => ({
-                  code: entry.courseCode,
-                  name: entry.courseName,
-                  id: Date.now() + index,
-                  semesterId: semesterId
-               }));
+               // Handle duplicate course errors specially
+               if (apiError.type === 'DUPLICATE_COURSES' && apiError.skippedCourses) {
+                  const skippedDetails = apiError.skippedCourses
+                     .map(course => `${course.courseCode} (${course.reason})`)
+                     .join(', ');
+                  setError(`Cannot create courses: ${skippedDetails}`);
+                  return;
+               }
 
-               onSave(mockCreatedCourses);
-               onClose();
+               // For other API errors, show the error message
+               setError(apiError.message || 'Failed to save courses. Please try again.');
             }
          }
       } catch (err) {

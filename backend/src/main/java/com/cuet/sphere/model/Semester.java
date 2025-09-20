@@ -9,7 +9,7 @@ import java.util.List;
 @Table(name = "semesters")
 public class Semester {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "semester_id")
     private Long semesterId;
     

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "password_reset_otps")
 public class PasswordResetOtp {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
     @Column(name = "email", nullable = false)

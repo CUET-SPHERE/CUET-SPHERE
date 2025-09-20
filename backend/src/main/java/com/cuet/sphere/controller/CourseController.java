@@ -195,11 +195,37 @@ public class CourseController {
         }
     }
     
-    // Delete a course (CR only)
-    @DeleteMapping("/{courseId}")
-    public ResponseEntity<?> deleteCourse(@PathVariable Long courseId) {
+    // Edit a course by course code (CR only) 
+    @PutMapping("/code/{courseCode}")
+    public ResponseEntity<?> updateCourseByCode(@PathVariable String courseCode, @Valid @RequestBody CourseRequest courseRequest) {
         try {
-            logger.info("Deleting course with ID: {}", courseId);
+            logger.info("Updating course with code: {}", courseCode);
+            User currentUser = getCurrentUser();
+            
+            // Check if user is CR
+            if (!currentUser.isCR()) {
+                logger.error("Non-CR user attempted to update course: {}", currentUser.getEmail());
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Only CR users can update courses");
+                return ResponseEntity.status(403).body(error);
+            }
+            
+            CourseResponse course = courseService.updateCourseByCode(courseCode, courseRequest, currentUser.getDepartment());
+            logger.info("Course updated successfully with code: {}", courseCode);
+            return ResponseEntity.ok(course);
+        } catch (Exception e) {
+            logger.error("Error updating course: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+    
+    // Delete a course by course code and department (CR only)
+    @DeleteMapping("/code/{courseCode}")
+    public ResponseEntity<?> deleteCourseByCode(@PathVariable String courseCode) {
+        try {
+            logger.info("Deleting course with code: {}", courseCode);
             User currentUser = getCurrentUser();
             
             // Check if user is CR
@@ -210,14 +236,14 @@ public class CourseController {
                 return ResponseEntity.status(403).body(error);
             }
             
-            courseService.deleteCourse(courseId, currentUser.getDepartment());
-            logger.info("Course deleted successfully");
+            courseService.deleteCourseByCode(courseCode, currentUser.getDepartment());
+            logger.info("Course deleted successfully by code");
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Course deleted successfully");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error deleting course: {}", e.getMessage(), e);
+            logger.error("Error deleting course by code: {}", e.getMessage(), e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Internal server error: " + e.getMessage());
             return ResponseEntity.status(500).body(error);
