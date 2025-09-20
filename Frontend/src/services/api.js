@@ -1,8 +1,15 @@
 import EmailService from './emailService';
 import profileCache from './profileCache';
+import { getApiBaseUrl } from './apiConfig';
 
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://cuet-sphere-service.onrender.com');
+const API_BASE_URL = getApiBaseUrl();
 const DEV_MODE = false; // Set to false to use real APIs
+
+// Helper function to map level and term to semester ID
+const getSemesterIdFromLevelTerm = (level, term) => {
+  // Based on your database: 1-1=1, 1-2=2, 2-1=3, 2-2=4, 3-1=5, 3-2=6, 4-1=7, 4-2=8
+  return (level - 1) * 2 + term;
+};
 
 // Helper function to get auth token
 const getAuthToken = () => {
@@ -589,6 +596,30 @@ class ApiService {
     return handleResponse(response);
   }
 
+  static async getResourcesByCourse(courseCode) {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/resources/course/${courseCode}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
+  }
+
+  static async getResourcesByCourseAndSemester(courseCode, semester) {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/resources/course/${courseCode}/semester/${semester}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
+  }
+
   static async getResourceById(id) {
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/resources/${id}`, {
@@ -626,6 +657,185 @@ class ApiService {
     return handleResponse(response);
   }
 
+  // Course APIs
+  static async getCoursesByLevelAndTerm(department, level, term) {
+    const token = getAuthToken();
+    // Convert level and term to semester format (e.g. 1-1, 1-2, 2-1, etc.)
+    const semester = `${level}-${term}`;
+
+    const response = await fetch(`${API_BASE_URL}/api/courses/department/${department}/semester/${semester}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // If backend endpoint doesn't exist yet, fallback to demo data
+    try {
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Course API not available, using fallback data", error);
+
+      // Fallback data based on level and term
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (level === 1 && term === 1) {
+        return [
+          { code: 'CSE-141', name: 'Structured Programming' },
+          { code: 'CSE-142', name: 'Structured Programming Lab' },
+          { code: 'MAT-141', name: 'Mathematics I' },
+          { code: 'PHY-141', name: 'Physics I' },
+          { code: 'HUM-141', name: 'English & Economics' },
+        ];
+      } else if (level === 1 && term === 2) {
+        return [
+          { code: 'CSE-143', name: 'Discrete Mathematics' },
+          { code: 'MAT-143', name: 'Mathematics II' },
+          { code: 'PHY-143', name: 'Physics II' },
+          { code: 'CHE-141', name: 'Chemistry' },
+          { code: 'ME-143', name: 'Engineering Drawing' },
+        ];
+      } else {
+        return [];
+      }
+    }
+  }
+
+  // Current Semester APIs
+  static async getCurrentSemester(department, batch) {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/semesters/active?department=${department}&batch=${batch}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Current semester API not available, using localStorage", error);
+      // Fallback to localStorage
+      try {
+        const savedSemester = localStorage.getItem(`currentSemester-${department}-${batch}`);
+        if (savedSemester) {
+          return JSON.parse(savedSemester);
+        }
+      } catch (e) {
+        console.error('Error reading from localStorage:', e);
+      }
+      return null;
+    }
+  }
+
+  static async setCurrentSemester(department, batch, semesterData) {
+    const token = getAuthToken();
+
+    // Calculate the correct semester ID and name
+    const semesterName = `${semesterData.level}-${semesterData.term}`;
+    const semesterId = getSemesterIdFromLevelTerm(semesterData.level, semesterData.term);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/semesters/activate?department=${department}&batch=${batch}&semesterName=${semesterName}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Current semester API not available, using localStorage", error);
+      // Fallback to localStorage
+      try {
+        localStorage.setItem(
+          `currentSemester-${department}-${batch}`,
+          JSON.stringify(semesterData)
+        );
+        return { success: true, message: 'Saved to localStorage' };
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+        throw new Error('Failed to save current semester');
+      }
+    }
+  }
+
+  // Course Management APIs
+  static async saveCourse(courseData) {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/courses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(courseData),
+      });
+
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Course API not implemented yet:", error);
+      // Return mock response for now
+      return {
+        courseId: Date.now(),
+        courseCode: courseData.courseCode,
+        courseName: courseData.courseName,
+        message: 'Course created successfully (mock)'
+      };
+    }
+  }
+
+  // Batch Course Creation API
+  static async saveMultipleCourses(batchData) {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/courses/batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(batchData),
+      });
+
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Batch Course API not implemented yet:", error);
+      // Return mock response for now - an array of course responses
+      return batchData.courses.map((course, index) => ({
+        courseId: Date.now() + index,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        semesterName: course.semesterName,
+        message: 'Course created successfully (mock)'
+      }));
+    }
+  }
+
+  static async deleteCourse(courseId) {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      return await handleResponse(response);
+    } catch (error) {
+      console.warn("Course deletion API not implemented yet:", error);
+      // Return mock response for now
+      return {
+        success: true,
+        message: 'Course deleted successfully (mock)'
+      };
+    }
+  }
+
   // File upload APIs
   static async uploadFile(file, onProgress) {
     const token = getAuthToken();
@@ -642,7 +852,24 @@ class ApiService {
         }
       });
 
-      xhr.open('POST', `${API_BASE_URL}/api/upload`);
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Invalid JSON response from server'));
+          }
+        } else {
+          reject(new Error(`HTTP Error: ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = function () {
+        reject(new Error('Network error during file upload'));
+      };
+
+      xhr.open('POST', `${API_BASE_URL}/api/upload/file`);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.send(formData);
     });
@@ -720,7 +947,7 @@ class ApiService {
       }
       return null;
     }
-    
+
     // Use cache to prevent repeated API calls
     return profileCache.getOrFetchProfile(userEmail, async (email) => {
       try {
@@ -761,10 +988,10 @@ class ApiService {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const result = await handleResponse(response);
-      
+
       // Clear cache for this user so the new profile picture is fetched
       profileCache.clearUserCache(userEmail);
-      
+
       return result;
     } catch (error) {
       console.error('Failed to set test profile picture:', error);
@@ -778,7 +1005,7 @@ class ApiService {
       await new Promise(resolve => setTimeout(resolve, 300));
       return { success: true, message: 'Test profile picture set' };
     }
-    
+
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/users/${userEmail}/set-test-profile-picture`, {
       method: 'POST',

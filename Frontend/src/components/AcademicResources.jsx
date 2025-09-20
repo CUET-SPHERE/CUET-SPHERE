@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useResources } from '../contexts/ResourcesContext';
+import API from '../services/api';
 import ResourceUploadModal from './ResourceUploadModal';
-import CourseModal from './CourseModal';
+import CourseBatchModal from './CourseBatchModal';
 import ConfirmationModal from './ConfirmationModal';
 import FileIcon from './FileIcon';
 import FolderSidebar from './FolderSidebar';
-import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Star, Eye, ChevronDown, Folder, Plus, ChevronRight, MoreHorizontal, FolderPlus, X } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Star, Eye, ChevronDown, Folder, Plus, ChevronRight, MoreHorizontal, FolderPlus, X, CalendarClock, Calendar, AlertCircle } from 'lucide-react';
 
 const departmentMap = {
   '04': 'CSE',
@@ -16,43 +17,95 @@ const departmentMap = {
   '05': 'ETE',
 };
 
+// Levels and terms constants
+const levels = [1, 2, 3, 4];
+const terms = [1, 2];
+
+// Initial empty state for courses by level and term
 const initialCoursesByLevelTerm = {
-  1: {
-    1: [
-      { code: 'CSE-141', name: 'Structured Programming' },
-      { code: 'CSE-142', name: 'Structured Programming Lab' },
-      { code: 'MAT-141', name: 'Mathematics I' },
-      { code: 'PHY-141', name: 'Physics I' },
-      { code: 'HUM-141', name: 'English & Economics' },
-    ],
-    2: [
-      { code: 'CSE-143', name: 'Discrete Mathematics' },
-      { code: 'MAT-143', name: 'Mathematics II' },
-      { code: 'PHY-143', name: 'Physics II' },
-      { code: 'CHE-141', name: 'Chemistry' },
-      { code: 'ME-143', name: 'Engineering Drawing' },
-    ]
-  },
+  1: { 1: [], 2: [] },
   2: { 1: [], 2: [] },
   3: { 1: [], 2: [] },
   4: { 1: [], 2: [] },
 };
 
-const levels = [1, 2, 3, 4];
-const terms = [1, 2];
-
 function AcademicResources() {
   const { user } = useUser();
-  const { resources, toggleFavourite, findFolder, handleUpload: handleResourceUpload } = useResources();
+  const { resources, toggleFavourite, findFolder, handleUpload: handleResourceUpload, loading: resourcesLoading } = useResources();
 
   const [selectedLevel, setSelectedLevel] = useState(1);
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [currentSemester, setCurrentSemester] = useState(null); // Stores the current semester for the batch
 
   const [courses, setCourses] = useState(initialCoursesByLevelTerm);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [courseError, setCourseError] = useState(null);
+
+  // Check for current semester when component mounts
+  useEffect(() => {
+    const fetchCurrentSemester = async () => {
+      try {
+        const semesterData = await API.getCurrentSemester(user.department, user.batch);
+        if (semesterData && semesterData.level && semesterData.term) {
+          setCurrentSemester({ level: semesterData.level, term: semesterData.term });
+          // If we have a current semester, set it as the selected one
+          setSelectedLevel(semesterData.level);
+          setSelectedTerm(semesterData.term);
+        }
+      } catch (err) {
+        console.error('Error loading current semester:', err);
+      }
+    };
+
+    if (user && user.department && user.batch) {
+      fetchCurrentSemester();
+    }
+  }, [user.department, user.batch]);
+
+  // Fetch courses for the selected level and term
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoadingCourses(true);
+        setCourseError(null);
+
+        const coursesData = await API.getCoursesByLevelAndTerm(
+          user.department,
+          selectedLevel,
+          selectedTerm
+        );
+
+        // Process the data
+        const formattedCourses = Array.isArray(coursesData) ? coursesData.map(course => ({
+          code: course.courseCode || course.code,
+          name: course.courseName || course.name
+        })) : [];
+
+        setCourses(prev => {
+          const newCourses = { ...prev };
+          newCourses[selectedLevel] = {
+            ...newCourses[selectedLevel],
+            [selectedTerm]: formattedCourses
+          };
+          return newCourses;
+        });
+
+      } catch (err) {
+        console.error('Error fetching courses:', err);
+        setCourseError('Failed to load courses. Please try again later.');
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    if (user && user.department) {
+      fetchCourses();
+    }
+  }, [selectedLevel, selectedTerm, user.department]);
 
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
-  const [isCourseModalOpen, setCourseModalOpen] = useState(false);
+  const [isCourseBatchModalOpen, setCourseBatchModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const [editingCourse, setEditingCourse] = useState(null);
@@ -61,17 +114,13 @@ function AcademicResources() {
   const favouritesFolder = findFolder('favourites');
   const favouriteResourceIds = favouritesFolder ? favouritesFolder.resourceIds : [];
 
-  // In development mode, show all files under courses without filtering by batch
-  // Show all resources without filtering in development mode
+  // Filter resources by course code and apply other filters as needed
   const getResourcesForCourse = (courseCode) =>
     resources.filter(
-      (r) =>
-        // All filters commented out to show all resources
-        // r.department === user.department &&
-        // r.batch === user.batch &&
-        // r.level === selectedLevel &&
-        // r.term === selectedTerm &&
-        r.courseCode === courseCode
+      (r) => r.courseCode === courseCode
+      // Additional filters can be added here if needed
+      // && r.level === selectedLevel
+      // && r.term === selectedTerm
     );
 
   const handleSaveCourse = (courseData) => {
@@ -85,6 +134,25 @@ function AcademicResources() {
       return newCourses;
     });
     setEditingCourse(null);
+  };
+
+  const handleSaveMultipleCourses = (coursesDataArray) => {
+    setCourses(prev => {
+      const newCourses = { ...prev };
+      const termCourses = [...newCourses[selectedLevel][selectedTerm]];
+
+      // Add all new courses
+      coursesDataArray.forEach(courseData => {
+        // Check if course with this code already exists
+        const existingIndex = termCourses.findIndex(c => c.code === courseData.code);
+        if (existingIndex === -1) {
+          termCourses.push(courseData);
+        }
+      });
+
+      newCourses[selectedLevel][selectedTerm] = termCourses;
+      return newCourses;
+    });
   };
 
   const openDeleteModal = (type, data) => {
@@ -115,6 +183,48 @@ function AcademicResources() {
     e.dataTransfer.setData('resourceId', resourceId);
   };
 
+  const setAsCurrentSemester = async () => {
+    // Create the current semester object
+    const semesterData = { level: selectedLevel, term: selectedTerm };
+
+    try {
+      // Save the current semester using the API
+      await API.setCurrentSemester(user.department, user.batch, semesterData);
+
+      setCurrentSemester(semesterData);
+
+      // Provide visual feedback - this would be better with a toast notification
+      // For now using a simple timeout to show feedback
+      const feedbackElement = document.createElement('div');
+      feedbackElement.textContent = 'Ongoing semester updated successfully!';
+      feedbackElement.style.cssText = 'position:fixed; bottom:20px; right:20px; background-color:#10b981; color:white; padding:12px 20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); z-index:1000; transition:opacity 0.3s ease;';
+      document.body.appendChild(feedbackElement);
+
+      setTimeout(() => {
+        feedbackElement.style.opacity = '0';
+        setTimeout(() => {
+          document.body.removeChild(feedbackElement);
+        }, 300);
+      }, 3000);
+
+    } catch (err) {
+      console.error('Error saving ongoing semester:', err);
+
+      // Error feedback
+      const errorElement = document.createElement('div');
+      errorElement.textContent = 'Failed to set ongoing semester. Please try again.';
+      errorElement.style.cssText = 'position:fixed; bottom:20px; right:20px; background-color:#ef4444; color:white; padding:12px 20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); z-index:1000; transition:opacity 0.3s ease;';
+      document.body.appendChild(errorElement);
+
+      setTimeout(() => {
+        errorElement.style.opacity = '0';
+        setTimeout(() => {
+          document.body.removeChild(errorElement);
+        }, 300);
+      }, 3000);
+    }
+  };
+
   const currentCourses = courses[selectedLevel]?.[selectedTerm] || [];
   const midPoint = Math.ceil(currentCourses.length / 2);
   const courseCol1 = currentCourses.slice(0, midPoint);
@@ -137,34 +247,82 @@ function AcademicResources() {
       <div className="flex flex-col gap-6 flex-grow overflow-y-auto pr-2">
         {/* Navigation Bar */}
         <div className="flex justify-between items-center border-b border-gray-200 dark:border-border-color pb-2">
-          <div className="relative">
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-background rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-all"
-              onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
-            >
-              <span>Level {selectedLevel}</span>
-              <ChevronDown size={16} className={`transition-transform ${isLevelDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Level dropdown */}
+            <div className="relative">
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-background rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-all"
+                onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
+              >
+                <span>Level {selectedLevel}</span>
+                <ChevronDown size={16} className={`transition-transform ${isLevelDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-            {isLevelDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-surface border border-gray-200 dark:border-border-color rounded-lg shadow-lg z-10 w-40">
-                {levels.map((level) => (
-                  <button
-                    key={level}
-                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all ${selectedLevel === level ? 'bg-primary/10 text-primary' : ''}`}
-                    onClick={() => {
-                      setSelectedLevel(level);
-                      setSelectedTerm(1);
-                      setSelectedCourse(null);
-                      setIsLevelDropdownOpen(false);
-                      setShowFolders(false);
-                    }}
-                  >
-                    Level {level}
-                  </button>
-                ))}
-              </div>
+              {isLevelDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-surface border border-gray-200 dark:border-border-color rounded-lg shadow-lg z-10 w-40">
+                  {levels.map((level) => (
+                    <button
+                      key={level}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all ${selectedLevel === level ? 'bg-primary/10 text-primary' : ''}`}
+                      onClick={() => {
+                        setSelectedLevel(level);
+                        setSelectedTerm(1);
+                        setSelectedCourse(null);
+                        setIsLevelDropdownOpen(false);
+                        setShowFolders(false);
+                      }}
+                    >
+                      Level {level}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Ongoing Semester Button */}
+            {currentSemester && (
+              <button
+                onClick={() => {
+                  setSelectedLevel(currentSemester.level);
+                  setSelectedTerm(currentSemester.term);
+                  setSelectedCourse(null);
+                }}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all
+                  ${selectedLevel === currentSemester.level && selectedTerm === currentSemester.term
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300'
+                  }`}
+                title="Go to the ongoing semester"
+              >
+                <Calendar size={16} className={selectedLevel === currentSemester.level && selectedTerm === currentSemester.term ? 'text-primary' : 'text-amber-600 dark:text-amber-400'} />
+                <span>Ongoing Semester</span>
+              </button>
             )}
+
+            {/* Set Current Semester Button (CR only) */}
+            {user.role === 'CR' && !currentSemester && (
+              <button
+                onClick={setAsCurrentSemester}
+                className="flex items-center gap-1.5 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 rounded-lg transition-all"
+                title="Set this as the ongoing semester for your batch"
+              >
+                <CalendarClock size={16} className="text-amber-600 dark:text-amber-400" />
+                <span>Set as Ongoing Semester</span>
+              </button>
+            )}
+
+            {/* Update Current Semester Button (CR only) */}
+            {user.role === 'CR' && currentSemester &&
+              (selectedLevel !== currentSemester.level || selectedTerm !== currentSemester.term) && (
+                <button
+                  onClick={setAsCurrentSemester}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 rounded-lg transition-all"
+                  title="Update the ongoing semester for your batch"
+                >
+                  <CalendarClock size={16} className="text-amber-600 dark:text-amber-400" />
+                  <span>Update Ongoing Semester</span>
+                </button>
+              )}
           </div>
 
           <div className="flex">
@@ -197,6 +355,7 @@ function AcademicResources() {
                       key={term}
                       className={`px-4 py-2 rounded-lg font-medium transition-all ${selectedTerm === term ? 'bg-primary/20 text-primary' : 'bg-gray-100 dark:bg-background text-gray-700 dark:text-text-secondary hover:bg-gray-200 dark:hover:bg-neutral-700'}`}
                       onClick={() => { setSelectedTerm(term); setSelectedCourse(null); }}
+                      disabled={loadingCourses}
                     >
                       Term {term}
                     </button>
@@ -204,35 +363,85 @@ function AcademicResources() {
                 </div>
                 {user.role === 'CR' && (
                   <button
-                    onClick={() => { setEditingCourse(null); setCourseModalOpen(true); }}
-                    className="flex items-center gap-2 px-3 py-2 bg-success hover:bg-emerald-600 text-white rounded-lg transition-all text-sm font-semibold">
+                    onClick={() => setCourseBatchModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg transition-all text-sm font-semibold"
+                    disabled={loadingCourses}
+                  >
                     <PlusCircle size={18} />
                     <span className="hidden sm:inline">Add Course</span>
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[courseCol1, courseCol2].map((col, colIndex) => (
-                  <div key={colIndex} className="flex flex-col gap-3">
-                    {col.map((course) => (
-                      <div key={course.code} className="flex flex-col">
-                        <div className="group p-4 bg-gray-50 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:border-primary transition-all flex justify-between items-center">
-                          <button className="text-left w-full" onClick={() => setSelectedCourse(course)}>
-                            <p className="font-semibold text-gray-800 dark:text-text-primary">{course.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-text-secondary">{course.code}</p>
-                          </button>
-                          {user.role === 'CR' && (
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => { setEditingCourse(course); setCourseModalOpen(true); }} className="p-2 text-gray-500 dark:text-text-secondary hover:text-secondary"><Edit size={16} /></button>
-                              <button onClick={() => openDeleteModal('course', course)} className="p-2 text-gray-500 dark:text-text-secondary hover:text-error"><Trash2 size={16} /></button>
-                            </div>
-                          )}
+
+              {loadingCourses ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : courseError ? (
+                <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
+                  <AlertCircle className="mx-auto text-error mb-2" size={24} />
+                  <p className="text-error">{courseError}</p>
+                  <button
+                    onClick={() => {
+                      setCourseError(null);
+                      setSelectedLevel(selectedLevel);
+                      setSelectedTerm(selectedTerm);
+                    }}
+                    className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-600 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : currentCourses.length === 0 ? (
+                <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
+                  <p className="text-gray-500 dark:text-text-secondary">No courses found for this term.</p>
+                  {user.role === 'CR' && (
+                    <button
+                      onClick={() => setCourseBatchModalOpen(true)}
+                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg transition-all text-sm font-semibold mx-auto"
+                    >
+                      <Plus size={18} />
+                      <span>Add Course</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[courseCol1, courseCol2].map((col, colIndex) => (
+                    <div key={colIndex} className="flex flex-col gap-3">
+                      {col.map((course) => (
+                        <div key={course.code} className="flex flex-col">
+                          <div className="group p-4 bg-gray-50 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:border-primary transition-all flex justify-between items-center">
+                            <button className="text-left w-full" onClick={() => setSelectedCourse(course)}>
+                              <p className="font-semibold text-gray-800 dark:text-text-primary">{course.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-text-secondary">{course.code}</p>
+                            </button>
+                            {user.role === 'CR' && (
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => {
+                                    setEditingCourse(course);
+                                    setCourseBatchModalOpen(true);
+                                  }}
+                                  className="p-2 text-gray-500 dark:text-text-secondary hover:text-secondary"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openDeleteModal('course', course)}
+                                  className="p-2 text-gray-500 dark:text-text-secondary hover:text-error"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <div>
@@ -245,7 +454,11 @@ function AcademicResources() {
                   <p className="text-gray-500 dark:text-text-secondary">{selectedCourse.code}</p>
                 </div>
                 {user.role === 'CR' && (
-                  <button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-success hover:bg-emerald-600 text-white rounded-lg transition-all text-sm font-semibold">
+                  <button
+                    onClick={() => setUploadModalOpen(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-success hover:bg-emerald-600 text-white rounded-lg transition-all text-sm font-semibold"
+                    disabled={resourcesLoading}
+                  >
                     <PlusCircle size={18} />
                     <span className="hidden sm:inline">Upload File</span>
                   </button>
@@ -253,8 +466,12 @@ function AcademicResources() {
               </div>
 
               <div className="space-y-3">
-                {/* Show all files for the selected course */}
-                {getResourcesForCourse(selectedCourse.code).length > 0 ? (
+                {/* Show loading, error or resources */}
+                {resourcesLoading ? (
+                  <div className="flex justify-center items-center h-48">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  </div>
+                ) : getResourcesForCourse(selectedCourse.code).length > 0 ? (
                   getResourcesForCourse(selectedCourse.code).map((res) => (
                     <div
                       key={res.id}
@@ -307,8 +524,25 @@ function AcademicResources() {
         </div>
       </div>
 
-      <CourseModal isOpen={isCourseModalOpen} onClose={() => setCourseModalOpen(false)} onSave={handleSaveCourse} course={editingCourse} />
-      <ResourceUploadModal open={isUploadModalOpen} onClose={() => setUploadModalOpen(false)} onUpload={handleUpload} course={selectedCourse?.name} level={selectedLevel} term={selectedTerm} />
+      <CourseBatchModal
+        isOpen={isCourseBatchModalOpen}
+        onClose={() => {
+          setCourseBatchModalOpen(false);
+          setEditingCourse(null);
+        }}
+        onSave={editingCourse ? handleSaveCourse : handleSaveMultipleCourses}
+        level={selectedLevel}
+        term={selectedTerm}
+        editingCourse={editingCourse}
+      />
+      <ResourceUploadModal
+        open={isUploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onUpload={handleUpload}
+        course={selectedCourse?.name}
+        level={selectedLevel}
+        term={selectedTerm}
+      />
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}

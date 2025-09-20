@@ -1,4 +1,6 @@
 // WebSocket service for real-time updates using STOMP
+import { getApiBaseUrl } from './apiConfig';
+
 class WebSocketService {
   constructor() {
     this.stompClient = null;
@@ -16,17 +18,17 @@ class WebSocketService {
           return;
         }
 
-        // Create SockJS connection
-        const socket = new SockJS(`${import.meta.env.VITE_API_URL || 'http://localhost:5454'}/ws`);
-        
+        // Create SockJS connection using shared API base URL
+        const socket = new SockJS(`${getApiBaseUrl()}/ws`);
+
         // Create STOMP client
         this.stompClient = Stomp.over(socket);
-        
+
         // Disable STOMP debug logging
         this.stompClient.debug = null;
-        
+
         // Connect to STOMP
-        this.stompClient.connect({}, 
+        this.stompClient.connect({},
           (frame) => {
             console.log('Connected to WebSocket:', frame);
             this.connected = true;

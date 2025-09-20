@@ -1,6 +1,8 @@
 // API base URL - adjust this to match your backend
 // Use relative URL in development to leverage Vite proxy, full URL in production
-const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL + '/api' || 'http://localhost:5454/api');
+import { getApiUrlWithSuffix } from './apiConfig';
+
+const API_BASE_URL = import.meta.env.DEV ? '/api' : getApiUrlWithSuffix();
 
 class PostService {
   // Helper method to get auth headers

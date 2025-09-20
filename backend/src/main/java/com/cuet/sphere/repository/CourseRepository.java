@@ -14,6 +14,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Query("SELECT c FROM Course c WHERE c.department.deptName = :department ORDER BY c.courseCode")
     List<Course> findByDepartment(@Param("department") String department);
     
+    @Query("SELECT c FROM Course c WHERE c.department.deptId = :departmentId ORDER BY c.courseCode")
+    List<Course> findByDepartmentId(@Param("departmentId") Long departmentId);
+    
     @Query("SELECT c FROM Course c WHERE c.courseCode = :courseCode")
     Course findByCourseCode(@Param("courseCode") String courseCode);
     

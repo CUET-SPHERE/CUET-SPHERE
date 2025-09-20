@@ -23,6 +23,13 @@ public class Course {
     @JoinColumn(name = "dept_id", nullable = false)
     private Department department;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "semester_id", nullable = true)
+    private Semester semester;
+    
+    @Column(name = "semester_name")
+    private String semesterName;
+    
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Resource> resources;
 }

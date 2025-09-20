@@ -1,25 +1,36 @@
 import React from 'react';
 import { useResources } from '../contexts/ResourcesContext';
 import FileIcon from './FileIcon';
-import { Download, Eye, Star } from 'lucide-react';
+import { Download, Eye, Star, AlertCircle } from 'lucide-react';
 import { formatTimeAgo } from '../utils/time';
 
 function RecentFeed() {
-  const { resources, toggleFavourite, findFolder } = useResources();
-  
+  const { resources, toggleFavourite, findFolder, loading, error } = useResources();
+
   const favouritesFolder = findFolder('favourites');
   const favouriteResourceIds = favouritesFolder ? favouritesFolder.resourceIds : [];
 
   // Get top 7 most recent resources
-  const recentFiles = [...resources]
-    .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-    .slice(0, 7);
+  const recentFiles = resources.length > 0 ?
+    [...resources]
+      .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
+      .slice(0, 7)
+    : [];
 
   return (
     <div className="bg-white dark:bg-surface rounded-2xl shadow-2xl p-4 flex flex-col h-full border border-gray-200 dark:border-border-color">
       <h3 className="text-lg font-bold text-gray-800 dark:text-text-primary mb-4 shrink-0">Recent Uploads</h3>
       <div className="space-y-3 overflow-y-auto pr-2 flex-grow">
-        {recentFiles.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center h-48">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
+            <AlertCircle className="mx-auto text-error mb-2" size={24} />
+            <p className="text-error">{error}</p>
+          </div>
+        ) : recentFiles.length > 0 ? (
           recentFiles.map((res) => (
             <div key={res.id} className="group bg-gray-50 dark:bg-background rounded-lg p-3 border border-gray-200 dark:border-border-color flex items-center justify-between gap-2">
               <div className="flex items-center gap-3 overflow-hidden">

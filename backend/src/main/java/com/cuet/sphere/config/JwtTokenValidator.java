@@ -24,25 +24,18 @@ public class JwtTokenValidator extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        System.out.println("=== JWT FILTER PROCESSING ===");
-        System.out.println("Request URI: " + request.getRequestURI());
-        System.out.println("Request Method: " + request.getMethod());
-
         // Skip JWT validation for public endpoints
         String requestURI = request.getRequestURI();
         if (requestURI.startsWith("/auth/") || requestURI.startsWith("/public/")) {
-            System.out.println("Skipping JWT validation for public endpoint: " + requestURI);
             filterChain.doFilter(request, response);
             return;
         }
 
-        System.out.println("Processing JWT validation for protected endpoint: " + requestURI);
         String jwt = request.getHeader(JwtConstant.JWT_HEADER);
 
         // Check if jwt is not null AND starts with Bearer
         if (jwt != null && jwt.startsWith("Bearer ")) {
             jwt = jwt.substring(7); // Remove "Bearer " prefix
-            System.out.println("JWT token found, validating...");
 
             try {
                 SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
@@ -54,8 +47,6 @@ public class JwtTokenValidator extends OncePerRequestFilter {
 
                 String email = String.valueOf(claims.get("email"));
                 String authorities = String.valueOf(claims.get("authorities"));
-
-                System.out.println("JWT validation successful for email: " + email);
 
                 // Handle null or "null" authorities
                 List<GrantedAuthority> grantedAuthorities;
@@ -73,16 +64,13 @@ public class JwtTokenValidator extends OncePerRequestFilter {
             } catch (Exception e) {
                 // Don't throw exception, just clear context and continue
                 SecurityContextHolder.clearContext();
-                System.out.println("JWT validation failed: " + e.getMessage());
             }
         } else {
             // No JWT token provided for protected endpoint
-            System.out.println("No JWT token provided for protected endpoint");
             SecurityContextHolder.clearContext();
         }
 
         // Always continue filter chain
-        System.out.println("Continuing filter chain...");
         filterChain.doFilter(request, response);
     }
 } 

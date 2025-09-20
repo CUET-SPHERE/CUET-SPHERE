@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
-import { mockResources as initialMockResources } from '../mock/mockResources';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
+import API from '../services/api';
 
 const ResourcesContext = createContext();
 
@@ -33,8 +33,82 @@ const initialFolders = {
 
 export const ResourcesProvider = ({ children }) => {
   const { user } = useUser();
-  const [resources, setResources] = useState(initialMockResources);
+  const [resources, setResources] = useState([]);
   const [folders, setFolders] = useState(initialFolders);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch resources from the backend when the component mounts
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        setLoading(true);
+        const data = await API.getAllResources();
+
+        // Transform API data to match expected format if needed
+        const transformedData = Array.isArray(data) ? data.map(resource => {
+          // Ensure the resource has all required properties
+          return {
+            id: resource.resourceId || self.crypto.randomUUID(),
+            department: resource.departmentName || user?.department || '',
+            batch: resource.batch || user?.batch || '',
+            level: parseInt(resource.semesterName?.split('-')[0]) || 1,
+            term: parseInt(resource.semesterName?.split('-')[1]) || 1,
+            courseCode: resource.courseCode || '',
+            courseName: resource.courseName || '',
+            title: resource.title || 'Untitled',
+            file: {
+              name: resource.filePath?.split('/').pop() || 'file.pdf',
+              url: resource.filePath || '#',
+              type: determineFileType(resource.filePath)
+            },
+            uploader: resource.uploaderName || resource.uploaderEmail || user?.email || 'Unknown',
+            description: resource.description || '',
+            downloadCount: resource.downloadCount || 0,
+            uploadedAt: resource.createdAt || new Date().toISOString(),
+          };
+        }) : [];
+
+        setResources(transformedData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching resources:', err);
+        setError('Failed to load resources. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Helper function to determine file type from URL or file path
+    const determineFileType = (filePath) => {
+      if (!filePath) return 'application/pdf';
+
+      const extension = filePath.split('.').pop().toLowerCase();
+      const mimeTypes = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'txt': 'text/plain',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'zip': 'application/zip',
+        'rar': 'application/vnd.rar',
+        '7z': 'application/x-7z-compressed'
+      };
+
+      return mimeTypes[extension] || 'application/octet-stream';
+    };
+
+    if (user) {
+      fetchResources();
+    }
+  }, [user]);
 
   const findFolder = (folderId, folderTree = folders) => {
     if (folderTree.id === folderId) return folderTree;
@@ -131,26 +205,70 @@ export const ResourcesProvider = ({ children }) => {
     setFolders(updateTree(folders));
   };
 
-  const handleUpload = (newRes) => {
-    const newResource = {
-      id: self.crypto.randomUUID(),
-      department: user.department,
-      batch: user.batch,
-      level: newRes.level,
-      term: newRes.term,
-      courseCode: newRes.courseCode,
-      title: newRes.title,
-      file: { name: newRes.file.name, url: URL.createObjectURL(newRes.file), type: newRes.file.type },
-      uploader: user.email,
-      downloadCount: 0,
-      uploadedAt: new Date(),
-    };
-    setResources(prev => [newResource, ...prev]);
+  const handleUpload = async (newRes) => {
+    try {
+      setLoading(true);
+
+      // First upload the file to get a URL
+      const fileData = await API.uploadFile(newRes.file, newRes.onProgress);
+
+      if (!fileData || !fileData.fileUrl) {
+        throw new Error('File upload failed. No URL was returned from the server.');
+      }
+
+      // Extract the semester name based on level and term
+      const semesterName = `${newRes.level}-${newRes.term}`;
+
+      const resourceData = {
+        title: newRes.title,
+        description: newRes.description || '',
+        filePath: fileData.fileUrl,
+        resourceType: newRes.resourceType || 'LECTURE_NOTE',
+        courseCode: newRes.courseCode,
+        semesterName: semesterName
+      };
+
+      // Then create the resource with the file URL
+      const uploadedResource = await API.uploadResource(resourceData);
+
+      // Transform the uploaded resource to match our format
+      const formattedResource = {
+        id: uploadedResource.resourceId,
+        department: uploadedResource.departmentName || user?.department,
+        batch: uploadedResource.batch || user?.batch,
+        level: parseInt(semesterName.split('-')[0]),
+        term: parseInt(semesterName.split('-')[1]),
+        courseCode: uploadedResource.courseCode,
+        courseName: uploadedResource.courseName,
+        title: uploadedResource.title,
+        file: {
+          name: fileData.fileUrl.split('/').pop(),
+          url: fileData.fileUrl,
+          type: newRes.file.type
+        },
+        uploader: uploadedResource.uploaderName || user?.email,
+        description: uploadedResource.description,
+        downloadCount: 0,
+        uploadedAt: uploadedResource.createdAt || new Date().toISOString(),
+      };
+
+      // Update the local state with the new resource
+      setResources(prev => [formattedResource, ...prev]);
+      return formattedResource;
+    } catch (err) {
+      console.error('Error uploading resource:', err);
+      setError('Failed to upload resource. Please try again.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const value = {
     resources,
     folders,
+    loading,
+    error,
     addFolder,
     updateFolderName,
     deleteFolder,

@@ -17,5 +17,11 @@ public class Semester {
     private String semesterName;
     
     @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Course> courses;
+    
+    @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<CurrentSemester> currentSemesters;
+    
+    @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Resource> resources;
 }

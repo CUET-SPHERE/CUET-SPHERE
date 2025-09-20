@@ -2,5 +2,10 @@
     "java.compile.nullAnalysis.mode": "automatic",
     "java.configuration.updateBuildConfiguration": "automatic",
     "kiroAgent.configureMCP": "Disabled",
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "java.autobuild.enabled": true,
+    "spring-boot.ls.checkJVM": true,
+    "java.debug.settings.hotCodeReplace": "auto",
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000
 }

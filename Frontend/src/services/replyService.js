@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL + '/api' || 'http://localhost:5454/api');
+import { getApiUrlWithSuffix } from './apiConfig';
+
+const API_BASE_URL = import.meta.env.DEV ? '/api' : getApiUrlWithSuffix();
 
 // Helper function to get auth token
 const getAuthToken = () => {
@@ -45,11 +47,11 @@ class ReplyService {
         method: 'GET',
         headers: getAuthHeaders()
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch replies: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       throw error;

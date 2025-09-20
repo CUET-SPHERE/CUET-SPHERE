@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import { getApiBaseUrl } from './apiConfig';
+
+const API_BASE_URL = getApiBaseUrl();
 
 class AuthService {
   async signin(email, password) {
@@ -17,7 +19,7 @@ class AuthService {
       }
 
       const authResponse = await response.json();
-      
+
       // Store the JWT token in localStorage
       if (authResponse.token) {
         localStorage.setItem('jwt_token', authResponse.token);
@@ -53,7 +55,7 @@ class AuthService {
       }
 
       const authResponse = await response.json();
-      
+
       // Store the JWT token in localStorage
       if (authResponse.token) {
         localStorage.setItem('jwt_token', authResponse.token);

@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { getApiUrlWithSuffix } from './apiConfig';
 
 const axiosInstance = axios.create({
-    baseURL: 'http://localhost:5454/api',
+    baseURL: getApiUrlWithSuffix(),
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
