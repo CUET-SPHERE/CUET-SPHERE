@@ -6,8 +6,10 @@ import ResourceUploadModal from './ResourceUploadModal';
 import CourseBatchModal from './CourseBatchModal';
 import ConfirmationModal from './ConfirmationModal';
 import FileIcon from './FileIcon';
+import FileTypeIcon, { FileTypeIconWithName } from './FileTypeIcon';
+import FileViewer from './FileViewer';
 import FolderSidebar from './FolderSidebar';
-import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Star, Eye, ChevronDown, Folder, Plus, ChevronRight, MoreHorizontal, FolderPlus, X, CalendarClock, Calendar, AlertCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Star, Eye, ChevronDown, Folder, Plus, ChevronRight, MoreHorizontal, FolderPlus, X, CalendarClock, Calendar, AlertCircle, User } from 'lucide-react';
 
 const departmentMap = {
   '04': 'CSE',
@@ -144,6 +146,8 @@ function AcademicResources() {
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [isCourseBatchModalOpen, setCourseBatchModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isFileViewerOpen, setFileViewerOpen] = useState(false);
+  const [viewingFile, setViewingFile] = useState(null);
 
   const [editingCourse, setEditingCourse] = useState(null);
   const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '', show: boolean }
@@ -162,6 +166,31 @@ function AcademicResources() {
   const hideNotification = () => {
     setNotification(null);
   };
+
+  // File viewer functions
+  const handleViewFile = (resource) => {
+    const fileUrl = resource.fileUrl || resource.file?.url || resource.filePath;
+    const fileName = resource.file?.name || resource.fileName || resource.title;
+
+    if (!fileUrl) {
+      console.error('No file URL found for resource:', resource);
+      return;
+    }
+
+    // Open all files in the FileViewer modal - it will handle different types appropriately
+    setViewingFile({
+      url: fileUrl,
+      name: fileName,
+      type: resource.resourceType
+    });
+    setFileViewerOpen(true);
+  };
+
+  const handleCloseFileViewer = () => {
+    setFileViewerOpen(false);
+    setViewingFile(null);
+  };
+
   const [deletingItem, setDeletingItem] = useState(null);
 
   const favouritesFolder = findFolder('favourites');
@@ -340,6 +369,41 @@ function AcademicResources() {
         setDeletingItem(null);
         return; // Don't continue if API call failed
       }
+    } else if (type === 'resource') {
+      try {
+        console.log('Resource object being deleted:', data);
+        const resourceId = data.id || data.resourceId;
+
+        if (!resourceId) {
+          console.error('No resource ID found. Available properties:', Object.keys(data));
+          showErrorNotification('Cannot delete resource: No resource ID found.');
+          setConfirmModalOpen(false);
+          setDeletingItem(null);
+          return;
+        }
+
+        console.log('Deleting resource by ID:', resourceId);
+        await API.deleteResource(resourceId);
+
+        // Refresh resources to reflect the deletion
+        await handleResourceUpload();
+
+        showSuccessNotification('Resource deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting resource:', error);
+
+        let errorMessage = error.message;
+        if (errorMessage.includes('not found')) {
+          errorMessage = `Resource not found. It may have already been deleted.`;
+        } else if (errorMessage.includes('403') || errorMessage.includes('permission')) {
+          errorMessage = `You don't have permission to delete this resource.`;
+        }
+
+        showErrorNotification(`Failed to delete resource: ${errorMessage}`);
+        setConfirmModalOpen(false);
+        setDeletingItem(null);
+        return;
+      }
     }
     // Deleting files from resources is not implemented in this flow, as it's managed by context now.
     setConfirmModalOpen(false);
@@ -347,6 +411,10 @@ function AcademicResources() {
   };
 
   const handleUpload = (newRes) => {
+    if (!selectedCourse || !selectedCourse.code) {
+      console.error('Selected course is missing or invalid:', selectedCourse);
+      return;
+    }
     handleResourceUpload({ ...newRes, courseCode: selectedCourse.code });
   };
 
@@ -645,42 +713,108 @@ function AcademicResources() {
                 ) : getResourcesForCourse(selectedCourse.code).length > 0 ? (
                   getResourcesForCourse(selectedCourse.code).map((res) => (
                     <div
-                      key={res.id}
+                      key={res.id || res.resourceId}
                       draggable="true"
-                      onDragStart={(e) => handleDragStart(e, res.id)}
-                      className="flex items-center justify-between bg-gray-100 dark:bg-background rounded-lg p-3 border border-gray-200 dark:border-border-color cursor-grab active:cursor-grabbing"
+                      onDragStart={(e) => handleDragStart(e, res.id || res.resourceId)}
+                      className="flex items-center justify-between bg-gray-100 dark:bg-background rounded-lg p-4 border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary"
                     >
-                      <div className="flex items-center gap-4">
-                        <FileIcon fileType={res.file.type} />
-                        <div>
-                          <a href={res.file.url} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-800 dark:text-text-primary hover:text-primary transition-colors">{res.title}</a>
-                          <div className="text-xs text-gray-500 dark:text-text-secondary">Uploaded by: {res.uploader} &bull; {new Date(res.uploadedAt).toLocaleDateString()}</div>
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        {/* File Type Icon */}
+                        <FileTypeIcon
+                          filename={res.file?.name || res.fileName || res.fileUrl?.split('/').pop() || res.filePath?.split('/').pop() || res.title}
+                          size={28}
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          {/* Resource Title and Link */}
+                          <button
+                            onClick={() => handleViewFile(res)}
+                            className="resource-title-button font-semibold text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left w-full cursor-pointer"
+                          >
+                            {res.title}
+                          </button>
+
+                          {/* Resource Description (if available) */}
+                          {res.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              {res.description}
+                            </p>
+                          )}
+
+                          {/* Uploader Information and Upload Date */}
+                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-text-secondary mt-2">
+                            <div className="flex items-center gap-1">
+                              <User size={12} />
+                              <span>
+                                Uploaded by: <span className="font-medium">
+                                  {res.uploaderName || res.uploader || 'Unknown'}
+                                </span>
+                                {res.uploaderStudentId && (
+                                  <span className="ml-1 text-gray-400">
+                                    (ID: {res.uploaderStudentId})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+
+                            <span className="text-gray-300 dark:text-gray-600">•</span>
+
+                            <span>
+                              {new Date(res.uploadedAt || res.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </span>
+
+                            {/* Resource Type */}
+                            {res.resourceType && (
+                              <>
+                                <span className="text-gray-300 dark:text-gray-600">•</span>
+                                <span className="capitalize">
+                                  {res.resourceType.replace(/_/g, ' ').toLowerCase()}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 ml-4">
                         <button
-                          onClick={() => toggleFavourite(res.id)}
-                          className="p-2 text-gray-500 dark:text-text-secondary hover:text-yellow-500"
+                          onClick={() => toggleFavourite(res.id || res.resourceId)}
+                          className="p-2 text-gray-500 dark:text-text-secondary hover:text-yellow-500 transition-colors"
+                          title="Add to favorites"
                         >
-                          <Star size={16} className={favouriteResourceIds.includes(res.id) ? 'text-yellow-500 fill-current' : ''} />
+                          <Star size={16} className={favouriteResourceIds.includes(res.id || res.resourceId) ? 'text-yellow-500 fill-current' : ''} />
                         </button>
-                        <a
-                          href={res.file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleViewFile(res)}
                           className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                          aria-label={`View ${res.title}`}
+                          title={`View ${res.title}`}
                         >
                           <Eye size={16} />
-                        </a>
+                        </button>
                         <a
-                          href={res.file.url}
-                          download={res.file.name}
+                          href={res.fileUrl || res.file?.url || res.filePath}
+                          download={res.file?.name || res.fileName || res.title}
                           className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                          aria-label={`Download ${res.title}`}
+                          title={`Download ${res.title}`}
                         >
                           <Download size={16} />
                         </a>
+
+                        {/* Delete button for CR users if they are the uploader */}
+                        {user.role === 'CR' && (res.uploaderEmail === user.email || res.uploader === user.fullName) && (
+                          <button
+                            onClick={() => openDeleteModal('resource', res)}
+                            className="p-2 text-gray-500 dark:text-text-secondary hover:text-error transition-colors"
+                            title="Delete resource"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -710,7 +844,7 @@ function AcademicResources() {
         open={isUploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onUpload={handleUpload}
-        course={selectedCourse?.name}
+        course={selectedCourse}
         level={selectedLevel}
         term={selectedTerm}
       />
@@ -779,6 +913,15 @@ function AcademicResources() {
           </div>
         </div>
       )}
+
+      {/* File Viewer Modal */}
+      <FileViewer
+        isOpen={isFileViewerOpen}
+        onClose={handleCloseFileViewer}
+        fileUrl={viewingFile?.url}
+        fileName={viewingFile?.name}
+        fileType={viewingFile?.type}
+      />
     </div>
   );
 }

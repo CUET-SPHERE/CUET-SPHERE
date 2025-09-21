@@ -7,7 +7,9 @@ import com.cuet.sphere.response.ResourceResponse;
 import com.cuet.sphere.exception.UserException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +59,68 @@ public class ResourceService {
         Resource resource = new Resource();
         resource.setTitle(resourceRequest.getTitle());
         resource.setFilePath(resourceRequest.getFilePath());
+        resource.setDescription(resourceRequest.getDescription());
+        resource.setResourceType(resourceRequest.getResourceType());
+        resource.setBatch(uploader.getBatch());
+        resource.setUploader(uploader);
+        resource.setCourse(course);
+        resource.setSemester(semester);
+        
+        Resource savedResource = resourceRepository.save(resource);
+        return convertToResponse(savedResource);
+    }
+
+    public ResourceResponse createResourceWithFile(ResourceRequest resourceRequest, MultipartFile file, User uploader) throws UserException {
+        // Check if uploader is CR
+        if (!uploader.isCR()) {
+            throw new UserException("Only CR users can upload resources");
+        }
+        
+        // Find course
+        Course course = courseRepository.findByCourseCode(resourceRequest.getCourseCode());
+        if (course == null) {
+            throw new UserException("Course not found with code: " + resourceRequest.getCourseCode());
+        }
+        
+        // Check if course belongs to uploader's department
+        // Convert department code to department name for comparison
+        String uploaderDeptName = getDepartmentNameByCode(uploader.getDepartment());
+        if (!course.getDepartment().getDeptName().equals(uploaderDeptName)) {
+            throw new UserException("You can only upload resources for your department. Your department code: " + uploader.getDepartment() + " (" + uploaderDeptName + "), Course department: " + course.getDepartment().getDeptName());
+        }
+        
+        // Find semester
+        Semester semester = semesterRepository.findBySemesterName(resourceRequest.getSemesterName());
+        if (semester == null) {
+            throw new UserException("Semester not found: " + resourceRequest.getSemesterName());
+        }
+        
+        // Upload file to S3
+        String fileUrl;
+        try {
+            // Generate a unique filename for the resource
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = originalFilename != null && originalFilename.contains(".") ? 
+                originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+            
+            // Create a structured filename: dept_batch_course_resourceType_timestamp.ext
+            String baseFilename = String.format("%s_%s_%s_%s_%d",
+                uploader.getDepartment(),
+                uploader.getBatch(),
+                course.getCourseCode().replaceAll("[^a-zA-Z0-9]", ""),
+                resourceRequest.getResourceType().toString(),
+                System.currentTimeMillis()
+            );
+            String filename = baseFilename + fileExtension;
+            
+            fileUrl = s3Service.uploadResourceFile(file, filename);
+        } catch (IOException e) {
+            throw new UserException("Failed to upload file: " + e.getMessage());
+        }
+        
+        Resource resource = new Resource();
+        resource.setTitle(resourceRequest.getTitle());
+        resource.setFilePath(fileUrl); // Store the S3 URL
         resource.setDescription(resourceRequest.getDescription());
         resource.setResourceType(resourceRequest.getResourceType());
         resource.setBatch(uploader.getBatch());
@@ -226,8 +290,12 @@ public class ResourceService {
         response.setUpdatedAt(resource.getUpdatedAt());
         
         // Uploader information
-        response.setUploaderName(resource.getUploader().getFullName());
-        response.setUploaderEmail(resource.getUploader().getEmail());
+        User uploader = resource.getUploader();
+        response.setUploaderName(uploader.getFullName());
+        response.setUploaderEmail(uploader.getEmail());
+        // Construct proper student ID: department + batch + student_id
+        String studentId = uploader.getDepartment() + uploader.getBatch() + uploader.getStudentId();
+        response.setUploaderStudentId(studentId);
         
         // Course information
         response.setCourseCode(resource.getCourse().getCourseCode());

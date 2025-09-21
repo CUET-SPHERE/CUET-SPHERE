@@ -18,6 +18,7 @@ public class ResourceResponse {
     // Uploader information
     private String uploaderName;
     private String uploaderEmail;
+    private String uploaderStudentId;
     
     // Course information
     private String courseCode;

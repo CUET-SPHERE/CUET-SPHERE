@@ -97,6 +97,34 @@ public class S3Service {
         return uploadToLocalStorage(file, key);
     }
 
+    public String uploadResourceFile(MultipartFile file, String fileName) throws IOException {
+        // Upload resource file to S3 with custom filename in resources folder
+        String key = "resources/" + fileName;
+
+        // Try S3 first, fallback to local storage
+        if (s3Client != null && bucketUrl != null && !bucketUrl.isEmpty()) {
+            try {
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(file.getContentType())
+                        .build();
+
+                PutObjectResponse response = s3Client.putObject(putObjectRequest, 
+                        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                String s3Url = bucketUrl + "/" + key;
+                return s3Url;
+            } catch (Exception e) {
+                // S3 resource upload failed, falling back to local storage
+                System.err.println("S3 resource upload failed: " + e.getMessage());
+            }
+        }
+        
+        // Fallback to local storage
+        return uploadToLocalStorage(file, key);
+    }
+
     public void deleteFile(String fileUrl) {
         if (fileUrl == null || fileUrl.isEmpty()) {
             return;

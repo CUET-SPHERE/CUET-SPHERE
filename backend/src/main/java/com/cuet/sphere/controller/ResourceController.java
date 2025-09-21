@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,59 @@ public class ResourceController {
             return ResponseEntity.status(401).body(error);
         } catch (Exception e) {
             logger.error("Unexpected error while creating resource: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    // Create resource with file upload (CR only)
+    @PostMapping("/upload")
+    public ResponseEntity<?> createResourceWithFile(
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("resourceType") String resourceType,
+            @RequestParam("courseCode") String courseCode,
+            @RequestParam("semesterName") String semesterName,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            logger.info("Creating resource with file upload - title: {}, course: {}", title, courseCode);
+            
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File is required"));
+            }
+
+            User currentUser = getCurrentUser();
+            
+            // Create ResourceRequest object
+            ResourceRequest resourceRequest = new ResourceRequest();
+            resourceRequest.setTitle(title);
+            resourceRequest.setDescription(description);
+            resourceRequest.setResourceType(Resource.ResourceType.valueOf(resourceType.toUpperCase()));
+            resourceRequest.setCourseCode(courseCode);
+            resourceRequest.setSemesterName(semesterName);
+            
+            ResourceResponse resource = resourceService.createResourceWithFile(resourceRequest, file, currentUser);
+            logger.info("Resource created successfully with file upload, ID: {}", resource.getResourceId());
+            return ResponseEntity.ok(resource);
+            
+        } catch (UserException e) {
+            logger.error("UserException while creating resource with file: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid resource type: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid resource type: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            logger.error("RuntimeException while creating resource with file: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Authentication failed: " + e.getMessage());
+            return ResponseEntity.status(401).body(error);
+        } catch (Exception e) {
+            logger.error("Unexpected error while creating resource with file: {}", e.getMessage(), e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Internal server error: " + e.getMessage());
             return ResponseEntity.status(500).body(error);

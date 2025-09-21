@@ -961,6 +961,141 @@ class ApiService {
     return handleResponse(response);
   }
 
+  // Resource file upload to S3
+  static async uploadResourceFile(file, onProgress) {
+    if (DEV_MODE) {
+      // Simulate progress for development
+      if (onProgress) {
+        for (let i = 0; i <= 100; i += 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          onProgress(i);
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        message: 'Resource file uploaded successfully',
+        fileUrl: `https://mock-s3-bucket.s3.amazonaws.com/resources/${Date.now()}-${file.name}`,
+        fileName: file.name,
+        fileSize: file.size
+      };
+    }
+
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = (event.loaded / event.total) * 100;
+          onProgress(progress);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Invalid JSON response from server'));
+          }
+        } else {
+          reject(new Error(`HTTP Error: ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = function () {
+        reject(new Error('Network error during file upload'));
+      };
+
+      xhr.open('POST', `${API_BASE_URL}/api/upload/resource`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
+  // Create resource with uploaded file
+  static async createResourceWithFile(resourceData, file, onProgress) {
+    if (DEV_MODE) {
+      // Simulate file upload progress
+      if (onProgress) {
+        for (let i = 0; i <= 100; i += 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          onProgress(i);
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const newResource = {
+        resourceId: Date.now(),
+        title: resourceData.title,
+        description: resourceData.description,
+        resourceType: resourceData.resourceType,
+        courseCode: resourceData.courseCode,
+        semesterName: resourceData.semesterName,
+        filePath: `https://mock-s3-bucket.s3.amazonaws.com/resources/${Date.now()}-${file.name}`,
+        uploaderName: 'Mock User',
+        uploaderEmail: 'mock@example.com',
+        createdAt: new Date().toISOString(),
+        batch: '22',
+        courseName: 'Mock Course',
+        departmentName: 'Computer Science & Engineering'
+      };
+
+      return { success: true, message: 'Resource created successfully', ...newResource };
+    }
+
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('title', resourceData.title);
+    formData.append('description', resourceData.description || '');
+    formData.append('resourceType', resourceData.resourceType);
+    formData.append('courseCode', resourceData.courseCode);
+    formData.append('semesterName', resourceData.semesterName);
+    formData.append('file', file);
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = (event.loaded / event.total) * 100;
+          onProgress(progress);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Invalid JSON response from server'));
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            reject(new Error(errorResponse.error || `HTTP Error: ${xhr.status}`));
+          } catch (e) {
+            reject(new Error(`HTTP Error: ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.onerror = function () {
+        reject(new Error('Network error during resource upload'));
+      };
+
+      xhr.open('POST', `${API_BASE_URL}/api/resources/upload`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
   // Update user profile
   static async updateUserProfile(profileData) {
     if (DEV_MODE) {

@@ -78,10 +78,67 @@ public class FileUploadController {
         }
     }
 
+    @PostMapping("/resource")
+    public ResponseEntity<FileUploadResponse> uploadResourceFile(
+            @RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File is empty"));
+            }
+
+            // Check file size (limit to 100MB for resource files)
+            if (file.getSize() > 100 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File size exceeds 100MB limit"));
+            }
+
+            // Check file type (allow all common resource file types)
+            String contentType = file.getContentType();
+            if (contentType == null || !isAllowedResourceFileType(contentType)) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File type not allowed. Allowed types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, Images, ZIP, RAR"));
+            }
+
+            // Generate a unique filename for resource
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = originalFilename != null && originalFilename.contains(".") ? 
+                originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+            
+            // Create a filename with timestamp to avoid conflicts
+            String baseFilename = originalFilename != null ? 
+                originalFilename.substring(0, originalFilename.lastIndexOf(".") != -1 ? originalFilename.lastIndexOf(".") : originalFilename.length()) : 
+                "resource";
+            String filename = baseFilename + "_" + System.currentTimeMillis() + fileExtension;
+
+            String fileUrl = s3Service.uploadResourceFile(file, filename);
+            System.out.println("Resource file uploaded successfully: " + fileUrl);
+            
+            return ResponseEntity.ok(FileUploadResponse.success(fileUrl, originalFilename, file.getSize()));
+            
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(FileUploadResponse.error("Failed to upload resource file: " + e.getMessage()));
+        }
+    }
+
     private boolean isAllowedFileType(String contentType) {
         return contentType.startsWith("application/pdf") ||
                contentType.equals("application/msword") ||
                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
                contentType.startsWith("image/");
+    }
+
+    private boolean isAllowedResourceFileType(String contentType) {
+        return contentType.startsWith("application/pdf") ||
+               contentType.equals("application/msword") ||
+               contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
+               contentType.equals("application/vnd.ms-powerpoint") ||
+               contentType.equals("application/vnd.openxmlformats-officedocument.presentationml.presentation") ||
+               contentType.equals("application/vnd.ms-excel") ||
+               contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
+               contentType.equals("text/plain") ||
+               contentType.equals("application/zip") ||
+               contentType.equals("application/x-rar-compressed") ||
+               contentType.equals("application/x-zip-compressed") ||
+               contentType.startsWith("image/") ||
+               contentType.startsWith("video/") ||
+               contentType.startsWith("audio/");
     }
 }
