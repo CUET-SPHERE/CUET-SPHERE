@@ -291,19 +291,32 @@ public class ResourceService {
         
         // Uploader information
         User uploader = resource.getUploader();
-        response.setUploaderName(uploader.getFullName());
-        response.setUploaderEmail(uploader.getEmail());
-        // Construct proper student ID: department + batch + student_id
-        String studentId = uploader.getDepartment() + uploader.getBatch() + uploader.getStudentId();
-        response.setUploaderStudentId(studentId);
+        if (uploader != null) {
+            response.setUploaderName(uploader.getFullName());
+            response.setUploaderEmail(uploader.getEmail());
+            response.setUploaderStudentId(uploader.getFullStudentId());
+            response.setUploaderProfilePicture(uploader.getProfilePicture());
+        } else {
+            // Fallback for missing uploader
+            response.setUploaderName("Unknown User");
+            response.setUploaderEmail("unknown@example.com");
+            response.setUploaderStudentId("0000000");
+            response.setUploaderProfilePicture(null);
+        }
         
         // Course information
-        response.setCourseCode(resource.getCourse().getCourseCode());
-        response.setCourseName(resource.getCourse().getCourseName());
-        response.setDepartmentName(resource.getCourse().getDepartment().getDeptName());
+        if (resource.getCourse() != null) {
+            response.setCourseCode(resource.getCourse().getCourseCode());
+            response.setCourseName(resource.getCourse().getCourseName());
+            if (resource.getCourse().getDepartment() != null) {
+                response.setDepartmentName(resource.getCourse().getDepartment().getDeptName());
+            }
+        }
         
         // Semester information
-        response.setSemesterName(resource.getSemester().getSemesterName());
+        if (resource.getSemester() != null) {
+            response.setSemesterName(resource.getSemester().getSemesterName());
+        }
         
         return response;
     }

@@ -576,32 +576,6 @@ class ApiService {
   }
 
   static async getAllResources() {
-    if (DEV_MODE) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [
-        {
-          id: 1,
-          title: 'Data Structures Notes',
-          description: 'Comprehensive notes for Data Structures course',
-          fileUrl: '/resources/ds-notes.pdf',
-          author: 'u2204015@student.cuet.ac.bd',
-          createdAt: new Date().toISOString(),
-          department: '04',
-          batch: '22'
-        },
-        {
-          id: 2,
-          title: 'Algorithm Practice Problems',
-          description: 'Collection of practice problems for algorithms',
-          fileUrl: '/resources/algo-problems.pdf',
-          author: 'u2204015@student.cuet.ac.bd',
-          createdAt: new Date().toISOString(),
-          department: '04',
-          batch: '22'
-        }
-      ];
-    }
-
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/resources`, {
       method: 'GET',
@@ -1020,35 +994,6 @@ class ApiService {
 
   // Create resource with uploaded file
   static async createResourceWithFile(resourceData, file, onProgress) {
-    if (DEV_MODE) {
-      // Simulate file upload progress
-      if (onProgress) {
-        for (let i = 0; i <= 100; i += 10) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          onProgress(i);
-        }
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const newResource = {
-        resourceId: Date.now(),
-        title: resourceData.title,
-        description: resourceData.description,
-        resourceType: resourceData.resourceType,
-        courseCode: resourceData.courseCode,
-        semesterName: resourceData.semesterName,
-        filePath: `https://mock-s3-bucket.s3.amazonaws.com/resources/${Date.now()}-${file.name}`,
-        uploaderName: 'Mock User',
-        uploaderEmail: 'mock@example.com',
-        createdAt: new Date().toISOString(),
-        batch: '22',
-        courseName: 'Mock Course',
-        departmentName: 'Computer Science & Engineering'
-      };
-
-      return { success: true, message: 'Resource created successfully', ...newResource };
-    }
-
     const token = getAuthToken();
     const formData = new FormData();
     formData.append('title', resourceData.title);

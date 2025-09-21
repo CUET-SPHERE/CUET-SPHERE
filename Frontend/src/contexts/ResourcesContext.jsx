@@ -62,7 +62,12 @@ export const ResourcesProvider = ({ children }) => {
               url: resource.filePath || '#',
               type: determineFileType(resource.filePath)
             },
+            // Map uploader details properly
             uploader: resource.uploaderName || resource.uploaderEmail || user?.email || 'Unknown',
+            uploaderName: resource.uploaderName || 'Unknown',
+            uploaderEmail: resource.uploaderEmail || 'unknown@example.com',
+            uploaderStudentId: resource.uploaderStudentId || 'Unknown',
+            uploaderProfilePicture: resource.uploaderProfilePicture || null,
             description: resource.description || '',
             downloadCount: resource.downloadCount || 0,
             uploadedAt: resource.createdAt || new Date().toISOString(),

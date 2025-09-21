@@ -65,12 +65,58 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
       return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
    };
 
+   // Get the best viewing URL for external links
+   const getExternalViewUrl = (url, ext) => {
+      // For office documents, try multiple approaches
+      if (isOfficeDocument(ext) || ['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext)) {
+         // Try Microsoft Office Online viewer first (often more reliable)
+         return getMicrosoftOfficeUrl(url);
+      }
+
+      // For PDFs, try to force inline viewing with multiple parameters
+      if (isPdf(ext)) {
+         const separator = url.includes('?') ? '&' : '?';
+         // Add multiple parameters to force viewing
+         return `${url}${separator}view=inline&download=0&embedded=true#view=FitH&toolbar=0&navpanes=0`;
+      }
+
+      // For other files, try to open with a blob URL approach or add view parameters
+      if (url.startsWith('http')) {
+         const separator = url.includes('?') ? '&' : '?';
+         return `${url}${separator}view=inline&download=0`;
+      }
+
+      // For other files, return original URL
+      return url;
+   };
+
    // Microsoft Office Online Viewer URL (alternative)
    const getMicrosoftOfficeUrl = (url) => {
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
    };
 
-   const renderPreview = () => {
+   // Get MIME type for file extension
+   const getMimeType = (ext) => {
+      const mimeTypes = {
+         'pdf': 'application/pdf',
+         'doc': 'application/msword',
+         'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+         'xls': 'application/vnd.ms-excel',
+         'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+         'ppt': 'application/vnd.ms-powerpoint',
+         'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+         'jpg': 'image/jpeg',
+         'jpeg': 'image/jpeg',
+         'png': 'image/png',
+         'gif': 'image/gif',
+         'txt': 'text/plain',
+         'html': 'text/html',
+         'css': 'text/css',
+         'js': 'application/javascript',
+         'json': 'application/json'
+      };
+      return mimeTypes[ext] || 'application/octet-stream';
+   }; const renderPreview = () => {
       if (!fileUrl) {
          return (
             <div className="flex items-center justify-center h-64">
@@ -103,14 +149,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                   <div className="text-center">
                      <AlertCircle size={48} className="mx-auto text-red-400 mb-2" />
                      <p className="text-red-500">Failed to load image</p>
-                     <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                     >
-                        Open in new tab
-                     </a>
                   </div>
                )}
             </div>
@@ -140,14 +178,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                   <div className="text-center">
                      <AlertCircle size={48} className="mx-auto text-red-400 mb-2" />
                      <p className="text-red-500">Failed to load video</p>
-                     <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                     >
-                        Open in new tab
-                     </a>
                   </div>
                )}
             </div>
@@ -176,14 +206,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                   {error && (
                      <div className="mt-4">
                         <p className="text-red-500">Failed to load audio</p>
-                        <a
-                           href={fileUrl}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-primary hover:underline"
-                        >
-                           Open in new tab
-                        </a>
                      </div>
                   )}
                </div>
@@ -255,16 +277,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                         <div className="space-y-2">
                            <a
                               href={fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-                           >
-                              <ExternalLink size={16} />
-                              Open in new tab
-                           </a>
-                           <br />
-                           <a
-                              href={fileUrl}
                               download={fileName}
                               className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                            >
@@ -301,14 +313,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                      <div className="text-center">
                         <AlertCircle size={48} className="mx-auto text-red-400 mb-2" />
                         <p className="text-red-500">Failed to load text file</p>
-                        <a
-                           href={fileUrl}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-primary hover:underline"
-                        >
-                           Open in new tab
-                        </a>
                      </div>
                   </div>
                )}
@@ -328,16 +332,6 @@ const FilePreview = ({ fileUrl, fileType, fileName }) => {
                   This file type ({extension.toUpperCase()}) cannot be previewed directly.
                </p>
                <div className="space-y-2">
-                  <a
-                     href={fileUrl}
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-                  >
-                     <ExternalLink size={16} />
-                     Open in new tab
-                  </a>
-                  <br />
                   <a
                      href={fileUrl}
                      download={fileName}

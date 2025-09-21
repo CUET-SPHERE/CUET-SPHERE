@@ -8,8 +8,8 @@ import ConfirmationModal from './ConfirmationModal';
 import FileIcon from './FileIcon';
 import FileTypeIcon, { FileTypeIconWithName } from './FileTypeIcon';
 import FileViewer from './FileViewer';
-import FolderSidebar from './FolderSidebar';
-import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Star, Eye, ChevronDown, Folder, Plus, ChevronRight, MoreHorizontal, FolderPlus, X, CalendarClock, Calendar, AlertCircle, User } from 'lucide-react';
+import { getInitials, getAvatarColor } from '../utils/formatters';
+import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Eye, ChevronDown, Plus, ChevronRight, MoreHorizontal, X, CalendarClock, Calendar, AlertCircle, User } from 'lucide-react';
 
 const departmentMap = {
   '04': 'CSE',
@@ -19,7 +19,49 @@ const departmentMap = {
   '05': 'ETE',
 };
 
-// Levels and terms constants
+// Avatar component (same as PostCard)
+const Avatar = React.memo(({ src, name, size = 'sm' }) => {
+  const sizeClasses = {
+    xs: 'w-5 h-5 text-xs',
+    sm: 'w-8 h-8 text-xs',
+    md: 'w-10 h-10 text-sm',
+    lg: 'w-12 h-12 text-base'
+  };
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`${sizeClasses[size]} rounded-full object-cover border-2 border-gray-200 dark:border-gray-600`}
+      />
+    );
+  }
+
+  const initials = getInitials(name);
+  const colorClass = getAvatarColor(name);
+
+  return (
+    <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center text-white font-medium`}>
+      {initials}
+    </div>
+  );
+});
+
+// Function to format student ID as batch+dept+id (e.g., 21CSE012)
+const formatStudentId = (studentId) => {
+  if (!studentId || typeof studentId !== 'string' || studentId.length < 4) return null;
+
+  const batch = studentId.substring(0, 2);
+  const deptCode = studentId.substring(2, 4);
+  const id = studentId.substring(4);
+  const deptShort = departmentMap[deptCode] || deptCode;
+
+  // Ensure ID part is at least 3 digits with leading zeros
+  const formattedId = id.padStart(3, '0');
+
+  return `${batch}${deptShort}${formattedId}`;
+};// Levels and terms constants
 const levels = [1, 2, 3, 4];
 const terms = [1, 2];
 
@@ -469,7 +511,6 @@ function AcademicResources() {
   const courseCol1 = currentCourses.slice(0, midPoint);
   const courseCol2 = currentCourses.slice(midPoint);
 
-  const [showFolders, setShowFolders] = useState(false);
   const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
 
   return (
@@ -508,7 +549,6 @@ function AcademicResources() {
                         setSelectedTerm(1);
                         setSelectedCourse(null);
                         setIsLevelDropdownOpen(false);
-                        setShowFolders(false);
                       }}
                     >
                       Level {level}
@@ -563,29 +603,10 @@ function AcademicResources() {
                 </button>
               )}
           </div>
-
-          <div className="flex">
-            <button
-              className={`px-4 py-2 font-medium transition-all ${!showFolders ? 'border-b-2 border-primary text-primary' : 'text-gray-500 dark:text-text-secondary hover:text-primary'}`}
-              onClick={() => setShowFolders(false)}
-            >
-              Courses
-            </button>
-            <button
-              className={`px-4 py-2 font-medium transition-all flex items-center gap-1 ${showFolders ? 'border-b-2 border-primary text-primary' : 'text-gray-500 dark:text-text-secondary hover:text-primary'}`}
-              onClick={() => setShowFolders(true)}
-            >
-              <Folder size={16} className="text-primary" /> Folders
-            </button>
-          </div>
         </div>
 
         <div className="w-full flex-grow">
-          {showFolders ? (
-            <div className="h-full">
-              <FolderSidebar />
-            </div>
-          ) : !selectedCourse ? (
+          {!selectedCourse ? (
             <>
               <div className="flex justify-between items-center mb-4">
                 <div className="flex gap-2 sm:gap-4">
@@ -742,53 +763,38 @@ function AcademicResources() {
                           )}
 
                           {/* Uploader Information and Upload Date */}
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-text-secondary mt-2">
-                            <div className="flex items-center gap-1">
-                              <User size={12} />
-                              <span>
-                                Uploaded by: <span className="font-medium">
-                                  {res.uploaderName || res.uploader || 'Unknown'}
-                                </span>
-                                {res.uploaderStudentId && (
-                                  <span className="ml-1 text-gray-400">
-                                    (ID: {res.uploaderStudentId})
-                                  </span>
-                                )}
+                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-text-secondary mt-2">
+                            <Avatar src={res.uploaderProfilePicture} name={res.uploaderName} size="xs" />
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-700 dark:text-gray-300">
+                                {res.uploaderName || 'Unknown'}
                               </span>
+                              <span className="text-gray-300 dark:text-gray-600">•</span>
+                              <span>Student ID: {res.uploaderStudentId || 'Unknown'}</span>
+                              <span className="text-gray-300 dark:text-gray-600">•</span>
+                              <span>
+                                {new Date(res.uploadedAt || res.createdAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                              {/* Resource Type */}
+                              {res.resourceType && (
+                                <>
+                                  <span className="text-gray-300 dark:text-gray-600">•</span>
+                                  <span className="capitalize">
+                                    {res.resourceType.replace(/_/g, ' ').toLowerCase()}
+                                  </span>
+                                </>
+                              )}
                             </div>
-
-                            <span className="text-gray-300 dark:text-gray-600">•</span>
-
-                            <span>
-                              {new Date(res.uploadedAt || res.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </span>
-
-                            {/* Resource Type */}
-                            {res.resourceType && (
-                              <>
-                                <span className="text-gray-300 dark:text-gray-600">•</span>
-                                <span className="capitalize">
-                                  {res.resourceType.replace(/_/g, ' ').toLowerCase()}
-                                </span>
-                              </>
-                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => toggleFavourite(res.id || res.resourceId)}
-                          className="p-2 text-gray-500 dark:text-text-secondary hover:text-yellow-500 transition-colors"
-                          title="Add to favorites"
-                        >
-                          <Star size={16} className={favouriteResourceIds.includes(res.id || res.resourceId) ? 'text-yellow-500 fill-current' : ''} />
-                        </button>
                         <button
                           onClick={() => handleViewFile(res)}
                           className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"

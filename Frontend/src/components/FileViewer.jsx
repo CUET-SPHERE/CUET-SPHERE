@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, ExternalLink } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import FilePreview from './FilePreview';
 
 const FileViewer = ({ isOpen, onClose, fileUrl, fileName, fileType }) => {
@@ -18,10 +18,6 @@ const FileViewer = ({ isOpen, onClose, fileUrl, fileName, fileType }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-   };
-
-   const handleOpenExternal = () => {
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
    };
 
    return (
@@ -45,14 +41,6 @@ const FileViewer = ({ isOpen, onClose, fileUrl, fileName, fileType }) => {
                      title="Download file"
                   >
                      <Download size={18} />
-                  </button>
-
-                  <button
-                     onClick={handleOpenExternal}
-                     className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                     title="Open in new tab"
-                  >
-                     <ExternalLink size={18} />
                   </button>
 
                   <button

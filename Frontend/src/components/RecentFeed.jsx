@@ -1,14 +1,68 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useResources } from '../contexts/ResourcesContext';
 import FileIcon from './FileIcon';
-import { Download, Eye, Star, AlertCircle } from 'lucide-react';
+import FileTypeIcon from './FileTypeIcon';
+import FileViewer from './FileViewer';
+import { Download, Eye, AlertCircle } from 'lucide-react';
 import { formatTimeAgo } from '../utils/time';
+import { getInitials, getAvatarColor } from '../utils/formatters';
+
+// Avatar component (same as PostCard and AcademicResources)
+const Avatar = React.memo(({ src, name, size = 'md' }) => {
+  const sizeClasses = {
+    xs: 'w-5 h-5 text-xs',
+    sm: 'w-8 h-8 text-xs',
+    md: 'w-10 h-10 text-sm',
+    lg: 'w-12 h-12 text-base'
+  };
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`${sizeClasses[size]} rounded-full object-cover border-2 border-gray-200 dark:border-gray-600`}
+      />
+    );
+  }
+
+  const initials = getInitials(name);
+  const colorClass = getAvatarColor(name);
+
+  return (
+    <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center text-white font-medium`}>
+      {initials}
+    </div>
+  );
+});
+
+const departmentMap = {
+  '04': 'CSE',
+  '01': 'CE',
+  '02': 'EEE',
+  '03': 'ME',
+  '05': 'ETE',
+};
+
+// Function to format student ID as batch+dept+id (e.g., 21CSE012)
+const formatStudentId = (studentId) => {
+  if (!studentId || typeof studentId !== 'string' || studentId.length < 4) return null;
+
+  const batch = studentId.substring(0, 2);
+  const deptCode = studentId.substring(2, 4);
+  const id = studentId.substring(4);
+  const deptShort = departmentMap[deptCode] || deptCode;
+
+  // Ensure ID part is at least 3 digits with leading zeros
+  const formattedId = id.padStart(3, '0');
+
+  return `${batch}${deptShort}${formattedId}`;
+};
 
 function RecentFeed() {
-  const { resources, toggleFavourite, findFolder, loading, error } = useResources();
-
-  const favouritesFolder = findFolder('favourites');
-  const favouriteResourceIds = favouritesFolder ? favouritesFolder.resourceIds : [];
+  const { resources, loading, error } = useResources();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Get top 7 most recent resources
   const recentFiles = resources.length > 0 ?
@@ -16,6 +70,16 @@ function RecentFeed() {
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
       .slice(0, 7)
     : [];
+
+  // Handle view file function (same as AcademicResources)
+  const handleViewFile = (resource) => {
+    setSelectedFile({
+      url: resource.fileUrl || resource.file?.url || resource.filePath,
+      name: resource.title,
+      type: resource.file?.type || resource.fileType || 'application/octet-stream'
+    });
+    setViewerOpen(true);
+  };
 
   return (
     <div className="bg-white dark:bg-surface rounded-2xl shadow-2xl p-4 flex flex-col h-full border border-gray-200 dark:border-border-color">
@@ -32,39 +96,66 @@ function RecentFeed() {
           </div>
         ) : recentFiles.length > 0 ? (
           recentFiles.map((res) => (
-            <div key={res.id} className="group bg-gray-50 dark:bg-background rounded-lg p-3 border border-gray-200 dark:border-border-color flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <FileIcon fileType={res.file.type} className="h-6 w-6 shrink-0" />
-                <div className="overflow-hidden">
-                  <p className="font-medium text-sm text-gray-800 dark:text-text-primary truncate">{res.title}</p>
-                  <div className="text-xs text-gray-500 dark:text-text-secondary">
-                    <p className="truncate">uploaded by: {res.uploader}</p>
-                    <p className="truncate">Id: 22{Math.floor(Math.random() * 10000).toString().padStart(4, '0')} &middot; {formatTimeAgo(new Date(res.uploadedAt))}</p>
+            <div key={res.id} className="flex items-center justify-between bg-gray-100 dark:bg-background rounded-lg p-4 border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {/* File Type Icon */}
+                <FileTypeIcon
+                  filename={res.file?.name || res.fileName || res.fileUrl?.split('/').pop() || res.filePath?.split('/').pop() || res.title}
+                  size={28}
+                />
+
+                <div className="flex-1 min-w-0">
+                  {/* Resource Title and Link */}
+                  <button
+                    onClick={() => handleViewFile(res)}
+                    className="resource-title-button font-semibold text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left w-full cursor-pointer"
+                  >
+                    {res.title}
+                  </button>
+
+                  {/* Resource Description (if available) */}
+                  {res.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                      {res.description}
+                    </p>
+                  )}
+
+                  {/* Uploader Information and Upload Date */}
+                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-text-secondary mt-2">
+                    <Avatar src={res.uploaderProfilePicture} name={res.uploaderName} size="xs" />
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        {res.uploaderName || 'Unknown'}
+                      </span>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <span>Student ID: {res.uploaderStudentId || 'Unknown'}</span>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <span>
+                        {new Date(res.uploadedAt || res.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 ml-4">
                 <button
-                  onClick={() => toggleFavourite(res.id)}
-                  className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-yellow-100 dark:hover:bg-yellow-900 hover:text-yellow-500 transition-colors"
-                  aria-label={`Favorite ${res.title}`}
-                >
-                  <Star size={16} className={favouriteResourceIds.includes(res.id) ? 'text-yellow-500 fill-current' : ''} />
-                </button>
-                <a
-                  href={res.file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => handleViewFile(res)}
                   className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                  aria-label={`View ${res.title}`}
+                  title={`View ${res.title}`}
                 >
                   <Eye size={16} />
-                </a>
+                </button>
                 <a
-                  href={res.file.url}
-                  download={res.file.name}
+                  href={res.fileUrl || res.file?.url || res.filePath}
+                  download={res.file?.name || res.fileName || res.title}
                   className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                  aria-label={`Download ${res.title}`}
+                  title={`Download ${res.title}`}
                 >
                   <Download size={16} />
                 </a>
@@ -77,6 +168,15 @@ function RecentFeed() {
           </div>
         )}
       </div>
+
+      {/* File Viewer Modal */}
+      {viewerOpen && selectedFile && (
+        <FileViewer
+          isOpen={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          file={selectedFile}
+        />
+      )}
     </div>
   );
 }
