@@ -575,6 +575,47 @@ class ApiService {
     return handleResponse(response);
   }
 
+  static async uploadMultipleFiles(formData, onProgress) {
+    const token = getAuthToken();
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          onProgress(percentComplete);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Failed to parse response'));
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            reject(new Error(errorResponse.error || `HTTP error! status: ${xhr.status}`));
+          } catch (e) {
+            reject(new Error(`HTTP error! status: ${xhr.status}`));
+          }
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error occurred'));
+      });
+
+      xhr.open('POST', `${API_BASE_URL}/api/resources/upload/multiple`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
   static async getAllResources() {
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/resources`, {
@@ -1039,6 +1080,127 @@ class ApiService {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.send(formData);
     });
+  }
+
+  // Create resource with multiple files (folder mode)
+  static async createResourceWithMultipleFiles(resourceData, files, onProgress) {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('title', resourceData.title);
+    formData.append('description', resourceData.description || '');
+    formData.append('resourceType', resourceData.resourceType);
+    formData.append('courseCode', resourceData.courseCode);
+    formData.append('semesterName', resourceData.semesterName);
+
+    // Add all files to form data
+    files.forEach((file, index) => {
+      formData.append('files', file);
+    });
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = (event.loaded / event.total) * 100;
+          onProgress(progress);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Invalid JSON response from server'));
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            reject(new Error(errorResponse.error || `HTTP Error: ${xhr.status}`));
+          } catch (e) {
+            reject(new Error(`HTTP Error: ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.onerror = function () {
+        reject(new Error('Network error during multiple file upload'));
+      };
+
+      xhr.open('POST', `${API_BASE_URL}/api/resources/upload/multiple`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
+  // Add files to existing resource
+  static async addFilesToResource(resourceId, files, onProgress) {
+    const token = getAuthToken();
+    const formData = new FormData();
+
+    // Add all files to form data
+    files.forEach((file, index) => {
+      formData.append('files', file);
+    });
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = (event.loaded / event.total) * 100;
+          onProgress(progress);
+        }
+      });
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Invalid JSON response from server'));
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            reject(new Error(errorResponse.error || `HTTP Error: ${xhr.status}`));
+          } catch (e) {
+            reject(new Error(`HTTP Error: ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.onerror = function () {
+        reject(new Error('Network error during file addition'));
+      };
+
+      xhr.open('POST', `${API_BASE_URL}/api/resources/${resourceId}/files`);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    });
+  }
+
+  // Remove file from resource
+  static async removeFileFromResource(resourceId, fileId) {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/resources/${resourceId}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+    }
+
+    return await response.json();
   }
 
   // Update user profile

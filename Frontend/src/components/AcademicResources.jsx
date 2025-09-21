@@ -9,7 +9,7 @@ import FileIcon from './FileIcon';
 import FileTypeIcon, { FileTypeIconWithName } from './FileTypeIcon';
 import FileViewer from './FileViewer';
 import { getInitials, getAvatarColor } from '../utils/formatters';
-import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Eye, ChevronDown, Plus, ChevronRight, MoreHorizontal, X, CalendarClock, Calendar, AlertCircle, User } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Download, ArrowLeft, Eye, ChevronDown, Plus, ChevronRight, MoreHorizontal, X, CalendarClock, Calendar, AlertCircle, User, Folder, FolderOpen, File } from 'lucide-react';
 
 const departmentMap = {
   '04': 'CSE',
@@ -81,6 +81,7 @@ function AcademicResources() {
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [currentSemester, setCurrentSemester] = useState(null); // Stores the current semester for the batch
+  const [expandedFolders, setExpandedFolders] = useState(new Set()); // Track which folders are expanded
 
   const [courses, setCourses] = useState(initialCoursesByLevelTerm);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -148,6 +149,20 @@ function AcademicResources() {
     }
   }, [selectedLevel, selectedTerm, user.department]);
 
+  // Auto-expand all folder resources when resources change or course is selected
+  useEffect(() => {
+    if (selectedCourse && resources.length > 0) {
+      const courseResources = resources.filter(r => r.courseCode === selectedCourse.code);
+      const folderIds = courseResources
+        .filter(resource => resource.isFolder && resource.files && resource.files.length > 0)
+        .map(resource => resource.id || resource.resourceId);
+
+      if (folderIds.length > 0) {
+        setExpandedFolders(new Set(folderIds));
+      }
+    }
+  }, [resources, selectedCourse]);
+
   // Function to refresh courses when data is out of sync
   const refreshCourses = useCallback(async () => {
     if (user && user.department) {
@@ -210,12 +225,21 @@ function AcademicResources() {
   };
 
   // File viewer functions
-  const handleViewFile = (resource) => {
-    const fileUrl = resource.fileUrl || resource.file?.url || resource.filePath;
-    const fileName = resource.file?.name || resource.fileName || resource.title;
+  const handleViewFile = (resource, file = null) => {
+    let fileUrl, fileName;
+
+    if (file) {
+      // Viewing a specific file in a folder
+      fileUrl = file.filePath;
+      fileName = file.fileName;
+    } else {
+      // Viewing a single file resource or the main file
+      fileUrl = resource.fileUrl || resource.file?.url || resource.filePath;
+      fileName = resource.file?.name || resource.fileName || resource.title;
+    }
 
     if (!fileUrl) {
-      console.error('No file URL found for resource:', resource);
+      console.error('No file URL found for resource:', resource, 'file:', file);
       return;
     }
 
@@ -226,6 +250,41 @@ function AcademicResources() {
       type: resource.resourceType
     });
     setFileViewerOpen(true);
+  };
+
+  // Folder management functions
+  const toggleFolder = (resourceId) => {
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resourceId)) {
+        newSet.delete(resourceId);
+      } else {
+        newSet.add(resourceId);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Remove file from folder resource
+  const handleRemoveFileFromResource = async (resourceId, fileId) => {
+    try {
+      const updatedResource = await API.removeFileFromResource(resourceId, fileId);
+      // Update the resources context or trigger a refresh
+      handleResourceUpload(updatedResource);
+      showSuccessNotification('File removed successfully!');
+    } catch (error) {
+      console.error('Error removing file:', error);
+      showErrorNotification(error.message || 'Failed to remove file');
+    }
   };
 
   const handleCloseFileViewer = () => {
@@ -733,96 +792,17 @@ function AcademicResources() {
                   </div>
                 ) : getResourcesForCourse(selectedCourse.code).length > 0 ? (
                   getResourcesForCourse(selectedCourse.code).map((res) => (
-                    <div
+                    <ResourceCard
                       key={res.id || res.resourceId}
-                      draggable="true"
-                      onDragStart={(e) => handleDragStart(e, res.id || res.resourceId)}
-                      className="flex items-center justify-between bg-gray-100 dark:bg-background rounded-lg p-4 border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary"
-                    >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        {/* File Type Icon */}
-                        <FileTypeIcon
-                          filename={res.file?.name || res.fileName || res.fileUrl?.split('/').pop() || res.filePath?.split('/').pop() || res.title}
-                          size={28}
-                        />
-
-                        <div className="flex-1 min-w-0">
-                          {/* Resource Title and Link */}
-                          <button
-                            onClick={() => handleViewFile(res)}
-                            className="resource-title-button font-semibold text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left w-full cursor-pointer"
-                          >
-                            {res.title}
-                          </button>
-
-                          {/* Resource Description (if available) */}
-                          {res.description && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
-                              {res.description}
-                            </p>
-                          )}
-
-                          {/* Uploader Information and Upload Date */}
-                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-text-secondary mt-2">
-                            <Avatar src={res.uploaderProfilePicture} name={res.uploaderName} size="xs" />
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-700 dark:text-gray-300">
-                                {res.uploaderName || 'Unknown'}
-                              </span>
-                              <span className="text-gray-300 dark:text-gray-600">•</span>
-                              <span>Student ID: {res.uploaderStudentId || 'Unknown'}</span>
-                              <span className="text-gray-300 dark:text-gray-600">•</span>
-                              <span>
-                                {new Date(res.uploadedAt || res.createdAt).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </span>
-                              {/* Resource Type */}
-                              {res.resourceType && (
-                                <>
-                                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                                  <span className="capitalize">
-                                    {res.resourceType.replace(/_/g, ' ').toLowerCase()}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => handleViewFile(res)}
-                          className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                          title={`View ${res.title}`}
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <a
-                          href={res.fileUrl || res.file?.url || res.filePath}
-                          download={res.file?.name || res.fileName || res.title}
-                          className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
-                          title={`Download ${res.title}`}
-                        >
-                          <Download size={16} />
-                        </a>
-
-                        {/* Delete button for CR users if they are the uploader */}
-                        {user.role === 'CR' && (res.uploaderEmail === user.email || res.uploader === user.fullName) && (
-                          <button
-                            onClick={() => openDeleteModal('resource', res)}
-                            className="p-2 text-gray-500 dark:text-text-secondary hover:text-error transition-colors"
-                            title="Delete resource"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                      resource={res}
+                      user={user}
+                      expandedFolders={expandedFolders}
+                      onToggleFolder={toggleFolder}
+                      onViewFile={handleViewFile}
+                      onRemoveFile={handleRemoveFileFromResource}
+                      onDeleteResource={(resource) => openDeleteModal('resource', resource)}
+                      onDragStart={handleDragStart}
+                    />
                   ))
                 ) : (
                   <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
@@ -931,5 +911,214 @@ function AcademicResources() {
     </div>
   );
 }
+
+// ResourceCard component to handle both single files and folders
+const ResourceCard = ({
+  resource,
+  user,
+  expandedFolders,
+  onToggleFolder,
+  onViewFile,
+  onRemoveFile,
+  onDeleteResource,
+  onDragStart
+}) => {
+  const isFolder = resource.isFolder && resource.files && resource.files.length > 0;
+  const isExpanded = expandedFolders.has(resource.id || resource.resourceId);
+  const resourceId = resource.id || resource.resourceId;
+
+  // Helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  return (
+    <div
+      draggable="true"
+      onDragStart={(e) => onDragStart(e, resourceId)}
+      className="bg-gray-100 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary"
+    >
+      {/* Main Resource Header */}
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          {/* Folder/File Icon with Expand Button */}
+          <div className="flex items-center gap-2">
+            {isFolder ? (
+              <button
+                onClick={() => onToggleFolder(resourceId)}
+                className="flex items-center gap-1 hover:bg-gray-200 dark:hover:bg-neutral-700 p-1 rounded transition-colors"
+              >
+                {isExpanded ? (
+                  <FolderOpen size={28} className="text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <Folder size={28} className="text-blue-600 dark:text-blue-400" />
+                )}
+                <ChevronRight
+                  size={16}
+                  className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                />
+              </button>
+            ) : (
+              <FileTypeIcon
+                filename={resource.file?.name || resource.fileName || resource.fileUrl?.split('/').pop() || resource.filePath?.split('/').pop() || resource.title}
+                size={28}
+              />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Resource Title */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => isFolder ? onToggleFolder(resourceId) : onViewFile(resource)}
+                className="resource-title-button font-semibold text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left cursor-pointer"
+              >
+                {resource.title}
+              </button>
+              {isFolder && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                  {resource.fileCount || resource.files?.length || 0} files
+                </span>
+              )}
+            </div>
+
+            {/* Resource Description */}
+            {resource.description && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                {resource.description}
+              </p>
+            )}
+
+            {/* Uploader Information and Upload Date */}
+            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-text-secondary mt-2">
+              <Avatar src={resource.uploaderProfilePicture} name={resource.uploaderName} size="xs" />
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {resource.uploaderName || 'Unknown'}
+                </span>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <span>Student ID: {formatStudentId(resource.uploaderStudentId) || 'Unknown'}</span>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <span>
+                  {new Date(resource.uploadedAt || resource.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </span>
+                {resource.resourceType && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-600">•</span>
+                    <span className="capitalize">
+                      {resource.resourceType.replace(/_/g, ' ').toLowerCase()}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 ml-4">
+          {!isFolder && (
+            <>
+              <button
+                onClick={() => onViewFile(resource)}
+                className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                title={`View ${resource.title}`}
+              >
+                <Eye size={16} />
+              </button>
+              <a
+                href={resource.fileUrl || resource.file?.url || resource.filePath}
+                download={resource.file?.name || resource.fileName || resource.title}
+                className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                title={`Download ${resource.title}`}
+              >
+                <Download size={16} />
+              </a>
+            </>
+          )}
+
+          {/* Delete button for CR users if they are the uploader */}
+          {user.role === 'CR' && (resource.uploaderEmail === user.email || resource.uploader === user.fullName) && (
+            <button
+              onClick={() => onDeleteResource(resource)}
+              className="p-2 text-gray-500 dark:text-text-secondary hover:text-error transition-colors"
+              title="Delete resource"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded Folder Content */}
+      {isFolder && isExpanded && resource.files && (
+        <div className="border-t border-gray-200 dark:border-border-color bg-gray-50 dark:bg-neutral-800">
+          <div className="p-4 space-y-2">
+            {resource.files.map((file, index) => (
+              <div
+                key={file.fileId || index}
+                className="flex items-center justify-between bg-white dark:bg-surface rounded-lg p-3 border border-gray-200 dark:border-border-color hover:shadow-sm transition-all"
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <FileTypeIcon filename={file.fileName} size={24} />
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => onViewFile(resource, file)}
+                      className="text-sm font-medium text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left w-full cursor-pointer"
+                    >
+                      {file.fileName}
+                    </button>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-text-secondary mt-1">
+                      <span>{formatFileSize(file.fileSize)}</span>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <span className="capitalize">{file.fileType}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 ml-3">
+                  <button
+                    onClick={() => onViewFile(resource, file)}
+                    className="p-1.5 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                    title={`View ${file.fileName}`}
+                  >
+                    <Eye size={14} />
+                  </button>
+                  <a
+                    href={file.filePath}
+                    download={file.fileName}
+                    className="p-1.5 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                    title={`Download ${file.fileName}`}
+                  >
+                    <Download size={14} />
+                  </a>
+
+                  {/* Remove individual file button for CR users if they are the uploader */}
+                  {user.role === 'CR' && (resource.uploaderEmail === user.email || resource.uploader === user.fullName) && (
+                    <button
+                      onClick={() => onRemoveFile(resourceId, file.fileId)}
+                      className="p-1.5 text-gray-500 dark:text-text-secondary hover:text-error transition-colors"
+                      title="Remove this file"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default AcademicResources;

@@ -4,6 +4,7 @@ import com.cuet.sphere.model.*;
 import com.cuet.sphere.repository.*;
 import com.cuet.sphere.response.ResourceRequest;
 import com.cuet.sphere.response.ResourceResponse;
+import com.cuet.sphere.response.ResourceFileResponse;
 import com.cuet.sphere.exception.UserException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,9 @@ public class ResourceService {
     
     @Autowired
     private DepartmentRepository departmentRepository;
+    
+    @Autowired
+    private ResourceFileRepository resourceFileRepository;
     
     @Autowired
     private S3Service s3Service;
@@ -284,10 +289,44 @@ public class ResourceService {
         response.setBatch(resource.getBatch());
         response.setResourceType(resource.getResourceType());
         response.setTitle(resource.getTitle());
-        response.setFilePath(resource.getFilePath());
         response.setDescription(resource.getDescription());
         response.setCreatedAt(resource.getCreatedAt());
         response.setUpdatedAt(resource.getUpdatedAt());
+        
+        // New folder-related fields
+        response.setIsFolder(resource.getIsFolder() != null ? resource.getIsFolder() : false);
+        response.setFileCount(resource.getFileCount() != null ? resource.getFileCount() : 0);
+        
+        // Load files explicitly from repository to avoid lazy loading issues
+        List<ResourceFile> resourceFiles = resourceFileRepository.findByResourceIdOrderByUploadOrder(resource.getResourceId());
+        List<ResourceFileResponse> fileResponses = new ArrayList<>();
+        
+        if (!resourceFiles.isEmpty()) {
+            // Use ResourceFile entities from repository
+            fileResponses = resourceFiles.stream()
+                .map(ResourceFileResponse::fromResourceFile)
+                .collect(Collectors.toList());
+            response.setFiles(fileResponses);
+            
+            // Set filePath to first file for backward compatibility
+            response.setFilePath(fileResponses.get(0).getFilePath());
+        } else if (resource.getFilePath() != null && !resource.getFilePath().isEmpty()) {
+            // Fallback to legacy filePath for existing resources
+            response.setFilePath(resource.getFilePath());
+            
+            // Create a single ResourceFileResponse for backward compatibility
+            ResourceFileResponse legacyFile = new ResourceFileResponse();
+            legacyFile.setFileName(extractFileNameFromPath(resource.getFilePath()));
+            legacyFile.setFilePath(resource.getFilePath());
+            legacyFile.setUploadOrder(0);
+            legacyFile.setCreatedAt(resource.getCreatedAt());
+            fileResponses.add(legacyFile);
+            response.setFiles(fileResponses);
+        }
+        
+        // Update response metadata based on actual files loaded
+        response.setFileCount(fileResponses.size());
+        response.setIsFolder(fileResponses.size() > 1);
         
         // Uploader information
         User uploader = resource.getUploader();
@@ -319,6 +358,264 @@ public class ResourceService {
         }
         
         return response;
+    }
+    
+    // Helper method to extract filename from file path
+    private String extractFileNameFromPath(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return "Unknown File";
+        }
+        
+        // Extract filename from URL or path
+        String fileName = filePath;
+        if (fileName.contains("/")) {
+            fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+        }
+        if (fileName.contains("\\")) {
+            fileName = fileName.substring(fileName.lastIndexOf("\\") + 1);
+        }
+        
+        return fileName.isEmpty() ? "Unknown File" : fileName;
+    }
+    
+    // New method: Create resource with multiple files (folder mode)
+    public ResourceResponse createResourceWithMultipleFiles(ResourceRequest resourceRequest, List<MultipartFile> files, User uploader) throws UserException {
+        // Check if uploader is CR
+        if (!uploader.isCR()) {
+            throw new UserException("Only CR users can upload resources");
+        }
+        
+        if (files == null || files.isEmpty()) {
+            throw new UserException("At least one file is required");
+        }
+        
+        // Find course
+        Course course = courseRepository.findByCourseCode(resourceRequest.getCourseCode());
+        if (course == null) {
+            throw new UserException("Course not found with code: " + resourceRequest.getCourseCode());
+        }
+        
+        // Check if course belongs to uploader's department
+        String uploaderDeptName = getDepartmentNameByCode(uploader.getDepartment());
+        if (!course.getDepartment().getDeptName().equals(uploaderDeptName)) {
+            throw new UserException("You can only upload resources for your department. Your department code: " + uploader.getDepartment() + " (" + uploaderDeptName + "), Course department: " + course.getDepartment().getDeptName());
+        }
+        
+        // Find semester
+        Semester semester = semesterRepository.findBySemesterName(resourceRequest.getSemesterName());
+        if (semester == null) {
+            throw new UserException("Semester not found: " + resourceRequest.getSemesterName());
+        }
+        
+        // Create and save the main resource first WITHOUT any file collection access
+        Resource resource = new Resource();
+        resource.setTitle(resourceRequest.getTitle());
+        resource.setDescription(resourceRequest.getDescription());
+        resource.setResourceType(resourceRequest.getResourceType());
+        resource.setBatch(uploader.getBatch());
+        resource.setUploader(uploader);
+        resource.setCourse(course);
+        resource.setSemester(semester);
+        resource.setIsFolder(files.size() > 1);
+        resource.setFileCount(files.size());
+        resource.setFilePath(null); // Will be set after first file upload
+        
+        // Save the resource first to get an ID - DO NOT access files collection
+        Resource savedResource = resourceRepository.save(resource);
+        Long resourceId = savedResource.getResourceId();
+        
+        // Now upload files and create ResourceFile entities independently
+        try {
+            String primaryFilePath = null;
+            
+            for (int i = 0; i < files.size(); i++) {
+                MultipartFile file = files.get(i);
+                
+                String originalFilename = file.getOriginalFilename();
+                String fileExtension = originalFilename != null && originalFilename.contains(".") ? 
+                    originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+                
+                String baseFilename = String.format("%s_%s_%s_%s_%d_%d",
+                    uploader.getDepartment(),
+                    uploader.getBatch(),
+                    course.getCourseCode().replaceAll("[^a-zA-Z0-9]", ""),
+                    resourceRequest.getResourceType().toString(),
+                    System.currentTimeMillis(),
+                    i
+                );
+                String filename = baseFilename + fileExtension;
+                
+                String fileUrl = s3Service.uploadResourceFile(file, filename);
+                
+                // Create and save each ResourceFile individually - NO entity relationships
+                ResourceFile resourceFile = new ResourceFile();
+                resourceFile.setFileName(originalFilename);
+                resourceFile.setFilePath(fileUrl);
+                resourceFile.setFileSize(file.getSize());
+                resourceFile.setFileType(getFileType(originalFilename));
+                resourceFile.setUploadOrder(i);
+                
+                // Set the resource ID directly without using entity relationship
+                resourceFile.setResourceId(resourceId);
+                
+                resourceFileRepository.save(resourceFile);
+                
+                // Store the first file's path for backward compatibility
+                if (i == 0) {
+                    primaryFilePath = fileUrl;
+                }
+            }
+            
+            // Update the resource with the primary file path - reload fresh from DB
+            Resource freshResource = resourceRepository.findById(resourceId).orElseThrow();
+            freshResource.setFilePath(primaryFilePath);
+            resourceRepository.save(freshResource);
+            
+            // Create a minimal response to avoid any entity access issues
+            ResourceResponse response = new ResourceResponse();
+            response.setResourceId(resourceId);
+            response.setTitle(freshResource.getTitle());
+            response.setDescription(freshResource.getDescription());
+            response.setBatch(freshResource.getBatch());
+            response.setResourceType(freshResource.getResourceType());
+            response.setIsFolder(true);
+            response.setFileCount(files.size());
+            response.setFilePath(primaryFilePath);
+            response.setCreatedAt(freshResource.getCreatedAt());
+            response.setUpdatedAt(freshResource.getUpdatedAt());
+            
+            // Just return the basic response without loading additional data
+            return response;
+            
+        } catch (IOException e) {
+            // If an error occurs, delete the saved resource and clean up any uploaded files
+            resourceRepository.deleteById(resourceId);
+            throw new UserException("Failed to upload file: " + e.getMessage());
+        }
+    }
+    
+    // Method to add files to an existing resource
+    public ResourceResponse addFilesToResource(Long resourceId, List<MultipartFile> files, User user) throws UserException {
+        Resource resource = resourceRepository.findById(resourceId)
+            .orElseThrow(() -> new UserException("Resource not found"));
+        
+        // Check if user is the uploader or has CR role
+        if (!resource.getUploader().getId().equals(user.getId()) && !user.isCR()) {
+            throw new UserException("You can only add files to your own resources");
+        }
+        
+        if (files == null || files.isEmpty()) {
+            throw new UserException("At least one file is required");
+        }
+        
+        // Get current max upload order
+        Integer maxOrder = resourceFileRepository.getMaxUploadOrderByResourceId(resourceId);
+        int nextOrder = (maxOrder != null ? maxOrder : -1) + 1;
+        
+        try {
+            for (int i = 0; i < files.size(); i++) {
+                MultipartFile file = files.get(i);
+                String originalFilename = file.getOriginalFilename();
+                String fileExtension = originalFilename != null && originalFilename.contains(".") ? 
+                    originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+                
+                String baseFilename = String.format("%s_%s_%s_%s_%d_%d",
+                    user.getDepartment(),
+                    user.getBatch(),
+                    resource.getCourse().getCourseCode().replaceAll("[^a-zA-Z0-9]", ""),
+                    resource.getResourceType().toString(),
+                    System.currentTimeMillis(),
+                    nextOrder + i
+                );
+                String filename = baseFilename + fileExtension;
+                
+                String fileUrl = s3Service.uploadResourceFile(file, filename);
+                
+                // Create and save each ResourceFile individually
+                ResourceFile resourceFile = new ResourceFile();
+                resourceFile.setFileName(originalFilename);
+                resourceFile.setFilePath(fileUrl);
+                resourceFile.setFileSize(file.getSize());
+                resourceFile.setFileType(getFileType(originalFilename));
+                resourceFile.setUploadOrder(nextOrder + i);
+                resourceFile.setResourceId(resourceId);
+                
+                resourceFileRepository.save(resourceFile);
+            }
+            
+            // Update resource metadata
+            int newFileCount = resourceFileRepository.countByResourceId(resourceId);
+            resource.setFileCount(newFileCount);
+            resource.setIsFolder(newFileCount > 1);
+            resourceRepository.save(resource);
+            
+            return convertToResponse(resource);
+            
+        } catch (IOException e) {
+            throw new UserException("Failed to upload file: " + e.getMessage());
+        }
+    }
+    
+    // Method to remove a file from a resource
+    public ResourceResponse removeFileFromResource(Long resourceId, Long fileId, User user) throws UserException {
+        Resource resource = resourceRepository.findById(resourceId)
+            .orElseThrow(() -> new UserException("Resource not found"));
+        
+        // Check if user is the uploader or has CR role
+        if (!resource.getUploader().getId().equals(user.getId()) && !user.isCR()) {
+            throw new UserException("You can only remove files from your own resources");
+        }
+        
+        ResourceFile fileToRemove = resourceFileRepository.findByFileIdAndResourceId(fileId, resourceId);
+        if (fileToRemove == null) {
+            throw new UserException("File not found in this resource");
+        }
+        
+        // Don't allow removing the last file
+        if (resource.getFileCount() <= 1) {
+            throw new UserException("Cannot remove the last file from a resource. Delete the entire resource instead.");
+        }
+        
+        // Delete file from S3
+        try {
+            s3Service.deleteFile(fileToRemove.getFilePath());
+        } catch (Exception e) {
+            // Log error but continue with database cleanup
+            System.err.println("Failed to delete file from S3: " + e.getMessage());
+        }
+        
+        // Remove file from database
+        resourceFileRepository.delete(fileToRemove);
+        
+        // Update resource metadata
+        int newFileCount = resourceFileRepository.countByResourceId(resourceId);
+        resource.setFileCount(newFileCount);
+        resource.setIsFolder(newFileCount > 1);
+        Resource savedResource = resourceRepository.save(resource);
+        
+        return convertToResponse(savedResource);
+    }
+    
+    // Helper method to determine file type from filename
+    private String getFileType(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "unknown";
+        }
+        
+        String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        
+        switch (extension) {
+            case "pdf": return "pdf";
+            case "doc": case "docx": return "document";
+            case "ppt": case "pptx": return "presentation";
+            case "xls": case "xlsx": return "spreadsheet";
+            case "jpg": case "jpeg": case "png": case "gif": return "image";
+            case "mp4": case "avi": case "mov": return "video";
+            case "mp3": case "wav": return "audio";
+            case "zip": case "rar": case "7z": return "archive";
+            case "txt": return "text";
+            default: return "other";
+        }
     }
     
     /**

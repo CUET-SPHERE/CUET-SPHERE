@@ -1,13 +1,19 @@
 package com.cuet.sphere.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(of = "resourceId") // Correct for JPA entities: base on ID only
 @Table(name = "resources")
 public class Resource {
     @Id
@@ -25,11 +31,17 @@ public class Resource {
     @Column(name = "r_title", nullable = false)
     private String title;
     
-    @Column(name = "r_file_path", nullable = false)
-    private String filePath; // This will store the Google Drive link
+    @Column(name = "r_file_path", nullable = true) // Made nullable for backward compatibility
+    private String filePath; // This will store the Google Drive link for single files
     
     @Column(name = "r_description")
     private String description;
+    
+    @Column(name = "is_folder")
+    private Boolean isFolder = false;
+    
+    @Column(name = "file_count")
+    private Integer fileCount = 0;
     
     @CreationTimestamp
     @Column(name = "r_created_at")
@@ -60,5 +72,10 @@ public class Resource {
         QUESTION_PAPER,
         SOLUTION,
         OTHER
+    }
+    
+    // Method to get the primary file path for backward compatibility
+    public String getPrimaryFilePath() {
+        return filePath; // Just return the legacy filePath field
     }
 }

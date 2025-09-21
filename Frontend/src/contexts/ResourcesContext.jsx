@@ -48,7 +48,7 @@ export const ResourcesProvider = ({ children }) => {
         // Transform API data to match expected format if needed
         const transformedData = Array.isArray(data) ? data.map(resource => {
           // Ensure the resource has all required properties
-          return {
+          const transformedResource = {
             id: resource.resourceId || self.crypto.randomUUID(),
             department: resource.departmentName || user?.department || '',
             batch: resource.batch || user?.batch || '',
@@ -57,11 +57,6 @@ export const ResourcesProvider = ({ children }) => {
             courseCode: resource.courseCode || '',
             courseName: resource.courseName || '',
             title: resource.title || 'Untitled',
-            file: {
-              name: resource.filePath?.split('/').pop() || 'file.pdf',
-              url: resource.filePath || '#',
-              type: determineFileType(resource.filePath)
-            },
             // Map uploader details properly
             uploader: resource.uploaderName || resource.uploaderEmail || user?.email || 'Unknown',
             uploaderName: resource.uploaderName || 'Unknown',
@@ -71,7 +66,43 @@ export const ResourcesProvider = ({ children }) => {
             description: resource.description || '',
             downloadCount: resource.downloadCount || 0,
             uploadedAt: resource.createdAt || new Date().toISOString(),
+            // Folder-related fields
+            isFolder: resource.isFolder || false,
+            fileCount: resource.fileCount || 0,
+            files: resource.files || [],
           };
+
+          // Handle file data for both single files and folders
+          if (resource.isFolder && resource.files && resource.files.length > 0) {
+            // This is a folder with multiple files
+            transformedResource.files = resource.files.map(file => ({
+              fileId: file.fileId,
+              fileName: file.fileName,
+              filePath: file.filePath,
+              fileSize: file.fileSize,
+              fileType: file.fileType,
+              uploadOrder: file.uploadOrder,
+              createdAt: file.createdAt,
+              formattedFileSize: file.formattedFileSize,
+              fileExtension: file.fileExtension
+            }));
+            // Set filePath to first file for backward compatibility
+            transformedResource.filePath = resource.files[0].filePath;
+            transformedResource.fileName = resource.files[0].fileName;
+            transformedResource.fileUrl = resource.files[0].filePath;
+          } else {
+            // This is a single file resource
+            transformedResource.file = {
+              name: resource.filePath?.split('/').pop() || 'file.pdf',
+              url: resource.filePath || '#',
+              type: determineFileType(resource.filePath)
+            };
+            transformedResource.filePath = resource.filePath;
+            transformedResource.fileName = resource.filePath?.split('/').pop() || 'file.pdf';
+            transformedResource.fileUrl = resource.filePath;
+          }
+
+          return transformedResource;
         }) : [];
 
         setResources(transformedData);
@@ -214,27 +245,47 @@ export const ResourcesProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // First upload the file to get a URL
-      const fileData = await API.uploadFile(newRes.file, newRes.onProgress);
-
-      if (!fileData || !fileData.fileUrl) {
-        throw new Error('File upload failed. No URL was returned from the server.');
-      }
-
       // Extract the semester name based on level and term
       const semesterName = `${newRes.level}-${newRes.term}`;
 
-      const resourceData = {
-        title: newRes.title,
-        description: newRes.description || '',
-        filePath: fileData.fileUrl,
-        resourceType: newRes.resourceType || 'LECTURE_NOTE',
-        courseCode: newRes.courseCode,
-        semesterName: semesterName
-      };
+      let uploadedResource;
 
-      // Then create the resource with the file URL
-      const uploadedResource = await API.uploadResource(resourceData);
+      if (newRes.files && newRes.files.length > 1) {
+        // Multiple files upload
+        const formData = new FormData();
+        formData.append('title', newRes.title);
+        formData.append('description', newRes.description || '');
+        formData.append('resourceType', newRes.resourceType || 'LECTURE_NOTE');
+        formData.append('courseCode', newRes.courseCode);
+        formData.append('semesterName', semesterName);
+
+        // Append all files
+        newRes.files.forEach(file => {
+          formData.append('files', file);
+        });
+
+        uploadedResource = await API.uploadMultipleFiles(formData, newRes.onProgress);
+      } else {
+        // Single file upload (existing logic)
+        // First upload the file to get a URL
+        const fileData = await API.uploadFile(newRes.file, newRes.onProgress);
+
+        if (!fileData || !fileData.fileUrl) {
+          throw new Error('File upload failed. No URL was returned from the server.');
+        }
+
+        const resourceData = {
+          title: newRes.title,
+          description: newRes.description || '',
+          filePath: fileData.fileUrl,
+          resourceType: newRes.resourceType || 'LECTURE_NOTE',
+          courseCode: newRes.courseCode,
+          semesterName: semesterName
+        };
+
+        // Then create the resource with the file URL
+        uploadedResource = await API.uploadResource(resourceData);
+      }
 
       // Transform the uploaded resource to match our format
       const formattedResource = {
@@ -246,16 +297,50 @@ export const ResourcesProvider = ({ children }) => {
         courseCode: uploadedResource.courseCode,
         courseName: uploadedResource.courseName,
         title: uploadedResource.title,
-        file: {
-          name: fileData.fileUrl.split('/').pop(),
-          url: fileData.fileUrl,
-          type: newRes.file.type
-        },
-        uploader: uploadedResource.uploaderName || user?.email,
         description: uploadedResource.description,
         downloadCount: 0,
         uploadedAt: uploadedResource.createdAt || new Date().toISOString(),
+        // Uploader information
+        uploaderName: uploadedResource.uploaderName || user?.fullName,
+        uploaderEmail: uploadedResource.uploaderEmail || user?.email,
+        uploaderStudentId: uploadedResource.uploaderStudentId || user?.studentId,
+        uploaderProfilePicture: uploadedResource.uploaderProfilePicture || user?.profilePicture,
+        // Folder-related fields
+        isFolder: uploadedResource.isFolder || false,
+        fileCount: uploadedResource.fileCount || 0,
+        files: uploadedResource.files || [],
       };
+
+      // Handle file data for both single files and folders
+      if (uploadedResource.isFolder && uploadedResource.files && uploadedResource.files.length > 0) {
+        // This is a folder with multiple files
+        formattedResource.files = uploadedResource.files.map(file => ({
+          fileId: file.fileId,
+          fileName: file.fileName,
+          filePath: file.filePath,
+          fileSize: file.fileSize,
+          fileType: file.fileType,
+          uploadOrder: file.uploadOrder,
+          createdAt: file.createdAt,
+          formattedFileSize: file.formattedFileSize,
+          fileExtension: file.fileExtension
+        }));
+        // Set filePath to first file for backward compatibility
+        formattedResource.filePath = uploadedResource.files[0].filePath;
+        formattedResource.fileName = uploadedResource.files[0].fileName;
+        formattedResource.fileUrl = uploadedResource.files[0].filePath;
+      } else {
+        // This is a single file resource
+        const fileName = uploadedResource.filePath?.split('/').pop() || newRes.file?.name;
+        formattedResource.file = {
+          name: fileName,
+          url: uploadedResource.filePath,
+          type: newRes.file?.type || 'application/pdf'
+        };
+        formattedResource.filePath = uploadedResource.filePath;
+        formattedResource.fileName = fileName;
+        formattedResource.fileUrl = uploadedResource.filePath;
+      }
 
       // Update the local state with the new resource
       setResources(prev => [formattedResource, ...prev]);

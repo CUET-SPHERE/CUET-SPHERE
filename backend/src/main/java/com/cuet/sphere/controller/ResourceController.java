@@ -113,6 +113,126 @@ public class ResourceController {
             return ResponseEntity.status(500).body(error);
         }
     }
+
+    // Create resource with multiple files (folder mode) - CR only
+    @PostMapping("/upload/multiple")
+    public ResponseEntity<?> createResourceWithMultipleFiles(
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("resourceType") String resourceType,
+            @RequestParam("courseCode") String courseCode,
+            @RequestParam("semesterName") String semesterName,
+            @RequestParam("files") List<MultipartFile> files) {
+        try {
+            logger.info("Creating resource with multiple files - title: {}, course: {}, file count: {}", 
+                       title, courseCode, files.size());
+            
+            if (files == null || files.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one file is required"));
+            }
+
+            User currentUser = getCurrentUser();
+            
+            // Create ResourceRequest object
+            ResourceRequest resourceRequest = new ResourceRequest();
+            resourceRequest.setTitle(title);
+            resourceRequest.setDescription(description);
+            resourceRequest.setResourceType(Resource.ResourceType.valueOf(resourceType.toUpperCase()));
+            resourceRequest.setCourseCode(courseCode);
+            resourceRequest.setSemesterName(semesterName);
+            
+            ResourceResponse resource = resourceService.createResourceWithMultipleFiles(resourceRequest, files, currentUser);
+            logger.info("Resource created successfully with {} files, ID: {}", files.size(), resource.getResourceId());
+            return ResponseEntity.ok(resource);
+            
+        } catch (UserException e) {
+            logger.error("UserException while creating resource with multiple files: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid resource type: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid resource type: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            logger.error("RuntimeException while creating resource with multiple files: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Authentication failed: " + e.getMessage());
+            return ResponseEntity.status(401).body(error);
+        } catch (Exception e) {
+            logger.error("Unexpected error while creating resource with multiple files: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    // Add files to existing resource - CR only
+    @PostMapping("/{resourceId}/files")
+    public ResponseEntity<?> addFilesToResource(
+            @PathVariable Long resourceId,
+            @RequestParam("files") List<MultipartFile> files) {
+        try {
+            logger.info("Adding files to resource ID: {}, file count: {}", resourceId, files.size());
+            
+            if (files == null || files.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one file is required"));
+            }
+
+            User currentUser = getCurrentUser();
+            ResourceResponse resource = resourceService.addFilesToResource(resourceId, files, currentUser);
+            logger.info("Files added successfully to resource ID: {}", resourceId);
+            return ResponseEntity.ok(resource);
+            
+        } catch (UserException e) {
+            logger.error("UserException while adding files to resource: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            logger.error("RuntimeException while adding files to resource: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Authentication failed: " + e.getMessage());
+            return ResponseEntity.status(401).body(error);
+        } catch (Exception e) {
+            logger.error("Unexpected error while adding files to resource: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    // Remove a specific file from a resource - CR only
+    @DeleteMapping("/{resourceId}/files/{fileId}")
+    public ResponseEntity<?> removeFileFromResource(
+            @PathVariable Long resourceId,
+            @PathVariable Long fileId) {
+        try {
+            logger.info("Removing file ID: {} from resource ID: {}", fileId, resourceId);
+
+            User currentUser = getCurrentUser();
+            ResourceResponse resource = resourceService.removeFileFromResource(resourceId, fileId, currentUser);
+            logger.info("File removed successfully from resource ID: {}", resourceId);
+            return ResponseEntity.ok(resource);
+            
+        } catch (UserException e) {
+            logger.error("UserException while removing file from resource: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (RuntimeException e) {
+            logger.error("RuntimeException while removing file from resource: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Authentication failed: " + e.getMessage());
+            return ResponseEntity.status(401).body(error);
+        } catch (Exception e) {
+            logger.error("Unexpected error while removing file from resource: {}", e.getMessage(), e);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Internal server error: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
     
     // Update resource
     @PutMapping("/{resourceId}")
