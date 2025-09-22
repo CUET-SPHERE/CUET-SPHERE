@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -310,12 +312,42 @@ public class PostController {
         return ResponseEntity.ok(post.getVotes());
     }
 
+    @GetMapping("/{postId}/votes/counts")
+    public ResponseEntity<Map<String, Object>> getVoteCountsForPost(@PathVariable Long postId) {
+        Post post = postService.getPost(postId).orElse(null);
+        if (post == null) return ResponseEntity.notFound().build();
+        
+        Map<String, Object> voteCounts = new HashMap<>();
+        voteCounts.put("upvotes", post.getUpvotes());
+        voteCounts.put("downvotes", post.getDownvotes());
+        
+        return ResponseEntity.ok(voteCounts);
+    }
+
     @PostMapping("/{postId}/vote")
     public ResponseEntity<Vote> createOrUpdateVote(@PathVariable Long postId, @RequestBody VoteRequest request) {
         Post post = postService.getPost(postId).orElse(null);
         if (post == null) return ResponseEntity.notFound().build();
         
-        Long userId = request.userId != null ? request.userId : 1L;
+        // Extract user ID from JWT token instead of relying on request body
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = null;
+        
+        if (authentication != null && authentication.isAuthenticated() && 
+            !authentication.getName().equals("anonymousUser")) {
+            
+            String userEmail = authentication.getName(); // This is the email from JWT
+            
+            // Find user by email
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isPresent()) {
+                userId = userOpt.get().getId();
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         
         // Check if user already voted on this post
         Vote existingVote = voteService.findByPostIdAndUserId(postId, userId);
@@ -380,10 +412,30 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{postId}/votes/user/{userId}")
-    public ResponseEntity<Vote> getUserVoteForPost(@PathVariable Long postId, @PathVariable Long userId) {
+    @GetMapping("/{postId}/votes/user")
+    public ResponseEntity<Vote> getCurrentUserVoteForPost(@PathVariable Long postId) {
         Post post = postService.getPost(postId).orElse(null);
         if (post == null) return ResponseEntity.notFound().build();
+        
+        // Extract user ID from JWT token
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = null;
+        
+        if (authentication != null && authentication.isAuthenticated() && 
+            !authentication.getName().equals("anonymousUser")) {
+            
+            String userEmail = authentication.getName(); // This is the email from JWT
+            
+            // Find user by email
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isPresent()) {
+                userId = userOpt.get().getId();
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         
         return voteService.getUserVoteForPost(postId, userId)
                 .map(ResponseEntity::ok)

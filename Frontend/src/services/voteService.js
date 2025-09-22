@@ -60,17 +60,15 @@ class VoteService {
 
   // Create or update a vote (like/dislike)
   async vote(postId, voteType, userId = null) {
-    if (!userId) {
-      userId = getCurrentUserId();
-    }
+    // Note: userId parameter is ignored since backend now uses JWT authentication
     try {
       const response = await fetch(`${API_BASE_URL}/posts/${postId}/vote`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           postId: postId,
-          userId: userId,
           voteType: voteType // "UPVOTE" or "DOWNVOTE"
+          // userId removed - backend extracts from JWT token
         })
       });
 
@@ -119,11 +117,9 @@ class VoteService {
 
   // Get current user's vote for a post
   async getUserVoteForPost(postId, userId = null) {
-    if (!userId) {
-      userId = getCurrentUserId();
-    }
+    // Note: userId parameter is ignored since backend now uses JWT authentication
     try {
-      const response = await fetch(`${API_BASE_URL}/posts/${postId}/votes/user/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/votes/user`, {
         method: 'GET',
         headers: getAuthHeaders()
       });
@@ -134,6 +130,24 @@ class VoteService {
 
       if (!response.ok) {
         throw new Error(`Failed to get user vote: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Get just vote counts for a post (more efficient than getting all votes)
+  async getVoteCountsForPost(postId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/votes/counts`, {
+        method: 'GET',
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch vote counts: ${response.status}`);
       }
 
       return await response.json();

@@ -348,47 +348,123 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
           setUserVote(userVoteObj.voteType === 'UPVOTE' ? 'up' : 'down');
         }
       } catch (userVoteErr) {
-        // User hasn't voted, which is fine
+        // If user vote not found, that's fine - means user hasn't voted
+        setUserVote(null);
       }
     } catch (err) {
-      // Silently fail for votes - not critical
+      console.error('Error loading votes:', err);
+    }
+  };
+
+  // Refresh vote counts and current user's vote status after voting
+  // This prevents race conditions when multiple users vote simultaneously
+  const refreshVoteCounts = async () => {
+    try {
+      // Get current user ID from localStorage
+      const getCurrentUserId = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return parsedUser.id || 1;
+          } catch (e) {
+            console.error('Error parsing user data for ID:', e);
+          }
+        }
+        return 1;
+      };
+
+      const currentUserId = getCurrentUserId();
+
+      // Use the more efficient vote counts endpoint
+      const voteCounts = await voteService.getVoteCountsForPost(post.id);
+
+      // Update counts with server truth
+      setUpvotes(voteCounts.upvotes || 0);
+      setDownvotes(voteCounts.downvotes || 0);
+
+      // Load current user's vote to sync UI state
+      try {
+        const userVoteObj = await voteService.getUserVoteForPost(post.id, currentUserId);
+        if (userVoteObj) {
+          setUserVote(userVoteObj.voteType === 'UPVOTE' ? 'up' : 'down');
+        } else {
+          setUserVote(null);
+        }
+      } catch (userVoteErr) {
+        // If user vote not found, user hasn't voted
+        setUserVote(null);
+      }
+    } catch (err) {
+      console.error('Error refreshing vote counts:', err);
+      // Don't show error to user for refresh failures
     }
   };
 
   const handleUpvote = async () => {
-    try {
-      const result = await voteService.upvote(post.id); // Will use current user ID
+    // Store original state for rollback
+    const originalUpvotes = upvotes;
+    const originalDownvotes = downvotes;
+    const originalUserVote = userVote;
 
-      if (result.removed) {
-        // Vote was removed
+    try {
+      // Optimistic update - update UI immediately
+      if (userVote === 'up') {
+        // User is removing their upvote
         setUpvotes(upvotes - 1);
         setUserVote(null);
       } else {
-        // Vote was created or updated
+        // User is upvoting (either new vote or switching from downvote)
         setUpvotes(upvotes + 1);
         if (userVote === 'down') setDownvotes(downvotes - 1);
         setUserVote('up');
       }
+
+      // Send request to server
+      const result = await voteService.upvote(post.id);
+
+      // After successful vote, refresh the actual vote counts from server
+      // This prevents race conditions when multiple users vote simultaneously
+      await refreshVoteCounts();
     } catch (err) {
+      // Rollback optimistic update on error
+      setUpvotes(originalUpvotes);
+      setDownvotes(originalDownvotes);
+      setUserVote(originalUserVote);
       setError('Failed to vote');
     }
   };
 
   const handleDownvote = async () => {
-    try {
-      const result = await voteService.downvote(post.id); // Will use current user ID
+    // Store original state for rollback
+    const originalUpvotes = upvotes;
+    const originalDownvotes = downvotes;
+    const originalUserVote = userVote;
 
-      if (result.removed) {
-        // Vote was removed
+    try {
+      // Optimistic update - update UI immediately
+      if (userVote === 'down') {
+        // User is removing their downvote
         setDownvotes(downvotes - 1);
         setUserVote(null);
       } else {
-        // Vote was created or updated
+        // User is downvoting (either new vote or switching from upvote)
         setDownvotes(downvotes + 1);
         if (userVote === 'up') setUpvotes(upvotes - 1);
         setUserVote('down');
       }
+
+      // Send request to server
+      const result = await voteService.downvote(post.id);
+
+      // After successful vote, refresh the actual vote counts from server
+      // This prevents race conditions when multiple users vote simultaneously
+      await refreshVoteCounts();
     } catch (err) {
+      // Rollback optimistic update on error
+      setUpvotes(originalUpvotes);
+      setDownvotes(originalDownvotes);
+      setUserVote(originalUserVote);
       setError('Failed to vote');
     }
   };
@@ -425,40 +501,90 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
   const handleAddComment = async () => {
     if (newComment.trim()) {
+      const getCurrentUserId = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return parsedUser.id || 1;
+          } catch (e) {
+            console.error('Error parsing user data for ID:', e);
+          }
+        }
+        return 1;
+      };
+
+      const getCurrentUser = () => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            return {
+              id: parsedUser.id || 1,
+              fullName: parsedUser.fullName || 'You',
+              email: parsedUser.email || 'you@student.cuet.ac.bd',
+              studentId: parsedUser.studentId || '0000000',
+              profilePicture: parsedUser.profilePicture || null
+            };
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+        }
+        return {
+          id: 1,
+          fullName: 'You',
+          email: 'you@student.cuet.ac.bd',
+          studentId: '0000000',
+          profilePicture: null
+        };
+      };
+
+      // Create optimistic comment object
+      const currentUser = getCurrentUser();
+      const optimisticComment = {
+        id: Date.now(), // Temporary ID
+        text: newComment.trim(),
+        content: newComment.trim(),
+        author: currentUser.fullName,
+        authorEmail: currentUser.email,
+        studentId: currentUser.studentId,
+        profilePicture: currentUser.profilePicture,
+        userId: currentUser.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        isEdited: false,
+        replies: []
+      };
+
       try {
         setLoading(true);
-        const getCurrentUserId = () => {
-          const userData = localStorage.getItem('user');
-          if (userData) {
-            try {
-              const parsedUser = JSON.parse(userData);
-              return parsedUser.id || 1;
-            } catch (e) {
-              console.error('Error parsing user data for ID:', e);
-            }
-          }
-          return 1;
-        };
+
+        // Optimistically add comment to UI immediately
+        setComments([...comments, optimisticComment]);
+        setNewComment('');
 
         const commentData = {
           text: newComment.trim(),
-          userId: getCurrentUserId()
+          userId: currentUser.id
         };
 
         const createdComment = await commentService.createComment(post.id, commentData);
 
-        // Add the new comment to the list
-        // The backend now returns a CommentDTO with all user information
-        const newCommentObj = {
-          ...createdComment,
-          // The DTO should already have author, authorEmail, studentId, etc.
-          // But ensure replies array exists
-          replies: createdComment.replies || []
-        };
-
-        setComments([...comments, newCommentObj]);
-        setNewComment('');
+        // Replace optimistic comment with real comment from server
+        setComments(currentComments =>
+          currentComments.map(comment =>
+            comment.id === optimisticComment.id
+              ? { ...createdComment, replies: createdComment.replies || [] }
+              : comment
+          )
+        );
       } catch (err) {
+        // Remove optimistic comment on error
+        setComments(currentComments =>
+          currentComments.filter(comment => comment.id !== optimisticComment.id)
+        );
+        setNewComment(newComment.trim()); // Restore the comment text
         setError('Failed to add comment');
       } finally {
         setLoading(false);
@@ -475,56 +601,126 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
   // Comment management functions
   const handleReplyToComment = async (parentCommentId, replyContent) => {
+    const getCurrentUser = () => {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          return {
+            id: parsedUser.id || 1,
+            fullName: parsedUser.fullName || 'You',
+            email: parsedUser.email || 'you@student.cuet.ac.bd',
+            studentId: parsedUser.studentId || '0000000',
+            profilePicture: parsedUser.profilePicture || null
+          };
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      return {
+        id: 1,
+        fullName: 'You',
+        email: 'you@student.cuet.ac.bd',
+        studentId: '0000000',
+        profilePicture: null
+      };
+    };
+
+    const currentUser = getCurrentUser();
+
+    // Create optimistic reply object
+    const optimisticReply = {
+      id: Date.now(), // Temporary ID
+      text: replyContent,
+      content: replyContent,
+      author: currentUser.fullName,
+      authorEmail: currentUser.email,
+      studentId: currentUser.studentId,
+      profilePicture: currentUser.profilePicture,
+      userId: currentUser.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      isEdited: false,
+      replies: [] // Replies don't have nested replies in this implementation
+    };
+
     try {
       setLoading(true);
-      const getCurrentUserId = () => {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const parsedUser = JSON.parse(userData);
-            return parsedUser.id || 1;
-          } catch (e) {
-            console.error('Error parsing user data for ID:', e);
-          }
-        }
-        return 1;
-      };
 
-      const replyData = {
-        text: replyContent,
-        userId: getCurrentUserId()
-      };
-
-      const createdReply = await replyService.createReply(parentCommentId, replyData);
-
-      // The backend now returns a ReplyDTO with all user information
-      const newReply = {
-        ...createdReply,
-        // The DTO should already have author, authorEmail, studentId, etc.
-        isEdited: false,
-        replies: [] // Replies don't have nested replies in this implementation
-      };
-
-      const updateCommentsWithReply = (comments) => {
+      // Optimistically add reply to UI immediately
+      const updateCommentsWithOptimisticReply = (comments) => {
         return comments.map(comment => {
           if (comment.id === parentCommentId) {
             return {
               ...comment,
-              replies: [...(comment.replies || []), newReply]
+              replies: [...(comment.replies || []), optimisticReply]
             };
           }
           if (comment.replies && comment.replies.length > 0) {
             return {
               ...comment,
-              replies: updateCommentsWithReply(comment.replies)
+              replies: updateCommentsWithOptimisticReply(comment.replies)
             };
           }
           return comment;
         });
       };
 
-      setComments(updateCommentsWithReply(comments));
+      setComments(updateCommentsWithOptimisticReply(comments));
+
+      const replyData = {
+        text: replyContent,
+        userId: currentUser.id
+      };
+
+      const createdReply = await replyService.createReply(parentCommentId, replyData);
+
+      // Replace optimistic reply with real reply from server
+      const updateCommentsWithRealReply = (comments) => {
+        return comments.map(comment => {
+          if (comment.id === parentCommentId) {
+            return {
+              ...comment,
+              replies: (comment.replies || []).map(reply =>
+                reply.id === optimisticReply.id
+                  ? { ...createdReply, isEdited: false, replies: [] }
+                  : reply
+              )
+            };
+          }
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: updateCommentsWithRealReply(comment.replies)
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments(updateCommentsWithRealReply(comments));
     } catch (err) {
+      // Remove optimistic reply on error
+      const removeOptimisticReply = (comments) => {
+        return comments.map(comment => {
+          if (comment.id === parentCommentId) {
+            return {
+              ...comment,
+              replies: (comment.replies || []).filter(reply => reply.id !== optimisticReply.id)
+            };
+          }
+          if (comment.replies && comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: removeOptimisticReply(comment.replies)
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments(removeOptimisticReply(comments));
       setError('Failed to add reply');
     } finally {
       setLoading(false);
