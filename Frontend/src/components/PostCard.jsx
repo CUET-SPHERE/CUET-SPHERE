@@ -218,6 +218,19 @@ const PostImage = React.memo(({ src, alt }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
+  // Preload image in background to improve perceived loading speed
+  useEffect(() => {
+    if (!src) return;
+
+    const img = new Image();
+    img.onload = () => setImageLoading(false);
+    img.onerror = () => {
+      setImageError(true);
+      setImageLoading(false);
+    };
+    img.src = src;
+  }, [src]);
+
   if (!src || imageError) {
     return null;
   }
@@ -232,17 +245,14 @@ const PostImage = React.memo(({ src, alt }) => {
           </div>
         </div>
       )}
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        className={`w-full max-h-96 object-contain ${imageLoading ? 'hidden' : 'block'}`}
-        onLoad={() => setImageLoading(false)}
-        onError={() => {
-          setImageError(true);
-          setImageLoading(false);
-        }}
-      />
+      {!imageLoading && (
+        <img
+          src={src}
+          alt={alt}
+          className="w-full max-h-96 object-contain"
+          loading="lazy"
+        />
+      )}
     </div>
   );
 });
@@ -270,7 +280,7 @@ const PostVideo = React.memo(({ src, alt }) => {
         src={src}
         controls
         className={`w-full max-h-96 ${videoLoading ? 'hidden' : 'block'}`}
-        onLoadedData={() => setVideoLoading(false)}
+        onLoadedMetadata={() => setVideoLoading(false)} // Fires earlier than onLoadedData
         onError={() => {
           setVideoError(true);
           setVideoLoading(false);

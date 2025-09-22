@@ -132,7 +132,7 @@ function PostFeed({ isManageMode = false }) {
             <div className="flex items-center justify-between mb-4 gap-4">
               <h1 className={`text-2xl font-bold ${colors?.text || 'text-gray-900 dark:text-white'}`}>Post Feed</h1>
               <button
-                className={`${buttonClasses?.primary || "flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md"} whitespace-nowrap min-w-fit flex-shrink-0`}
+                className={`${buttonClasses?.primary || "bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md"} flex items-center justify-center gap-2 px-8 py-3 whitespace-nowrap min-w-[160px] flex-shrink-0`}
                 onClick={() => setShowCreateModal(true)}
               >
                 <Plus className="h-5 w-5" />
