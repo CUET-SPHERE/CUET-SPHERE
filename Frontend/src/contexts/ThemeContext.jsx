@@ -178,7 +178,7 @@ export const ThemeProvider = ({ children }) => {
     },
 
     // Interactive elements
-    interactive: {
+    interactiveElements: {
       hover: '#f3f4f6', // gray-100
       hoverDark: '#4b5563', // gray-600
       border: '#e5e7eb', // gray-200
@@ -214,14 +214,14 @@ export const ThemeProvider = ({ children }) => {
     surfaceTertiary: theme === 'light' ? 'bg-slate-100' : 'bg-slate-600',
 
     // Common color utilities with improved contrast
-    border: theme === 'light' ? 'border-slate-200' : 'border-slate-600',
+    borderClass: theme === 'light' ? 'border-slate-200' : 'border-slate-600',
     borderLight: theme === 'light' ? 'border-slate-100' : 'border-slate-700',
     textPrimary: theme === 'light' ? 'text-slate-900' : 'text-slate-50',
     textSecondary: theme === 'light' ? 'text-slate-600' : 'text-slate-300',
     textMuted: theme === 'light' ? 'text-slate-500' : 'text-slate-400',
     placeholder: theme === 'light' ? 'placeholder-slate-400' : 'placeholder-slate-500',
     focusRing: 'focus:ring-blue-500',
-    primary: theme === 'light' ? 'text-blue-600' : 'text-blue-400',
+    primaryText: theme === 'light' ? 'text-blue-600' : 'text-blue-400',
     primaryBg: theme === 'light' ? 'bg-blue-50' : 'bg-blue-900/20',
     primaryHover: theme === 'light' ? 'text-blue-700' : 'text-blue-300',
     hover: theme === 'light' ? 'hover:bg-slate-100' : 'hover:bg-slate-700',
