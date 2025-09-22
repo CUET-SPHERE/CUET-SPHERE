@@ -8,6 +8,8 @@ import com.cuet.sphere.repository.DepartmentRepository;
 import com.cuet.sphere.repository.CourseRepository;
 import com.cuet.sphere.repository.SemesterRepository;
 import com.cuet.sphere.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -20,6 +22,8 @@ import java.util.List;
 @Component
 @Profile("!h2") // Don't run for H2 profile
 public class DataLoader implements CommandLineRunner {
+
+    private static final Logger logger = LoggerFactory.getLogger(DataLoader.class);
 
     @Autowired
     private DepartmentRepository departmentRepository;
@@ -47,13 +51,11 @@ public class DataLoader implements CommandLineRunner {
     // Load admin user
     loadAdminUser();
         
-    // Create notices table
-    createNoticesTable();
+        // Create notices table
+        createNoticesTable();
         
-    System.out.println("✅ Database initialized with sample data! (No courses pre-loaded)");
-    }
-
-    private void loadDepartments() {
+        logger.info("Database initialized with sample data");
+    }    private void loadDepartments() {
         if (departmentRepository.count() == 0) {
             List<Department> departments = Arrays.asList(
                 // Engineering Departments
@@ -79,7 +81,7 @@ public class DataLoader implements CommandLineRunner {
             );
             
             departmentRepository.saveAll(departments);
-            System.out.println("📚 Loaded " + departments.size() + " departments");
+            logger.debug("Loaded {} departments", departments.size());
         }
     }
 
@@ -97,7 +99,7 @@ public class DataLoader implements CommandLineRunner {
             );
             
             semesterRepository.saveAll(semesters);
-            System.out.println("📅 Loaded " + semesters.size() + " semesters");
+            logger.debug("Loaded {} semesters", semesters.size());
         }
     }
 
@@ -137,7 +139,7 @@ public class DataLoader implements CommandLineRunner {
             adminUser.setIsActive(true);
             
             userRepository.save(adminUser);
-            System.out.println("👤 Created admin user: admin@cuet.ac.bd");
+            logger.debug("Created admin user: admin@cuet.ac.bd");
         }
     }
     
@@ -145,9 +147,9 @@ public class DataLoader implements CommandLineRunner {
         try {
             // This will be handled by JPA/Hibernate automatically
             // But we can add some logging to confirm the table exists
-            System.out.println("📢 Notices table will be created by JPA/Hibernate if it doesn't exist");
+            logger.debug("Notices table will be created by JPA/Hibernate if it doesn't exist");
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: Could not verify notices table: " + e.getMessage());
+            logger.warn("Could not verify notices table: {}", e.getMessage());
         }
     }
 }

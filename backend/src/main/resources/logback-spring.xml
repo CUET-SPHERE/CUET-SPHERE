@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Define console appender with clean pattern -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Define file appender for error logs -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/cuetsphere.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/cuetsphere.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+
+    <!-- Profile-specific configurations -->
+    <springProfile name="dev">
+        <!-- Development: Show INFO and above -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+        </root>
+        
+        <!-- Your application logs -->
+        <logger name="com.cuet.sphere" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE" />
+        </logger>
+        
+        <!-- Reduce Spring Boot verbosity -->
+        <logger name="org.springframework.boot" level="WARN" />
+        <logger name="org.springframework.security" level="WARN" />
+        <logger name="org.springframework.web" level="WARN" />
+        <logger name="org.springframework.data" level="WARN" />
+        <logger name="org.hibernate" level="WARN" />
+        <logger name="com.zaxxer.hikari" level="WARN" />
+        <logger name="org.springframework.boot.devtools" level="WARN" />
+        <logger name="org.springframework.context" level="WARN" />
+        <logger name="org.springframework.beans" level="WARN" />
+    </springProfile>
+
+    <springProfile name="!dev">
+        <!-- Production: Show WARN and above -->
+        <root level="WARN">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </root>
+        
+        <!-- Your application logs -->
+        <logger name="com.cuet.sphere" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </logger>
+    </springProfile>
+</configuration>

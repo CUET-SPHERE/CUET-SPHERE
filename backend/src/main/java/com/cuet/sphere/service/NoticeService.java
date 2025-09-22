@@ -8,6 +8,8 @@ import com.cuet.sphere.repository.UserRepository;
 import com.cuet.sphere.response.NoticeRequest;
 import com.cuet.sphere.response.NoticeResponse;
 import com.cuet.sphere.exception.UserException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -22,6 +24,8 @@ import java.util.HashMap;
 
 @Service
 public class NoticeService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(NoticeService.class);
     
     @Autowired
     private NoticeRepository noticeRepository;
@@ -43,8 +47,8 @@ public class NoticeService {
                 throw new UserException("Only CR users and System Administrators can create notices");
             }
             
-            System.out.println("Creating notice with data: " + noticeRequest);
-            System.out.println("Sender: " + sender.getFullName() + " (" + sender.getRole() + ")");
+            logger.debug("Creating notice with title: {} for batch: {}", noticeRequest.getTitle(), sender.getBatch());
+            logger.debug("Sender: {} ({})", sender.getFullName(), sender.getRole());
             
             Notice notice = new Notice();
             notice.setTitle(noticeRequest.getTitle());
@@ -55,13 +59,10 @@ public class NoticeService {
             notice.setDepartment(sender.getDepartment());
             notice.setSender(sender);
             
-            System.out.println("Notice object created: " + notice);
-            
             Notice savedNotice = noticeRepository.save(notice);
-            System.out.println("Notice saved with ID: " + savedNotice.getNoticeId());
+            logger.info("Notice created successfully with ID: {}", savedNotice.getNoticeId());
             
             NoticeResponse response = convertToResponse(savedNotice);
-            System.out.println("Response created: " + response);
             
             return response;
         } catch (Exception e) {

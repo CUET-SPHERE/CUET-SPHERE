@@ -2,6 +2,8 @@ package com.cuet.sphere.service;
 
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,42 +18,32 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CustomUserDetailsService.class);
+
     @Autowired
     private UserRepository userRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println("=== CustomUserDetailsService.loadUserByUsername CALLED ===");
-        System.out.println("Looking for user with email: " + username);
+        logger.debug("Loading user by username: {}", username);
 
         User user = userRepository.findUserByEmail(username);
 
         if (user == null) {
-            System.out.println("User not found with email: " + username);
+            logger.warn("User not found with email: {}", username);
             throw new UsernameNotFoundException("User not found with email: " + username);
         }
 
-        System.out.println("User found:");
-        System.out.println("- ID: " + user.getId());
-        System.out.println("- Email: " + user.getEmail());
-        System.out.println("- Full Name: " + user.getFullName());
-        System.out.println("- Role: " + user.getRole());
-        System.out.println("- Password is null: " + (user.getPassword() == null));
-        System.out.println("- Password length: " + (user.getPassword() != null ? user.getPassword().length() : 0));
-
-        // Check if password starts with BCrypt prefix
-        if (user.getPassword() != null) {
-            System.out.println("- Password starts with $2a$ (BCrypt): " + user.getPassword().startsWith("$2a$"));
-            System.out.println("- Password starts with $2b$ (BCrypt): " + user.getPassword().startsWith("$2b$"));
-        }
+        logger.debug("User found - ID: {}, Email: {}, Role: {}", 
+                    user.getId(), user.getEmail(), user.getRole());
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         if (user.getRole() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-            System.out.println("- Authority added: ROLE_" + user.getRole().name());
+            logger.debug("Authority added: ROLE_{}", user.getRole().name());
         } else {
             authorities.add(new SimpleGrantedAuthority("ROLE_STUDENT"));
-            System.out.println("- Default authority added: ROLE_STUDENT");
+            logger.debug("Default authority added: ROLE_STUDENT");
         }
 
         UserDetails userDetails = new org.springframework.security.core.userdetails.User(
@@ -64,9 +56,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 authorities
         );
 
-        System.out.println("UserDetails created successfully");
-        System.out.println("=== END CustomUserDetailsService.loadUserByUsername ===");
-
+        logger.debug("UserDetails created successfully for user: {}", username);
         return userDetails;
     }
 }

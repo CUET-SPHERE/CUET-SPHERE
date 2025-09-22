@@ -1,5 +1,7 @@
 package com.cuet.sphere.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
@@ -17,14 +19,16 @@ import java.util.List;
 @Profile("!h2") // Don't run for H2 profile
 public class DatabaseMigration implements CommandLineRunner {
 
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseMigration.class);
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("🔧 Running database migrations...");
+        logger.info("Running database migrations...");
         addAutoIncrementToTables();
-        System.out.println("✅ Database migrations completed successfully!");
+        logger.info("Database migrations completed successfully");
     }
 
     private void addAutoIncrementToTables() {
@@ -71,16 +75,16 @@ public class DatabaseMigration implements CommandLineRunner {
                             String alterSql = String.format("ALTER TABLE %s MODIFY COLUMN %s BIGINT NOT NULL AUTO_INCREMENT", 
                                                            table.tableName, table.primaryKeyColumn);
                             jdbcTemplate.execute(alterSql);
-                            System.out.println("✅ Added AUTO_INCREMENT to " + table.tableName + "." + table.primaryKeyColumn);
+                            logger.debug("Added AUTO_INCREMENT to {}.{}", table.tableName, table.primaryKeyColumn);
                         }
                     } else {
-                        System.out.println("ℹ️  AUTO_INCREMENT already exists on " + table.tableName + "." + table.primaryKeyColumn);
+                        logger.debug("AUTO_INCREMENT already exists on {}.{}", table.tableName, table.primaryKeyColumn);
                     }
                 } else {
-                    System.out.println("⚠️  Table " + table.tableName + " does not exist, skipping...");
+                    logger.debug("Table {} does not exist, skipping...", table.tableName);
                 }
             } catch (Exception e) {
-                System.err.println("❌ Error updating " + table.tableName + ": " + e.getMessage());
+                logger.error("Error updating {}: {}", table.tableName, e.getMessage());
                 // Continue with other tables even if one fails
             }
         }
@@ -97,13 +101,13 @@ public class DatabaseMigration implements CommandLineRunner {
             // Re-enable foreign key checks
             jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             
-            System.out.println("✅ Added AUTO_INCREMENT to courses.course_id");
+            logger.debug("Added AUTO_INCREMENT to courses.course_id");
         } catch (Exception e) {
             // Re-enable foreign key checks even if there's an error
             try {
                 jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             } catch (Exception ignored) {}
-            System.err.println("❌ Error updating courses table: " + e.getMessage());
+            logger.error("Error updating courses table: {}", e.getMessage());
         }
     }
 
@@ -118,13 +122,13 @@ public class DatabaseMigration implements CommandLineRunner {
             // Re-enable foreign key checks
             jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             
-            System.out.println("✅ Added AUTO_INCREMENT to departments.dept_id");
+            logger.debug("Added AUTO_INCREMENT to departments.dept_id");
         } catch (Exception e) {
             // Re-enable foreign key checks even if there's an error
             try {
                 jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             } catch (Exception ignored) {}
-            System.err.println("❌ Error updating departments table: " + e.getMessage());
+            logger.error("Error updating departments table: {}", e.getMessage());
         }
     }
 
@@ -139,13 +143,13 @@ public class DatabaseMigration implements CommandLineRunner {
             // Re-enable foreign key checks
             jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             
-            System.out.println("✅ Added AUTO_INCREMENT to semesters.semester_id");
+            logger.debug("Added AUTO_INCREMENT to semesters.semester_id");
         } catch (Exception e) {
             // Re-enable foreign key checks even if there's an error
             try {
                 jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
             } catch (Exception ignored) {}
-            System.err.println("❌ Error updating semesters table: " + e.getMessage());
+            logger.error("Error updating semesters table: {}", e.getMessage());
         }
     }
 

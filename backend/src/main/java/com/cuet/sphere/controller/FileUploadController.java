@@ -2,6 +2,8 @@ package com.cuet.sphere.controller;
 
 import com.cuet.sphere.service.S3Service;
 import com.cuet.sphere.response.FileUploadResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,8 @@ import java.io.IOException;
 @RequestMapping("/api/upload")
 @CrossOrigin(origins = "*")
 public class FileUploadController {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
 
     @Autowired
     private S3Service s3Service;
@@ -70,7 +74,7 @@ public class FileUploadController {
             String filename = type + "_" + System.currentTimeMillis() + fileExtension;
 
             String fileUrl = s3Service.uploadFile(file, filename);
-            System.out.println("Profile picture uploaded successfully: " + fileUrl);
+            logger.debug("Profile picture uploaded successfully: {}", fileUrl);
             return ResponseEntity.ok(FileUploadResponse.success(fileUrl));
             
         } catch (IOException e) {
@@ -109,7 +113,7 @@ public class FileUploadController {
             String filename = baseFilename + "_" + System.currentTimeMillis() + fileExtension;
 
             String fileUrl = s3Service.uploadResourceFile(file, filename);
-            System.out.println("Resource file uploaded successfully: " + fileUrl);
+            logger.debug("Resource file uploaded successfully: {}", fileUrl);
             
             return ResponseEntity.ok(FileUploadResponse.success(fileUrl, originalFilename, file.getSize()));
             

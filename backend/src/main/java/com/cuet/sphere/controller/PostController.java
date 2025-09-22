@@ -20,6 +20,8 @@ import com.cuet.sphere.service.PostService;
 import com.cuet.sphere.service.ReplyService;
 import com.cuet.sphere.service.UserService;
 import com.cuet.sphere.service.VoteService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +40,8 @@ import java.util.Optional;
 @RequestMapping("/api/posts")
 @CrossOrigin(origins = "*")
 public class PostController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PostController.class);
 
     private final PostService postService;
     private final CommentService commentService;
@@ -65,16 +69,14 @@ public class PostController {
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
         try {
-            System.out.println("=== GET /api/posts called with pagination ===");
-            System.out.println("Page: " + page + ", Size: " + size + ", Sort: " + sortBy + " " + sortDir);
+            logger.debug("GET /api/posts called with pagination - Page: {}, Size: {}, Sort: {} {}", page, size, sortBy, sortDir);
             
             Pageable pageable = PageRequest.of(page, size, 
                 sortDir.equals("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
             
             Page<PostDTO> posts = postService.getAllPostsPaginated(pageable);
-            System.out.println("Posts fetched successfully, count: " + posts.getContent().size() + 
-                             ", total pages: " + posts.getTotalPages() + 
-                             ", total elements: " + posts.getTotalElements());
+            logger.debug("Posts fetched successfully, count: {}, total pages: {}, total elements: {}", 
+                         posts.getContent().size(), posts.getTotalPages(), posts.getTotalElements());
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
             System.err.println("Error in getAllPosts: " + e.getMessage());
@@ -106,20 +108,20 @@ public class PostController {
                 !authentication.getName().equals("anonymousUser")) {
                 
                 String userEmail = authentication.getName(); // This is the email from JWT
-                System.out.println("Creating post for authenticated user: " + userEmail);
+                logger.debug("Creating post for authenticated user: {}", userEmail);
                 
                 // Find user by email
                 Optional<User> userOpt = userService.getUserByEmail(userEmail);
                 if (userOpt.isPresent()) {
                     user = userOpt.get();
-                    System.out.println("User found: " + user.getFullName() + " (ID: " + user.getId() + ")");
+                    logger.debug("User found: {} (ID: {})", user.getFullName(), user.getId());
                 }
             }
             
             // Fallback to userId from request if no authenticated user found
             if (user == null) {
                 Long userId = request.userId != null ? request.userId : 1L;
-                System.out.println("No authenticated user found, using userId from request: " + userId);
+                logger.debug("No authenticated user found, using userId from request: {}", userId);
                 Optional<User> userOpt = userService.getUserById(userId);
                 if (userOpt.isPresent()) {
                     user = userOpt.get();
@@ -138,7 +140,7 @@ public class PostController {
             // Send notification to admins about new post
             try {
                 notificationService.createNewPostAdminNotification(createdPost, user);
-                System.out.println("Admin notification sent for new post: " + createdPost.getId());
+                logger.debug("Admin notification sent for new post: {}", createdPost.getId());
             } catch (Exception e) {
                 System.err.println("Error sending admin notification for new post: " + e.getMessage());
                 // Don't fail post creation if notification fails
@@ -227,9 +229,9 @@ public class PostController {
         // Send notification to post owner about new comment
         try {
             notificationService.createPostCommentNotification(post, createdComment, commenter);
-            System.out.println("Comment notification sent for post: " + postId);
+            logger.debug("Comment notification sent for post: {}", postId);
         } catch (Exception e) {
-            System.err.println("Error sending comment notification: " + e.getMessage());
+            logger.warn("Error sending comment notification: {}", e.getMessage());
             // Don't fail comment creation if notification fails
         }
         
@@ -291,9 +293,9 @@ public class PostController {
         // Send notification to comment owner about new reply
         try {
             notificationService.createCommentReplyNotification(comment, createdReply, replier);
-            System.out.println("Reply notification sent for comment: " + commentId);
+            logger.debug("Reply notification sent for comment: {}", commentId);
         } catch (Exception e) {
-            System.err.println("Error sending reply notification: " + e.getMessage());
+            logger.warn("Error sending reply notification: {}", e.getMessage());
             // Don't fail reply creation if notification fails
         }
         

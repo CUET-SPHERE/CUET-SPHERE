@@ -1,6 +1,8 @@
 package com.cuet.sphere.config;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -10,6 +12,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DotenvConfig implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DotenvConfig.class);
 
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
@@ -29,10 +33,10 @@ public class DotenvConfig implements ApplicationContextInitializer<ConfigurableA
             });
             
             environment.getPropertySources().addFirst(new MapPropertySource("dotenv", envMap));
-            System.out.println("Environment variables loaded from .env file: " + envMap.keySet());
+            logger.debug("Environment variables loaded from .env file: {}", envMap.keySet());
             
         } catch (Exception e) {
-            System.out.println("No .env file found or error loading it: " + e.getMessage());
+            logger.debug("No .env file found or error loading it: {}", e.getMessage());
         }
     }
 }

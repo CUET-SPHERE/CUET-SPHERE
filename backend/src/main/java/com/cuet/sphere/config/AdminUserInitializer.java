@@ -2,6 +2,8 @@ package com.cuet.sphere.config;
 
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -9,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AdminUserInitializer implements CommandLineRunner {
+
+    private static final Logger logger = LoggerFactory.getLogger(AdminUserInitializer.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -25,15 +29,15 @@ public class AdminUserInitializer implements CommandLineRunner {
                 if (adminUser.getRole() != User.Role.SYSTEM_ADMIN) {
                     adminUser.setRole(User.Role.SYSTEM_ADMIN);
                     userRepository.save(adminUser);
-                    System.out.println("✅ Updated user " + systemAdminEmail + " to SYSTEM_ADMIN role");
+                    logger.info("Updated user {} to SYSTEM_ADMIN role", systemAdminEmail);
                 } else {
-                    System.out.println("✅ User " + systemAdminEmail + " already has SYSTEM_ADMIN role");
+                    logger.debug("User {} already has SYSTEM_ADMIN role", systemAdminEmail);
                 }
             } else {
-                System.out.println("⚠️ System admin user " + systemAdminEmail + " not found in database");
+                logger.warn("System admin user {} not found in database", systemAdminEmail);
             }
         } catch (Exception e) {
-            System.err.println("❌ Error updating admin user role: " + e.getMessage());
+            logger.error("Error updating admin user role: {}", e.getMessage());
         }
     }
 }

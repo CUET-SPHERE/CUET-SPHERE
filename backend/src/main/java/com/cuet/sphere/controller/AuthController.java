@@ -5,6 +5,8 @@ import com.cuet.sphere.exception.UserException;
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.model.User.Role;
 import com.cuet.sphere.util.StudentEmailParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,9 @@ import java.util.HashMap;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -83,7 +88,7 @@ public class AuthController {
             user.setRole(User.Role.SYSTEM_ADMIN);
             userRepository.save(user);
 
-            System.out.println("✅ Updated user " + email + " to SYSTEM_ADMIN role");
+            logger.info("Updated user {} to SYSTEM_ADMIN role", email);
             return ResponseEntity.ok("User " + email + " has been updated to SYSTEM_ADMIN role successfully");
 
         } catch (Exception e) {

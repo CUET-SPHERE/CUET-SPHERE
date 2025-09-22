@@ -8,6 +8,8 @@ import com.cuet.sphere.model.Comment;
 import com.cuet.sphere.model.Reply;
 import com.cuet.sphere.repository.NotificationRepository;
 import com.cuet.sphere.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class NotificationService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
     
     @Autowired
     private NotificationRepository notificationRepository;
@@ -86,7 +90,7 @@ public class NotificationService {
         
         notificationRepository.save(notification);
         
-        System.out.println("Comment notification created for post: " + post.getId() + " - User will see it on notifications page");
+        logger.debug("Comment notification created for post: {} - User will see it on notifications page", post.getId());
     }
     
     // Create notification for comment reply (Database storage only)
@@ -108,7 +112,7 @@ public class NotificationService {
         
         notificationRepository.save(notification);
         
-        System.out.println("Reply notification created for comment: " + comment.getId() + " - User will see it on notifications page");
+        logger.debug("Reply notification created for comment: {} - User will see it on notifications page", comment.getId());
     }
     
     // Create notification for admin when new post is created (Database + Email notification)
@@ -141,7 +145,7 @@ public class NotificationService {
                 post.getContent()
             );
             
-            System.out.println("Admin notification created (Database + Email) for new post: " + post.getId() + " to admin: " + admin.getEmail());
+            logger.debug("Admin notification created (Database + Email) for new post: {} to admin: {}", post.getId(), admin.getEmail());
         }
     }
     

@@ -2,6 +2,8 @@ package com.cuet.sphere.config;
 
 import com.cuet.sphere.config.JwtTokenValidator;
 import com.cuet.sphere.config.JwtProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +29,8 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class AppConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(AppConfig.class);
+
     @Value("${cors.allowed.origins}")
     private String allowedOrigins;
 
@@ -42,19 +46,19 @@ public class AppConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
-        System.out.println("=== CONFIGURING SECURITY FILTER CHAIN ===");
+        logger.debug("Configuring security filter chain");
         
         http
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> {
-                    System.out.println("Configuring authorization rules...");
+                    logger.debug("Configuring authorization rules");
                     auth.requestMatchers("/auth/**", "/public/**").permitAll();
                     auth.requestMatchers("/api/posts/**").permitAll(); // Temporarily allow posts without auth for testing
                     auth.requestMatchers("/api/**").authenticated();
                     auth.anyRequest().permitAll();
-                    System.out.println("Authorization rules configured");
+                    logger.debug("Authorization rules configured");
                 })
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtTokenValidator(), BasicAuthenticationFilter.class)
@@ -63,7 +67,7 @@ public class AppConfig {
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable());
 
-        System.out.println("Security filter chain configured successfully");
+        logger.debug("Security filter chain configured successfully");
         return http.build();
     }
 
@@ -71,8 +75,7 @@ public class AppConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Use configured allowed origins from application properties
-        System.out.println("=== CORS Configuration ===");
-        System.out.println("Allowed Origins: " + allowedOrigins);
+        logger.debug("CORS Configuration - Allowed Origins: {}", allowedOrigins);
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -82,7 +85,7 @@ public class AppConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        System.out.println("CORS configuration applied to all endpoints");
+        logger.debug("CORS configuration applied to all endpoints");
         return source;
     }
 

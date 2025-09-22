@@ -5,6 +5,8 @@ import com.cuet.sphere.model.PasswordResetOtp;
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.PasswordResetOtpRepository;
 import com.cuet.sphere.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import java.util.Optional;
 
 @Service
 public class SignupService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SignupService.class);
     
     @Autowired
     private PasswordResetOtpRepository otpRepository;
@@ -78,10 +82,10 @@ public class SignupService {
         
         if (!emailSent) {
             // Log the error but don't reveal it to the user for security
-            System.err.println("Failed to send signup OTP email to " + email);
+            logger.error("Failed to send signup OTP email to {}", email);
         }
         
-        System.out.println("Signup OTP generated and sent to " + email);
+        logger.info("Signup OTP generated and sent to {}", email);
     }
     
     @Transactional

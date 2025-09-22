@@ -4,6 +4,8 @@ import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.UserRepository;
 import com.cuet.sphere.service.UserService;
 import com.cuet.sphere.exception.UserException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "*")
 public class UserController {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -53,9 +57,9 @@ public class UserController {
             // Handle profile picture update with S3 cleanup
             if (profileData.containsKey("profilePicture")) {
                 String newProfilePictureUrl = (String) profileData.get("profilePicture");
-                System.out.println("Updating profile picture for user: " + user.getEmail() + " with URL: " + newProfilePictureUrl);
+                logger.debug("Updating profile picture for user: {} with URL: {}", user.getEmail(), newProfilePictureUrl);
                 user = userService.updateProfilePicture(user, newProfilePictureUrl);
-                System.out.println("Profile picture updated successfully");
+                logger.debug("Profile picture updated successfully");
             }
             
             // Handle background image update with S3 cleanup
@@ -96,9 +100,9 @@ public class UserController {
                 return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
             }
 
-            System.out.println("Getting profile for user: " + user.getEmail());
-            System.out.println("Profile picture URL: " + user.getProfilePicture());
-            System.out.println("Background image URL: " + user.getBackgroundImage());
+            logger.debug("Getting profile for user: {}", user.getEmail());
+            logger.debug("Profile picture URL: {}", user.getProfilePicture());
+            logger.debug("Background image URL: {}", user.getBackgroundImage());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -122,8 +126,8 @@ public class UserController {
                 return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
             }
 
-            System.out.println("Getting profile picture for user: " + user.getEmail());
-            System.out.println("Profile picture URL: " + user.getProfilePicture());
+            logger.debug("Getting profile picture for user: {}", user.getEmail());
+            logger.debug("Profile picture URL: {}", user.getProfilePicture());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -155,8 +159,8 @@ public class UserController {
             user.setProfilePicture(testProfilePictureUrl);
             userRepository.save(user);
 
-            System.out.println("Set test profile picture for user: " + user.getEmail());
-            System.out.println("Test profile picture URL: " + testProfilePictureUrl);
+            logger.debug("Set test profile picture for user: {}", user.getEmail());
+            logger.debug("Test profile picture URL: {}", testProfilePictureUrl);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

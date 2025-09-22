@@ -398,14 +398,12 @@ public class ResourceController {
     
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        logger.info("Authentication object: {}", authentication);
         
         if (authentication != null && authentication.isAuthenticated()) {
             String email = authentication.getName();
-            logger.info("Authenticated user email: {}", email);
             User user = userRepository.findUserByEmail(email);
             if (user != null) {
-                logger.info("Found user: {} ({})", user.getFullName(), user.getEmail());
+                logger.debug("Retrieved user: {} ({})", user.getFullName(), user.getEmail());
                 return user;
             } else {
                 logger.error("User not found in database for email: {}", email);

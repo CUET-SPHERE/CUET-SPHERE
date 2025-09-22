@@ -1,5 +1,7 @@
 package com.cuet.sphere.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -9,6 +11,8 @@ import java.util.*;
 
 @Service
 public class EmailService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
     
     @Value("${brevo.api.key:}")
     private String brevoApiKey;
@@ -29,8 +33,8 @@ public class EmailService {
     
     public boolean sendPasswordResetOtp(String recipientEmail, String otp) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping email send.");
-            System.out.println("EMAIL: Would send OTP: " + otp + " to: " + recipientEmail);
+            logger.warn("Brevo API key not configured. Skipping email send for OTP to: {}", recipientEmail);
+            logger.debug("Would send OTP: {} to: {}", otp, recipientEmail);
             return true; // Return true for development/testing
         }
         
@@ -72,16 +76,15 @@ public class EmailService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("SUCCESS: Password reset OTP sent successfully to: " + recipientEmail);
+                logger.info("Password reset OTP sent successfully to: {}", recipientEmail);
                 return true;
             } else {
-                System.err.println("ERROR: Failed to send OTP email. Status: " + response.getStatusCode());
+                logger.error("Failed to send OTP email. Status: {}", response.getStatusCode());
                 return false;
             }
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending OTP email: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error sending OTP email to {}: {}", recipientEmail, e.getMessage());
             return false;
         }
     }
@@ -158,8 +161,8 @@ public class EmailService {
     
     public boolean sendSignupOtp(String recipientEmail, String otp) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping email send.");
-            System.out.println("EMAIL: Would send signup verification OTP: " + otp + " to: " + recipientEmail);
+            logger.warn("Brevo API key not configured. Skipping signup OTP email to: {}", recipientEmail);
+            logger.debug("Would send signup verification OTP: {} to: {}", otp, recipientEmail);
             return true; // Return true for development/testing
         }
         
@@ -201,15 +204,15 @@ public class EmailService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("SUCCESS: Signup verification OTP sent successfully to: " + recipientEmail);
+                logger.info("Signup verification OTP sent successfully to: {}", recipientEmail);
                 return true;
             } else {
-                System.err.println("ERROR: Failed to send signup OTP email. Status: " + response.getStatusCode());
+                logger.error("Failed to send signup OTP email. Status: {}", response.getStatusCode());
                 return false;
             }
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending signup OTP email: " + e.getMessage());
+            logger.error("Error sending signup OTP email to {}: {}", recipientEmail, e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -284,7 +287,7 @@ public class EmailService {
     
     public boolean sendWelcomeEmail(String recipientEmail, String fullName) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping welcome email.");
+            logger.warn("Brevo API key not configured. Skipping welcome email to: {}", recipientEmail);
             return true;
         }
         
@@ -370,7 +373,7 @@ public class EmailService {
     public boolean sendCommentNotificationEmail(String recipientEmail, String recipientName, 
                                               String commenterName, String postTitle, String commentText) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping comment notification email.");
+            logger.warn("Brevo API key not configured. Skipping comment notification email to: {}", recipientEmail);
             return true;
         }
         
@@ -417,7 +420,7 @@ public class EmailService {
     public boolean sendReplyNotificationEmail(String recipientEmail, String recipientName, 
                                             String replierName, String commentText, String replyText) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping reply notification email.");
+            logger.warn("Brevo API key not configured. Skipping reply notification email to: {}", recipientEmail);
             return true;
         }
         
@@ -464,7 +467,7 @@ public class EmailService {
     public boolean sendNewPostAdminEmail(String adminEmail, String adminName, 
                                        String creatorName, String postTitle, String postContent) {
         if (brevoApiKey == null || brevoApiKey.trim().isEmpty()) {
-            System.out.println("WARNING: Brevo API key not configured. Skipping admin notification email.");
+            logger.warn("Brevo API key not configured. Skipping admin notification email to: {}", adminEmail);
             return true;
         }
         
