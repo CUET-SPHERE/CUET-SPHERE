@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Loader2 } from 'lucide-react';
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, loading = false }) => {
   if (!isOpen) return null;
 
   return (
@@ -12,7 +12,11 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
             <AlertTriangle className="text-warning" />
             {title}
           </h2>
-          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
+          <button
+            onClick={onClose}
+            className="text-text-secondary hover:text-text-primary transition-colors"
+            disabled={loading}
+          >
             <X size={24} />
           </button>
         </div>
@@ -20,15 +24,18 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
         <div className="flex justify-end gap-4">
           <button
             onClick={onClose}
-            className="px-6 py-2 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white font-semibold transition-all"
+            disabled={loading}
+            className="px-6 py-2 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-6 py-2 rounded-lg bg-error hover:bg-red-600 text-white font-semibold transition-all"
+            disabled={loading}
+            className="px-6 py-2 rounded-lg bg-error hover:bg-red-600 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Confirm
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'Deleting...' : 'Confirm'}
           </button>
         </div>
       </div>

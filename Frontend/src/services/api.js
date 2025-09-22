@@ -47,8 +47,33 @@ const handleResponse = async (response) => {
     throw new Error(errorMessage);
   }
 
-  const data = await response.json();
-  return data;
+  // Check if response has content before trying to parse JSON
+  const contentType = response.headers.get('content-type');
+  const contentLength = response.headers.get('content-length');
+
+  // If no content or content-length is 0, return null
+  if (contentLength === '0' || response.status === 204) {
+    return null;
+  }
+
+  // If content-type indicates JSON, try to parse it
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      const data = await response.json();
+      return data;
+    } catch (e) {
+      // If JSON parsing fails but response was ok, return null
+      return null;
+    }
+  }
+
+  // For other content types or no content-type, try to parse as text
+  try {
+    const text = await response.text();
+    return text || null;
+  } catch (e) {
+    return null;
+  }
 };
 
 // Mock data for development
@@ -575,47 +600,6 @@ class ApiService {
     return handleResponse(response);
   }
 
-  static async uploadMultipleFiles(formData, onProgress) {
-    const token = getAuthToken();
-
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable && onProgress) {
-          const percentComplete = (event.loaded / event.total) * 100;
-          onProgress(percentComplete);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch (e) {
-            reject(new Error('Failed to parse response'));
-          }
-        } else {
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            reject(new Error(errorResponse.error || `HTTP error! status: ${xhr.status}`));
-          } catch (e) {
-            reject(new Error(`HTTP error! status: ${xhr.status}`));
-          }
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        reject(new Error('Network error occurred'));
-      });
-
-      xhr.open('POST', `${API_BASE_URL}/api/resources/upload/multiple`);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.send(formData);
-    });
-  }
-
   static async getAllResources() {
     const token = getAuthToken();
     const response = await fetch(`${API_BASE_URL}/api/resources`, {
@@ -660,19 +644,6 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-    });
-    return handleResponse(response);
-  }
-
-  static async updateResource(id, resourceData) {
-    const token = getAuthToken();
-    const response = await fetch(`${API_BASE_URL}/api/resources/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(resourceData),
     });
     return handleResponse(response);
   }
@@ -1092,9 +1063,21 @@ class ApiService {
     formData.append('courseCode', resourceData.courseCode);
     formData.append('semesterName', resourceData.semesterName);
 
+    // Debug logging
+    console.log('Multi-file upload request data:', {
+      title: resourceData.title,
+      description: resourceData.description,
+      resourceType: resourceData.resourceType,
+      courseCode: resourceData.courseCode,
+      semesterName: resourceData.semesterName,
+      fileCount: files.length,
+      fileNames: files.map(f => f.name)
+    });
+
     // Add all files to form data
     files.forEach((file, index) => {
       formData.append('files', file);
+      console.log(`Added file ${index + 1}:`, file.name, 'size:', file.size);
     });
 
     return new Promise((resolve, reject) => {
@@ -1108,18 +1091,28 @@ class ApiService {
       });
 
       xhr.onload = function () {
+        console.log('Multi-file upload response status:', xhr.status);
+        console.log('Multi-file upload response headers:', xhr.getAllResponseHeaders());
+        console.log('Multi-file upload response text:', xhr.responseText);
+        console.log('Multi-file upload response contentType:', xhr.getResponseHeader('content-type'));
+
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
+            console.log('Multi-file upload successful:', response);
             resolve(response);
           } catch (e) {
+            console.error('Failed to parse success response:', e);
             reject(new Error('Invalid JSON response from server'));
           }
         } else {
+          console.error('Multi-file upload failed with status:', xhr.status);
           try {
             const errorResponse = JSON.parse(xhr.responseText);
+            console.error('Error response:', errorResponse);
             reject(new Error(errorResponse.error || `HTTP Error: ${xhr.status}`));
           } catch (e) {
+            console.error('Failed to parse error response:', e);
             reject(new Error(`HTTP Error: ${xhr.status}`));
           }
         }
@@ -1193,6 +1186,27 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  // Update resource (title and description)
+  static async updateResource(resourceId, resourceData) {
+    const token = getAuthToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/resources/${resourceId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(resourceData)
     });
 
     if (!response.ok) {

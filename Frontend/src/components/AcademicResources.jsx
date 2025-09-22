@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useResources } from '../contexts/ResourcesContext';
+import { useResourceNavigation } from '../contexts/ResourceNavigationContext';
 import API from '../services/api';
 import ResourceUploadModal from './ResourceUploadModal';
 import CourseBatchModal from './CourseBatchModal';
@@ -48,19 +49,13 @@ const Avatar = React.memo(({ src, name, size = 'sm' }) => {
   );
 });
 
-// Function to format student ID as batch+dept+id (e.g., 21CSE012)
+// Function to format student ID as batch+dept+id (e.g., 2204094)
 const formatStudentId = (studentId) => {
   if (!studentId || typeof studentId !== 'string' || studentId.length < 4) return null;
 
-  const batch = studentId.substring(0, 2);
-  const deptCode = studentId.substring(2, 4);
-  const id = studentId.substring(4);
-  const deptShort = departmentMap[deptCode] || deptCode;
-
-  // Ensure ID part is at least 3 digits with leading zeros
-  const formattedId = id.padStart(3, '0');
-
-  return `${batch}${deptShort}${formattedId}`;
+  // Return the original student ID format (e.g., 2204094)
+  // No conversion to department abbreviations, just use the department code
+  return studentId;
 };// Levels and terms constants
 const levels = [1, 2, 3, 4];
 const terms = [1, 2];
@@ -75,13 +70,15 @@ const initialCoursesByLevelTerm = {
 
 function AcademicResources() {
   const { user } = useUser();
-  const { resources, toggleFavourite, findFolder, handleUpload: handleResourceUpload, loading: resourcesLoading } = useResources();
+  const { resources, toggleFavourite, findFolder, handleUpload: handleResourceUpload, refreshResources, removeResource, loading: resourcesLoading } = useResources();
+  const { navigationTarget, clearNavigationTarget, isResourceHighlighted } = useResourceNavigation();
 
   const [selectedLevel, setSelectedLevel] = useState(1);
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [currentSemester, setCurrentSemester] = useState(null); // Stores the current semester for the batch
   const [expandedFolders, setExpandedFolders] = useState(new Set()); // Track which folders are expanded
+  const [pendingNavigation, setPendingNavigation] = useState(null); // Store pending navigation data
 
   const [courses, setCourses] = useState(initialCoursesByLevelTerm);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -163,6 +160,69 @@ function AcademicResources() {
     }
   }, [resources, selectedCourse]);
 
+  // Handle navigation from Recent Uploads
+  useEffect(() => {
+    if (navigationTarget) {
+      console.log('Navigation target received:', navigationTarget);
+
+      const { level, term, courseCode, resourceId } = navigationTarget;
+
+      // Store the navigation data for later use
+      setPendingNavigation({ courseCode, resourceId });
+
+      // Update level and term if different
+      if (level && level !== selectedLevel) {
+        console.log('Updating level from', selectedLevel, 'to', level);
+        setSelectedLevel(level);
+      }
+      if (term && term !== selectedTerm) {
+        console.log('Updating term from', selectedTerm, 'to', term);
+        setSelectedTerm(term);
+      }
+
+      // Clear the navigation target after handling it
+      clearNavigationTarget();
+    }
+  }, [navigationTarget, selectedLevel, selectedTerm, clearNavigationTarget]);
+
+  // Handle course selection after level/term change and courses are loaded
+  useEffect(() => {
+    const currentCourses = courses[selectedLevel]?.[selectedTerm] || [];
+
+    if (pendingNavigation && currentCourses.length > 0) {
+      const { courseCode, resourceId } = pendingNavigation;
+
+      console.log('Looking for course:', courseCode, 'in available courses:', currentCourses.map(c => c.code));
+
+      // Find and select the target course
+      const targetCourse = currentCourses.find(course => course.code === courseCode);
+      if (targetCourse) {
+        console.log('Found target course:', targetCourse);
+        setSelectedCourse(targetCourse);
+
+        // Clear pending navigation
+        setPendingNavigation(null);
+
+        // Scroll to the resource after a delay
+        setTimeout(() => {
+          const resourceElement = document.querySelector(`[data-resource-id="${resourceId}"]`);
+          if (resourceElement) {
+            console.log('Scrolling to resource element');
+            resourceElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest'
+            });
+          } else {
+            console.log('Resource element not found with id:', resourceId);
+          }
+        }, 1000);
+      } else {
+        console.log('Target course not found:', courseCode);
+      }
+    }
+  }, [courses, selectedLevel, selectedTerm, pendingNavigation]);
+
   // Function to refresh courses when data is out of sync
   const refreshCourses = useCallback(async () => {
     if (user && user.department) {
@@ -205,8 +265,12 @@ function AcademicResources() {
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [isFileViewerOpen, setFileViewerOpen] = useState(false);
   const [viewingFile, setViewingFile] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false); // Add loading state for delete operations
 
   const [editingCourse, setEditingCourse] = useState(null);
+  const [editingResource, setEditingResource] = useState(null);
+  const [isEditResourceModalOpen, setEditResourceModalOpen] = useState(false);
+  const [isUpdatingResource, setIsUpdatingResource] = useState(false);
   const [notification, setNotification] = useState(null); // { type: 'success'|'error', message: '', show: boolean }
 
   // Notification helper functions
@@ -284,6 +348,82 @@ function AcademicResources() {
     } catch (error) {
       console.error('Error removing file:', error);
       showErrorNotification(error.message || 'Failed to remove file');
+    }
+  };
+
+  // Add more files to existing folder resource
+  const handleAddMoreFiles = async (resourceId, files) => {
+    try {
+      showSuccessNotification('Uploading additional files...');
+
+      const updatedResource = await API.addFilesToResource(resourceId, files, (progress) => {
+        console.log(`Upload progress: ${progress}%`);
+      });
+
+      // Refresh resources to get the updated data
+      await refreshResources();
+      showSuccessNotification(`Successfully added ${files.length} file(s) to the folder!`);
+    } catch (error) {
+      console.error('Error adding files to resource:', error);
+      showErrorNotification(error.message || 'Failed to add files to folder');
+    }
+  };
+
+  // Edit resource functions
+  const handleEditResource = (resource) => {
+    console.log('Edit resource clicked:', resource);
+    console.log('Resource type from resource:', resource.resourceType);
+    setEditingResource({
+      id: resource.id || resource.resourceId,
+      title: resource.title,
+      description: resource.description || '',
+      resourceType: resource.resourceType || 'LECTURE_NOTE' // Ensure we have a valid resource type
+    });
+    setEditResourceModalOpen(true);
+    console.log('Edit modal should be open now');
+  };
+
+  const handleSaveResource = async (resourceData) => {
+    try {
+      setIsUpdatingResource(true);
+      const resourceId = editingResource.id;
+      console.log('Saving resource:', resourceId, resourceData);
+
+      // Get the original resource to extract required fields
+      const originalResource = resources.find(r => (r.id || r.resourceId) === resourceId);
+      if (!originalResource) {
+        throw new Error('Original resource not found');
+      }
+
+      console.log('Original resource:', originalResource);
+
+      // Prepare the update data (include all required fields from ResourceRequest)
+      const updateData = {
+        title: resourceData.title,
+        description: resourceData.description || '',
+        resourceType: originalResource.resourceType || 'LECTURE_NOTE', // Use original or default
+        filePath: originalResource.filePath || originalResource.fileUrl || originalResource.file?.url || '', // Keep original file path
+        courseCode: originalResource.courseCode || selectedCourse?.code || '', // Keep original course code
+        semesterName: originalResource.semesterName || `${selectedLevel}-${selectedTerm}` // Keep original semester
+      };
+
+      console.log('Update data:', updateData);
+      const result = await API.updateResource(resourceId, updateData);
+      console.log('Update result:', result);
+
+      // Refresh resources to get the updated data
+      await refreshResources();
+
+      // Close the modal and reset state
+      setEditResourceModalOpen(false);
+      setEditingResource(null);
+
+      showSuccessNotification('Resource updated successfully!');
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      showErrorNotification(error.message || 'Failed to update resource');
+    } finally {
+      setIsUpdatingResource(false);
     }
   };
 
@@ -472,6 +612,7 @@ function AcademicResources() {
       }
     } else if (type === 'resource') {
       try {
+        setIsDeleting(true); // Start loading
         console.log('Resource object being deleted:', data);
         const resourceId = data.id || data.resourceId;
 
@@ -480,14 +621,18 @@ function AcademicResources() {
           showErrorNotification('Cannot delete resource: No resource ID found.');
           setConfirmModalOpen(false);
           setDeletingItem(null);
+          setIsDeleting(false);
           return;
         }
 
         console.log('Deleting resource by ID:', resourceId);
         await API.deleteResource(resourceId);
 
-        // Refresh resources to reflect the deletion
-        await handleResourceUpload();
+        // Immediately remove the resource from UI for instant feedback
+        removeResource(resourceId);
+
+        // Note: We could still call refreshResources() for data consistency if needed,
+        // but immediate removal should be sufficient for better UX
 
         showSuccessNotification('Resource deleted successfully!');
       } catch (error) {
@@ -501,14 +646,18 @@ function AcademicResources() {
         }
 
         showErrorNotification(`Failed to delete resource: ${errorMessage}`);
+      } finally {
+        setIsDeleting(false); // Stop loading
         setConfirmModalOpen(false);
         setDeletingItem(null);
-        return;
       }
     }
-    // Deleting files from resources is not implemented in this flow, as it's managed by context now.
-    setConfirmModalOpen(false);
-    setDeletingItem(null);
+
+    // For non-resource deletions, still clean up the modal state
+    if (type !== 'resource') {
+      setConfirmModalOpen(false);
+      setDeletingItem(null);
+    }
   };
 
   const handleUpload = (newRes) => {
@@ -583,9 +732,9 @@ function AcademicResources() {
         </h2>
       </div>
 
-      <div className="flex flex-col gap-6 flex-grow overflow-y-auto pr-2">
+      <div className="flex flex-col gap-6 flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent pr-2 min-h-0">
         {/* Navigation Bar */}
-        <div className="flex justify-between items-center border-b border-gray-200 dark:border-border-color pb-2">
+        <div className="flex justify-between items-center border-b border-gray-200 dark:border-border-color pb-2 shrink-0">
           <div className="flex flex-wrap items-center gap-3">
             {/* Level dropdown */}
             <div className="relative">
@@ -800,8 +949,11 @@ function AcademicResources() {
                       onToggleFolder={toggleFolder}
                       onViewFile={handleViewFile}
                       onRemoveFile={handleRemoveFileFromResource}
+                      onAddMoreFiles={handleAddMoreFiles}
+                      onEditResource={handleEditResource}
                       onDeleteResource={(resource) => openDeleteModal('resource', resource)}
                       onDragStart={handleDragStart}
+                      isHighlighted={isResourceHighlighted(res.id || res.resourceId)}
                     />
                   ))
                 ) : (
@@ -840,6 +992,7 @@ function AcademicResources() {
         onConfirm={confirmDelete}
         title={`Delete ${deletingItem?.type}`}
         message={`Are you sure you want to permanently delete this ${deletingItem?.type}? This action cannot be undone.`}
+        loading={isDeleting}
       />
 
       {/* Notification Modal */}
@@ -900,6 +1053,103 @@ function AcademicResources() {
         </div>
       )}
 
+      {/* Edit Resource Modal */}
+      {isEditResourceModalOpen && editingResource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => {
+              setEditResourceModalOpen(false);
+              setEditingResource(null);
+            }}
+          ></div>
+
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-card-dark rounded-lg shadow-xl max-w-md w-full mx-4 p-6 border border-border-light dark:border-border-dark">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-text-primary">
+                Edit Resource
+              </h3>
+              <button
+                onClick={() => {
+                  setEditResourceModalOpen(false);
+                  setEditingResource(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                handleSaveResource({
+                  title: formData.get('title'),
+                  description: formData.get('description')
+                });
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  defaultValue={editingResource.title}
+                  required
+                  disabled={isUpdatingResource}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  placeholder="Enter resource title"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={editingResource.description}
+                  rows={3}
+                  disabled={isUpdatingResource}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  placeholder="Enter resource description (optional)"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditResourceModalOpen(false);
+                    setEditingResource(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                  disabled={isUpdatingResource}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingResource}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed text-white rounded-md transition-colors font-medium flex items-center gap-2"
+                >
+                  {isUpdatingResource && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  )}
+                  {isUpdatingResource ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* File Viewer Modal */}
       <FileViewer
         isOpen={isFileViewerOpen}
@@ -920,8 +1170,11 @@ const ResourceCard = ({
   onToggleFolder,
   onViewFile,
   onRemoveFile,
+  onAddMoreFiles,
+  onEditResource,
   onDeleteResource,
-  onDragStart
+  onDragStart,
+  isHighlighted = false
 }) => {
   const isFolder = resource.isFolder && resource.files && resource.files.length > 0;
   const isExpanded = expandedFolders.has(resource.id || resource.resourceId);
@@ -940,7 +1193,11 @@ const ResourceCard = ({
     <div
       draggable="true"
       onDragStart={(e) => onDragStart(e, resourceId)}
-      className="bg-gray-100 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary"
+      data-resource-id={resourceId}
+      className={`bg-gray-100 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary ${isHighlighted
+        ? 'ring-2 ring-primary ring-opacity-50 bg-primary/5 dark:bg-primary/10 border-primary'
+        : ''
+        }`}
     >
       {/* Main Resource Header */}
       <div className="flex items-center justify-between p-4">
@@ -1025,6 +1282,9 @@ const ResourceCard = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 ml-4">
+          {/* Debug info for edit button visibility */}
+          {console.log('Resource action buttons - User role:', user.role, 'Uploader email:', resource.uploaderEmail, 'User email:', user.email, 'Uploader name:', resource.uploader, 'User full name:', user.fullName)}
+
           {!isFolder && (
             <>
               <button
@@ -1043,6 +1303,20 @@ const ResourceCard = ({
                 <Download size={16} />
               </a>
             </>
+          )}
+
+          {/* Edit button for CR users if they are the uploader */}
+          {user.role === 'CR' && (resource.uploaderEmail === user.email || resource.uploader === user.fullName) && (
+            <button
+              onClick={() => {
+                console.log('Edit button clicked for resource:', resource.id || resource.resourceId);
+                onEditResource(resource);
+              }}
+              className="p-2 text-gray-500 dark:text-text-secondary hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
+              title="Edit resource details"
+            >
+              <Edit size={16} />
+            </button>
           )}
 
           {/* Delete button for CR users if they are the uploader */}
@@ -1114,6 +1388,33 @@ const ResourceCard = ({
                 </div>
               </div>
             ))}
+
+            {/* Add More Files Button for CR users if they are the uploader */}
+            {user.role === 'CR' && (resource.uploaderEmail === user.email || resource.uploader === user.fullName) && (
+              <div className="flex items-center justify-center pt-3 border-t border-gray-200 dark:border-border-color mt-2">
+                <input
+                  type="file"
+                  multiple
+                  accept="*/*"
+                  id={`add-files-${resourceId}`}
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      onAddMoreFiles(resourceId, Array.from(e.target.files));
+                    }
+                    e.target.value = ''; // Reset input
+                  }}
+                />
+                <label
+                  htmlFor={`add-files-${resourceId}`}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all cursor-pointer text-sm font-medium shadow-sm hover:shadow-md border border-green-500 hover:border-green-600"
+                  title="Add more files to this folder"
+                >
+                  <Plus size={16} />
+                  Add More Files
+                </label>
+              </div>
+            )}
           </div>
         </div>
       )}
