@@ -1,7 +1,12 @@
 import React from 'react';
 import { GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Footer = () => {
+  const themeContext = useTheme();
+  const { colors = {} } = themeContext || {};
+  const primaryText = colors?.primary?.text || 'text-blue-400';
+
   return (
     <footer className="bg-gray-900 text-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -9,16 +14,16 @@ const Footer = () => {
           {/* Logo and Description */}
           <div className="md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <GraduationCap className="h-8 w-8 text-blue-400" />
+              <GraduationCap className={`h-8 w-8 ${primaryText}`} />
               <span className="text-xl font-bold">CUET Connect</span>
             </div>
             <p className="text-gray-400 mb-4">
-              Connecting CUET students through a comprehensive platform for academic resources, 
+              Connecting CUET students through a comprehensive platform for academic resources,
               peer support, and campus information.
             </p>
             <div className="flex space-x-4">
               <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-blue-400" />
+                <Mail className={`h-4 w-4 ${primaryText}`} />
                 <span className="text-sm text-gray-400">support@cuetconnect.edu</span>
               </div>
             </div>
@@ -28,10 +33,10 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Academic Resources</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Notice Board</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact Us</a></li>
+              <li><a href="#" className={`text-gray-400 hover:${primaryText} transition-colors`}>Academic Resources</a></li>
+              <li><a href="#" className={`text-gray-400 hover:${primaryText} transition-colors`}>Notice Board</a></li>
+              <li><a href="#" className={`text-gray-400 hover:${primaryText} transition-colors`}>Help Center</a></li>
+              <li><a href="#" className={`text-gray-400 hover:${primaryText} transition-colors`}>Contact Us</a></li>
             </ul>
           </div>
 
@@ -40,11 +45,11 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-blue-400" />
+                <MapPin className={`h-4 w-4 ${primaryText}`} />
                 <span className="text-sm text-gray-400">CUET Campus, Chittagong</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4 text-blue-400" />
+                <Phone className={`h-4 w-4 ${primaryText}`} />
                 <span className="text-sm text-gray-400">+880-31-714946</span>
               </div>
             </div>

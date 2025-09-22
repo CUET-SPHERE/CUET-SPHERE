@@ -5,10 +5,18 @@ import { validateLoginForm } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import ApiService from "../services/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+import { useTheme } from "../contexts/ThemeContext";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useUser();
+  const themeContext = useTheme();
+  const { colors = {}, buttonClasses = {} } = themeContext || {};
+
+  // Fallback colors
+  const primaryText = colors?.primary?.text || 'text-blue-600';
+  const primaryButton = buttonClasses?.primary || 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
+  const focusColor = colors?.interactive?.focus || '#2563eb';
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -47,9 +55,9 @@ const LoginPage = () => {
 
     try {
       const response = await ApiService.signin(formData);
-      
+
       console.log('Backend response:', response); // Debug log
-      
+
       if (response.success) {
         // Transform the response to match frontend expectations
         const userData = {
@@ -68,7 +76,7 @@ const LoginPage = () => {
         console.log('Transformed userData:', userData); // Debug log
 
         login(userData);
-        
+
         // Redirect based on role
         if (response.role === 'SYSTEM_ADMIN') {
           navigate('/admin/dashboard');
@@ -90,7 +98,7 @@ const LoginPage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <GraduationCap className="mx-auto h-12 w-12 text-blue-600" />
+          <GraduationCap className={`mx-auto h-12 w-12 ${primaryText}`} />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
             Welcome Back
           </h2>
@@ -121,7 +129,7 @@ const LoginPage = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.email ? "border-red-500" : "border-gray-300"
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[${focusColor}] focus:border-[${focusColor}] dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.email ? "border-red-500" : "border-gray-300"
                     }`}
                   placeholder="Enter your email address"
                 />
@@ -146,7 +154,7 @@ const LoginPage = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.password ? "border-red-500" : "border-gray-300"
+                  className={`block w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[${focusColor}] focus:border-[${focusColor}] dark:bg-gray-800 dark:border-gray-600 dark:text-white ${errors.password ? "border-red-500" : "border-gray-300"
                     }`}
                   placeholder="Enter your password"
                 />
@@ -169,7 +177,7 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowForgotPasswordModal(true)}
-                  className="text-sm text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                  className={`text-sm ${primaryText} hover:${primaryText}/80 transition-colors duration-200`}
                 >
                   Forgot Password?
                 </button>
@@ -187,10 +195,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${isSubmitting
-                  ? "bg-blue-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 transform hover:scale-105"
-                }`}
+              className={`${primaryButton} group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? (
                 <div className="flex items-center">
@@ -208,7 +213,7 @@ const LoginPage = () => {
               Don't have an account?{" "}
               <Link
                 to="/signup"
-                className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                className={`font-medium ${primaryText} hover:${primaryText}/80 transition-colors duration-200`}
               >
                 Sign up
               </Link>

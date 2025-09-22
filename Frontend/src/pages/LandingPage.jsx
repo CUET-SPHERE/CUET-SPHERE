@@ -7,7 +7,17 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const LandingPage = () => {
   const [currentSlide, setCurrentSlide] = React.useState(0);
-  const { theme } = useTheme();
+  const themeContext = useTheme();
+
+  // Add fallback protection
+  const { theme, colors = {}, buttonClasses = {} } = themeContext || {};
+
+  // Ensure colors.primary exists with fallback
+  const primaryColor = colors?.primary?.text || 'text-blue-600';
+  const primaryBg = colors?.primary?.bg || 'bg-blue-600';
+  const successBg = colors?.success?.bg || 'bg-green-600';
+  const warningBg = colors?.warning?.bg || 'bg-yellow-600';
+  const primaryButton = buttonClasses?.primary || 'bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105';
 
   const features = [
     {
@@ -44,15 +54,15 @@ const LandingPage = () => {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${theme === 'dark' ? nightImg : gateImg})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/10" />
-        
+
         <div className="relative z-10 text-center text-gray-100 max-w-4xl mx-auto px-4">
           <h1 className="text-2xl md:text-5xl font-bold mb-6 leading-tight">
-            Welcome to <br></br> <span className="text-blue-300 text-7xl">CUETSPhere</span>
+            Welcome to <br></br> <span className={`text-7xl ${primaryColor}`}>CUETSPhere</span>
           </h1>
           <p className="text-xl md:text-2xl mb-8 leading-relaxed">
             Your comprehensive platform for academic resources, peer support, and campus connectivity
@@ -60,7 +70,7 @@ const LandingPage = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/signup"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2"
+              className={`${primaryButton} px-8 py-4 text-lg flex items-center justify-center space-x-2`}
             >
               <span>Get Started</span>
               <ArrowRight className="h-5 w-5" />
@@ -102,7 +112,7 @@ const LandingPage = () => {
                   <p className="text-lg">{features[currentSlide].description}</p>
                 </div>
               </div>
-              
+
               <button
                 onClick={prevSlide}
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full transition-all duration-200"
@@ -121,9 +131,8 @@ const LandingPage = () => {
                   <button
                     key={index}
                     onClick={() => setCurrentSlide(index)}
-                    className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                      index === currentSlide ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
+                    className={`w-3 h-3 rounded-full transition-all duration-200 ${index === currentSlide ? primaryBg : 'bg-gray-300'
+                      }`}
                   />
                 ))}
               </div>
@@ -133,7 +142,7 @@ const LandingPage = () => {
             <div className="space-y-8">
               <div className="space-y-6">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <div className={`w-12 h-12 ${primaryBg} rounded-lg flex items-center justify-center`}>
                     <BookOpen className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -141,9 +150,9 @@ const LandingPage = () => {
                     <p className="text-gray-600 dark:text-gray-300">Organized by semester and department</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                  <div className={`w-12 h-12 ${successBg} rounded-lg flex items-center justify-center`}>
                     <Users className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -151,9 +160,9 @@ const LandingPage = () => {
                     <p className="text-gray-600 dark:text-gray-300">Connect and collaborate with classmates</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+                  <div className={`w-12 h-12 ${warningBg} rounded-lg flex items-center justify-center`}>
                     <Bell className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -165,7 +174,7 @@ const LandingPage = () => {
 
               <Link
                 to="/signup"
-                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                className={`${primaryButton} inline-flex items-center space-x-2 px-6 py-3`}
               >
                 <span>Join CUETSphere</span>
                 <ArrowRight className="h-5 w-5" />
@@ -189,7 +198,7 @@ const LandingPage = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className={`w-16 h-16 ${primaryBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
                 <span className="text-2xl font-bold text-white">1</span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -201,7 +210,7 @@ const LandingPage = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className={`w-16 h-16 ${successBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
                 <span className="text-2xl font-bold text-white">2</span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -213,7 +222,7 @@ const LandingPage = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className={`w-16 h-16 ${warningBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
                 <span className="text-2xl font-bold text-white">3</span>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">

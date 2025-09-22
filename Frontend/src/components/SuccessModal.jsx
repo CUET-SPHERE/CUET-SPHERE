@@ -1,7 +1,10 @@
 import React from 'react';
 import { X, CheckCircle, FileCheck, User, Calendar, Book } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SuccessModal = ({ isOpen, onClose, data, type = 'resource' }) => {
+   const { colors, buttonClasses } = useTheme();
+
    if (!isOpen || !data) return null;
 
    const getIcon = () => {
@@ -40,15 +43,15 @@ const SuccessModal = ({ isOpen, onClose, data, type = 'resource' }) => {
 
    return (
       <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50">
-         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md m-4 border border-gray-200 dark:border-gray-700">
+         <div className={`${colors?.surface || 'bg-white dark:bg-gray-800'} rounded-2xl shadow-2xl p-8 w-full max-w-md m-4 ${colors?.border || 'border-gray-200 dark:border-gray-700'} border`}>
             <div className="flex justify-between items-start mb-6">
                <div className="flex items-center gap-3">
                   {getIcon()}
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{getTitle()}</h2>
+                  <h2 className={`text-xl font-bold ${colors?.textPrimary || 'text-gray-900 dark:text-white'}`}>{getTitle()}</h2>
                </div>
                <button
                   onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  className={`${colors?.textSecondary || 'text-gray-400'} hover:${colors?.textPrimary || 'hover:text-gray-600 dark:hover:text-gray-300'} transition-colors`}
                >
                   <X size={20} />
                </button>
@@ -100,7 +103,7 @@ const SuccessModal = ({ isOpen, onClose, data, type = 'resource' }) => {
 
                   {/* Success Message */}
                   <div className="text-center py-4">
-                     <p className="text-gray-600 dark:text-gray-400">
+                     <p className={`${colors?.textSecondary || 'text-gray-600 dark:text-gray-400'}`}>
                         Your resource has been successfully uploaded and is now available to your classmates.
                      </p>
                   </div>
@@ -122,7 +125,7 @@ const SuccessModal = ({ isOpen, onClose, data, type = 'resource' }) => {
                      </div>
                   </div>
                   <div className="text-center py-4">
-                     <p className="text-gray-600 dark:text-gray-400">
+                     <p className={`${colors?.textSecondary || 'text-gray-600 dark:text-gray-400'}`}>
                         Course has been added successfully to your curriculum.
                      </p>
                   </div>
@@ -132,7 +135,7 @@ const SuccessModal = ({ isOpen, onClose, data, type = 'resource' }) => {
             <div className="flex justify-center mt-6">
                <button
                   onClick={onClose}
-                  className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition-all flex items-center gap-2"
+                  className={`${buttonClasses?.success || 'px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white'} font-semibold transition-all flex items-center gap-2`}
                >
                   <CheckCircle size={16} />
                   Great!

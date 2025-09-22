@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import API from '../services/api';
 
 // Helper function to map level and term to semester ID
@@ -16,6 +17,7 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
    const [saving, setSaving] = useState(false);
    const [error, setError] = useState('');
    const { user } = useUser();
+   const { colors, buttonClasses } = useTheme();
 
    useEffect(() => {
       if (isOpen) {
@@ -204,12 +206,12 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
 
    return (
       <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 overflow-y-auto py-6">
-         <div className="bg-surface rounded-2xl shadow-2xl p-8 w-full max-w-2xl m-4 border border-border-color">
+         <div className={`${colors?.surface || 'bg-surface'} rounded-2xl shadow-2xl p-8 w-full max-w-2xl m-4 ${colors?.border || 'border-border-color'} border`}>
             <div className="flex justify-between items-center mb-6">
-               <h2 className="text-2xl font-bold text-text-primary">
+               <h2 className={`text-2xl font-bold ${colors?.textPrimary || 'text-text-primary'}`}>
                   {editingCourse ? 'Edit Course' : 'Add Course'}
                </h2>
-               <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
+               <button onClick={onClose} className={`${colors?.textSecondary || 'text-text-secondary'} hover:${colors?.textPrimary || 'hover:text-text-primary'} transition-colors`}>
                   <X size={24} />
                </button>
             </div>
@@ -222,14 +224,14 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
                   )}
 
                   <div className="flex justify-between items-center mb-4">
-                     <h3 className="text-md font-medium text-text-primary">
+                     <h3 className={`text-md font-medium ${colors?.textPrimary || 'text-text-primary'}`}>
                         Courses for Level {level}, Term {term}
                      </h3>
                      {!editingCourse && (
                         <button
                            type="button"
                            onClick={handleAddCourse}
-                           className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-purple-600 text-white rounded-lg transition-all text-sm"
+                           className={`${buttonClasses?.primary || 'flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-purple-600 text-white rounded-lg'} transition-all text-sm`}
                            disabled={saving}
                         >
                            <PlusCircle size={16} />
@@ -238,22 +240,22 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
                      )}
                   </div>
 
-                  <div className="border border-gray-200 dark:border-border-color rounded-xl overflow-hidden shadow-sm">
-                     <div className="grid grid-cols-12 gap-2 bg-gray-50 dark:bg-background p-4 border-b border-gray-200 dark:border-border-color">
-                        <div className="col-span-4 font-medium text-text-secondary text-sm">Course Code</div>
-                        <div className="col-span-7 font-medium text-text-secondary text-sm">Course Name</div>
+                  <div className={`${colors?.border || 'border-gray-200 dark:border-border-color'} border rounded-xl overflow-hidden shadow-sm`}>
+                     <div className={`grid grid-cols-12 gap-2 ${colors?.background || 'bg-gray-50 dark:bg-background'} p-4 ${colors?.border || 'border-gray-200 dark:border-border-color'} border-b`}>
+                        <div className={`col-span-4 font-medium ${colors?.textSecondary || 'text-text-secondary'} text-sm`}>Course Code</div>
+                        <div className={`col-span-7 font-medium ${colors?.textSecondary || 'text-text-secondary'} text-sm`}>Course Name</div>
                      </div>
 
-                     <div className="divide-y divide-gray-200 dark:divide-border-color">
+                     <div className={`divide-y ${colors?.border || 'divide-gray-200 dark:divide-border-color'}`}>
                         {courseEntries.map((entry, index) => (
-                           <div key={entry.id} className="grid grid-cols-12 gap-2 p-4 items-center hover:bg-gray-50 dark:hover:bg-background/60 transition-colors">
+                           <div key={entry.id} className={`grid grid-cols-12 gap-2 p-4 items-center hover:${colors?.background || 'hover:bg-gray-50 dark:hover:bg-background/60'} transition-colors`}>
                               <div className="col-span-4 relative">
                                  <input
                                     type="text"
                                     value={entry.courseCode}
                                     onChange={(e) => handleInputChange(entry.id, 'courseCode', e.target.value)}
                                     placeholder="e.g., CSE-141"
-                                    className="w-full bg-background border border-border-color rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+                                    className={`w-full ${colors?.inputBackground || 'bg-background'} ${colors?.border || 'border-border-color'} border rounded-lg px-3 py-2 ${colors?.textPrimary || 'text-text-primary'} focus:ring-2 focus:ring-primary focus:outline-none`}
                                     required
                                     disabled={saving}
                                  />
@@ -265,7 +267,7 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
                                     value={entry.courseName}
                                     onChange={(e) => handleInputChange(entry.id, 'courseName', e.target.value)}
                                     placeholder="e.g., Structured Programming"
-                                    className="w-full bg-background border border-border-color rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+                                    className={`w-full ${colors?.inputBackground || 'bg-background'} ${colors?.border || 'border-border-color'} border rounded-lg px-3 py-2 ${colors?.textPrimary || 'text-text-primary'} focus:ring-2 focus:ring-primary focus:outline-none`}
                                     required
                                     disabled={saving}
                                  />
@@ -290,14 +292,14 @@ const CourseBatchModal = ({ isOpen, onClose, onSave, level, term, editingCourse 
                   <button
                      type="button"
                      onClick={onClose}
-                     className="px-6 py-2.5 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white font-semibold transition-all disabled:opacity-50"
+                     className={`${buttonClasses?.secondary || 'px-6 py-2.5 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white'} font-semibold transition-all disabled:opacity-50`}
                      disabled={saving}
                   >
                      Cancel
                   </button>
                   <button
                      type="submit"
-                     className="px-6 py-2.5 rounded-lg bg-primary hover:bg-purple-600 text-white font-semibold transition-all disabled:opacity-50 flex items-center gap-2"
+                     className={`${buttonClasses?.primary || 'px-6 py-2.5 rounded-lg bg-primary hover:bg-purple-600 text-white'} font-semibold transition-all disabled:opacity-50 flex items-center gap-2`}
                      disabled={saving || courseEntries.some(entry => !entry.courseCode || !entry.courseName)}
                   >
                      {saving ? (

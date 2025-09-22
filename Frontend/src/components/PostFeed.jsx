@@ -4,6 +4,7 @@ import PostCard from './PostCard';
 import PostCreateModal from './PostCreateModal';
 import PostSkeleton from './PostSkeleton';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { postService } from '../services/postService';
 import { useDebounce } from '../hooks/useDebounce';
 import { useFeedData } from '../hooks/useFeedData';
@@ -15,6 +16,7 @@ function PostFeed({ isManageMode = false }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { incrementPostDeleteCount, user, isAuthenticated } = useUser();
+  const { colors, buttonClasses } = useTheme();
 
   // Use the feed data hook with caching
   const {
@@ -123,28 +125,28 @@ function PostFeed({ isManageMode = false }) {
   return (
     <div className="min-h-full">
       {/* Sticky Header */}
-      <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm ${!isManageMode ? 'sticky top-0 z-10' : ''}`}>
+      <div className={`${colors?.surface || 'bg-white dark:bg-gray-800'} ${colors?.border || 'border-gray-200 dark:border-gray-700'} border-b shadow-sm ${!isManageMode ? 'sticky top-0 z-10' : ''} backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95`}>
         <div className="px-4 pt-4 pb-2">
           {/* Header Title and Create Button */}
           {!isManageMode && (
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Post Feed</h1>
+            <div className="flex items-center justify-between mb-4 gap-4">
+              <h1 className={`text-2xl font-bold ${colors?.text || 'text-gray-900 dark:text-white'}`}>Post Feed</h1>
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                className={`${buttonClasses?.primary || "flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md"} whitespace-nowrap min-w-fit flex-shrink-0`}
                 onClick={() => setShowCreateModal(true)}
               >
-                <Plus className="h-4 w-4" />
-                Create Post
+                <Plus className="h-5 w-5" />
+                <span>Create Post</span>
               </button>
             </div>
           )}
 
           {/* Search */}
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${colors?.textMuted || 'text-gray-400'}`} />
             <input
               type="text"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full pl-10 pr-4 py-2 ${colors?.border || 'border-gray-300 dark:border-gray-600'} border rounded-lg ${colors?.inputBackground || 'bg-white dark:bg-gray-700'} ${colors?.text || 'text-gray-900 dark:text-white'} ${colors?.placeholder || 'placeholder-gray-500 dark:placeholder-gray-400'} focus:ring-2 ${colors?.focusRing || 'focus:ring-blue-500'} focus:border-transparent`}
               placeholder="Search posts by title, content, or #tag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -153,23 +155,23 @@ function PostFeed({ isManageMode = false }) {
         </div>
 
         {/* Tags Filter */}
-        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700/50">
+        <div className={`px-4 pb-4 border-t ${colors?.borderLight || 'border-gray-100 dark:border-gray-700/50'}`}>
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-2">
-            <Tag className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+            <Tag className={`h-4 w-4 ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} flex-shrink-0`} />
             <button
               className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === 'All'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                ? colors?.tagSelected || 'bg-blue-600 text-white'
+                : colors?.tagDefault || 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               onClick={() => setSelectedTag('All')}
             >
               All Posts
             </button>
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+            <div className={`h-6 w-px ${colors?.borderLight || 'bg-gray-200 dark:bg-gray-600'}`}></div>
             <button
               className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === 'Trending'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                ? colors?.tagSelected || 'bg-blue-600 text-white'
+                : colors?.tagDefault || 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               onClick={() => setSelectedTag('Trending')}
             >
@@ -179,8 +181,8 @@ function PostFeed({ isManageMode = false }) {
               <button
                 key={tag}
                 className={`px-4 py-1.5 rounded-lg font-medium transition-all flex-shrink-0 ${selectedTag === tag
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300 dark:ring-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  ? colors?.tagHighlighted || 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ring-1 ring-blue-300 dark:ring-blue-700'
+                  : colors?.tagDefault || 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
                 onClick={() => setSelectedTag(tag)}
               >
@@ -201,21 +203,21 @@ function PostFeed({ isManageMode = false }) {
             ))
           ) : error ? (
             <div className="text-center py-12">
-              <div className="text-red-500 text-6xl mb-4">⚠️</div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Error loading posts</h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+              <div className={`${colors?.textMuted || 'text-red-500'} text-6xl mb-4`}>⚠️</div>
+              <h3 className={`text-lg font-medium ${colors?.text || 'text-gray-900 dark:text-white'} mb-2`}>Error loading posts</h3>
+              <p className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} mb-4`}>{error}</p>
               <button
                 onClick={handleRefresh}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className={buttonClasses?.primary || "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"}
               >
                 Try Again
               </button>
             </div>
           ) : filteredPosts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 dark:text-gray-500 text-6xl mb-4">📝</div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts found</h3>
-              <p className="text-gray-500 dark:text-gray-400">
+              <div className={`${colors?.textMuted || 'text-gray-400 dark:text-gray-500'} text-6xl mb-4`}>📝</div>
+              <h3 className={`text-lg font-medium ${colors?.text || 'text-gray-900 dark:text-white'} mb-2`}>No posts found</h3>
+              <p className={colors?.textMuted || 'text-gray-500 dark:text-gray-400'}>
                 {debouncedSearch ? 'Try adjusting your search terms' : 'No posts available for this tag.'}
               </p>
             </div>
@@ -239,15 +241,15 @@ function PostFeed({ isManageMode = false }) {
           {/* Loading more indicator */}
           {loadingMore && (
             <div className="text-center py-6">
-              <Loader className="h-6 w-6 animate-spin mx-auto text-blue-600 mb-2" />
-              <p className="text-gray-500 dark:text-gray-400">Loading more posts...</p>
+              <Loader className={`h-6 w-6 animate-spin mx-auto ${colors?.primary || 'text-blue-600'} mb-2`} />
+              <p className={colors?.textMuted || 'text-gray-500 dark:text-gray-400'}>Loading more posts...</p>
             </div>
           )}
 
           {/* End of posts indicator */}
           {!hasMore && posts.length > 0 && !loading && (
             <div className="text-center py-6">
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className={colors?.textMuted || 'text-gray-500 dark:text-gray-400'}>
                 You've reached the end! 🎉
               </p>
             </div>

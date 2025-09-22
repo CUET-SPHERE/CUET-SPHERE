@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2 } from 'lucide-react';
 import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl } from '../utils/formatters';
+import { useTheme } from '../contexts/ThemeContext';
 import commentService from '../services/commentService';
 import replyService from '../services/replyService';
 import voteService from '../services/voteService';
@@ -8,6 +9,7 @@ import ApiService from '../services/api';
 
 // Avatar component
 const Avatar = React.memo(({ src, name, size = 'md' }) => {
+  const { colors } = useTheme();
   const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
@@ -19,7 +21,7 @@ const Avatar = React.memo(({ src, name, size = 'md' }) => {
       <img
         src={src}
         alt={name}
-        className={`${sizeClasses[size]} rounded-full object-cover border-2 border-gray-200`}
+        className={`${sizeClasses[size]} rounded-full object-cover border-2 ${colors?.border || 'border-gray-200'}`}
       />
     );
   }
@@ -36,6 +38,7 @@ const Avatar = React.memo(({ src, name, size = 'md' }) => {
 
 // Comment component with reply, edit, delete functionality
 function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 }) {
+  const { colors, buttonClasses } = useTheme();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -69,19 +72,19 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
   };
 
   return (
-    <div className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-200 dark:border-gray-600 pl-4' : ''}`}>
+    <div className={`${depth > 0 ? `ml-6 border-l-2 ${colors?.borderLight || 'border-gray-200 dark:border-gray-600'} pl-4` : ''}`}>
       <div className="flex gap-3 py-3">
         <Avatar src={comment.profilePicture} name={comment.author} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-gray-900 dark:text-white text-sm">{comment.author}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">ID: {comment.studentId}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">•</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimeAgo(comment.timestamp)}</span>
+            <span className={`font-medium ${colors?.text || 'text-gray-900 dark:text-white'} text-sm`}>{comment.author}</span>
+            <span className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>ID: {comment.studentId}</span>
+            <span className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>•</span>
+            <span className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>{formatTimeAgo(comment.timestamp)}</span>
             {comment.isEdited && (
               <>
-                <span className="text-xs text-gray-500 dark:text-gray-400">•</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 italic">edited</span>
+                <span className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>•</span>
+                <span className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} italic`}>edited</span>
               </>
             )}
           </div>
@@ -92,14 +95,14 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onKeyPress={(e) => handleKeyPress(e, 'edit')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
+                className={`w-full px-3 py-2 ${colors?.border || 'border-gray-300 dark:border-gray-600'} border rounded-lg ${colors?.inputBackground || 'bg-white dark:bg-gray-700'} ${colors?.text || 'text-gray-900 dark:text-white'} text-sm resize-none`}
                 rows="2"
                 autoFocus
               />
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={handleEdit}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                  className={buttonClasses?.success || "px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"}
                 >
                   Save
                 </button>
@@ -108,14 +111,14 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
                     setIsEditing(false);
                     setEditContent(comment.content);
                   }}
-                  className="px-3 py-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-400 dark:hover:bg-gray-500"
+                  className={buttonClasses?.secondary || "px-3 py-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-400 dark:hover:bg-gray-500"}
                 >
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{comment.content}</p>
+            <p className={`${colors?.textSecondary || 'text-gray-700 dark:text-gray-300'} text-sm mb-2`}>{comment.content}</p>
           )}
 
           {!isEditing && (
@@ -123,7 +126,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
               {depth < maxDepth && (
                 <button
                   onClick={() => setShowReplyForm(!showReplyForm)}
-                  className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium"
+                  className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} hover:${colors?.primaryHover || 'text-blue-600 dark:text-blue-400'} font-medium`}
                 >
                   Reply
                 </button>
@@ -132,13 +135,13 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
                 <>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 font-medium"
+                    className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} hover:text-green-600 dark:hover:text-green-400 font-medium`}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => onDelete(comment.id)}
-                    className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 font-medium"
+                    className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} hover:text-red-600 dark:hover:text-red-400 font-medium`}
                   >
                     Delete
                   </button>
@@ -147,7 +150,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
               {comment.replies && comment.replies.length > 0 && (
                 <button
                   onClick={() => setShowReplies(!showReplies)}
-                  className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium"
+                  className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} hover:${colors?.primaryHover || 'text-blue-600 dark:text-blue-400'} font-medium`}
                 >
                   {showReplies ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
                 </button>
@@ -164,14 +167,14 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
                   onChange={(e) => setReplyContent(e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, 'reply')}
                   placeholder={`Reply to ${comment.author}...`}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm resize-none"
+                  className={`w-full px-3 py-2 ${colors?.border || 'border-gray-300 dark:border-gray-600'} border rounded-lg ${colors?.inputBackground || 'bg-white dark:bg-gray-700'} ${colors?.text || 'text-gray-900 dark:text-white'} text-sm resize-none`}
                   rows="2"
                 />
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={handleReply}
                     disabled={!replyContent.trim()}
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={buttonClasses?.primary || "px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"}
                   >
                     Reply
                   </button>
@@ -180,7 +183,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
                       setShowReplyForm(false);
                       setReplyContent('');
                     }}
-                    className="px-3 py-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-400 dark:hover:bg-gray-500"
+                    className={buttonClasses?.secondary || "px-3 py-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-400 dark:hover:bg-gray-500"}
                   >
                     Cancel
                   </button>
@@ -211,6 +214,7 @@ function Comment({ comment, onReply, onEdit, onDelete, currentUserId, depth = 0 
 }
 
 const PostImage = React.memo(({ src, alt }) => {
+  const { colors } = useTheme();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
@@ -219,10 +223,10 @@ const PostImage = React.memo(({ src, alt }) => {
   }
 
   return (
-    <div className="mt-3 mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+    <div className={`mt-3 mb-3 rounded-lg overflow-hidden ${colors?.cardBackground || 'bg-gray-100 dark:bg-gray-800'}`}>
       {imageLoading && (
-        <div className="flex items-center justify-center h-64 bg-gray-200 dark:bg-gray-700">
-          <div className="animate-pulse flex items-center gap-2 text-gray-500">
+        <div className={`flex items-center justify-center h-64 ${colors?.cardSecondary || 'bg-gray-200 dark:bg-gray-700'}`}>
+          <div className={`animate-pulse flex items-center gap-2 ${colors?.textMuted || 'text-gray-500'}`}>
             <ImageIcon className="h-6 w-6" />
             <span>Loading image...</span>
           </div>
@@ -244,6 +248,7 @@ const PostImage = React.memo(({ src, alt }) => {
 });
 
 const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDelete, onSelectTag }, ref) => {
+  const { colors, buttonClasses } = useTheme();
   const [upvotes, setUpvotes] = useState(post.upvotes || 0);
   const [downvotes, setDownvotes] = useState(post.downvotes || 0);
   const [bookmarked, setBookmarked] = useState(post.bookmarked || post.saved || false);
@@ -391,10 +396,10 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
   const handleBookmark = async () => {
     try {
       const newBookmarkState = !bookmarked;
-      
+
       // Optimistically update UI
       setBookmarked(newBookmarkState);
-      
+
       // Call API to save/unsave
       if (newBookmarkState) {
         const response = await ApiService.savePost(post.id);
@@ -604,7 +609,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
   };
 
   return (
-    <div ref={ref} className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
+    <div ref={ref} className={`${colors?.cardBackground || 'bg-white dark:bg-gray-800'} rounded-xl shadow-sm ${colors?.border || 'border-gray-200 dark:border-gray-700'} border overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
       <div className="p-6">
         {/* Post Header */}
         <div className="flex items-start justify-between mb-4">
@@ -612,23 +617,23 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
             <Avatar src={post.profilePicture} name={post.author} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 dark:text-white">{post.author}</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">•</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{formatTimeAgo(post.timestamp)}</span>
+                <span className={`font-semibold ${colors?.text || 'text-gray-900 dark:text-white'}`}>{post.author}</span>
+                <span className={`text-sm ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>•</span>
+                <span className={`text-sm ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>{formatTimeAgo(post.timestamp)}</span>
               </div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Student ID: {post.studentId}</span>
+              <span className={`text-sm ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>Student ID: {post.studentId}</span>
             </div>
           </div>
         </div>
 
         {/* Post Content */}
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{post.title}</h3>
-          <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{displayedContent}</p>
+          <h3 className={`text-lg font-semibold ${colors?.text || 'text-gray-900 dark:text-white'} mb-2`}>{post.title}</h3>
+          <p className={`${colors?.textSecondary || 'text-gray-700 dark:text-gray-300'} leading-relaxed whitespace-pre-wrap`}>{displayedContent}</p>
           {post.content.length > MAX_CONTENT_LENGTH && (
             <button
               onClick={toggleShowFullContent}
-              className="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2"
+              className={`${colors?.primary || 'text-blue-600 dark:text-blue-400'} hover:underline text-sm mt-2`}
             >
               {showFullContent ? 'See Less' : 'See More'}
             </button>
@@ -637,9 +642,9 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
           {post.image && isImageUrl(post.image) && <PostImage src={post.image} alt={post.title} />}
 
           {post.attachment && (
-            <div className="flex items-center gap-2 mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <Paperclip className="h-4 w-4 text-gray-500" />
-              <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
+            <div className={`flex items-center gap-2 mt-3 p-3 ${colors?.cardSecondary || 'bg-gray-50 dark:bg-gray-700'} rounded-lg`}>
+              <Paperclip className={`h-4 w-4 ${colors?.textMuted || 'text-gray-500'}`} />
+              <a href="#" className={`${colors?.primary || 'text-blue-600 dark:text-blue-400'} hover:underline text-sm font-medium`}>
                 {post.attachment}
               </a>
             </div>
@@ -653,7 +658,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
               <button
                 key={tag}
                 onClick={() => onSelectTag(tag)}
-                className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                className={`px-3 py-1 ${colors?.tagHighlighted || 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'} rounded-full text-sm font-medium hover:${colors?.tagHighlightedHover || 'bg-blue-200 dark:bg-blue-800'} transition-colors`}
               >
                 #{tag}
               </button>
@@ -662,11 +667,11 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
         )}
 
         {/* Actions */}
-        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+        <div className={`pt-4 border-t ${colors?.borderLight || 'border-gray-100 dark:border-gray-700'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? `${colors?.voteActive || 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleUpvote}
                 disabled={isManageMode}
               >
@@ -675,7 +680,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
               </button>
 
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleDownvote}
                 disabled={isManageMode}
               >
@@ -684,7 +689,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
               </button>
 
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'} transition-colors ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => !isManageMode && setShowComments(!showComments)}
                 disabled={isManageMode}
               >
@@ -695,7 +700,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
             <div className="flex items-center gap-4">
               <button
-                className={`p-2 rounded-lg transition-colors ${bookmarked ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`p-2 rounded-lg transition-colors ${bookmarked ? `${colors?.bookmarkActive || 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleBookmark}
                 disabled={isManageMode}
               >
@@ -705,7 +710,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
               {isManageMode && (
                 <button
                   onClick={() => onDelete(post.id)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                  className={buttonClasses?.danger || "flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"}
                   aria-label="Delete post"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -719,7 +724,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
       {/* Error Display */}
       {error && (
-        <div className="p-3 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg mx-6 mb-4">
+        <div className={`p-3 bg-red-100 dark:bg-red-900 ${colors?.border || 'border-red-200 dark:border-red-700'} border rounded-lg mx-6 mb-4`}>
           <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
           <button
             onClick={() => setError(null)}
@@ -732,7 +737,7 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
       {/* Comments Section */}
       {showComments && (
-        <div className="border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 p-6">
+        <div className={`border-t ${colors?.borderLight || 'border-gray-100 dark:border-gray-700'} ${colors?.commentsBackground || 'bg-gray-50 dark:bg-gray-750'} p-6`}>
           {/* Add Comment */}
           <div className="flex gap-3 mb-4">
             <Avatar src={null} name="Muhammad Rony" size="sm" />
@@ -743,13 +748,13 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Write a comment..."
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className={`flex-1 px-4 py-2 ${colors?.border || 'border-gray-300 dark:border-gray-600'} border rounded-lg ${colors?.inputBackground || 'bg-white dark:bg-gray-700'} ${colors?.text || 'text-gray-900 dark:text-white'} ${colors?.placeholder || 'placeholder-gray-500 dark:placeholder-gray-400'} focus:ring-2 ${colors?.focusRing || 'focus:ring-blue-500'} focus:border-transparent resize-none`}
                   rows="2"
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={!newComment.trim() || loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  className={buttonClasses?.primary || "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"}
                 >
                   <Send className="h-4 w-4" />
                   {loading && <span className="text-xs">...</span>}
@@ -761,11 +766,11 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
           {/* Comments List */}
           <div className="space-y-1">
             {loading && comments.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+              <p className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} text-sm text-center py-4`}>
                 Loading comments...
               </p>
             ) : comments.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+              <p className={`${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} text-sm text-center py-4`}>
                 No comments yet. Be the first to comment!
               </p>
             ) : (

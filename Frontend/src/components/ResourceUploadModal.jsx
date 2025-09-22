@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { X, UploadCloud, FileUp, Loader2, Folder, File, Trash2, Plus } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 import ApiService from '../services/api';
 import SuccessModal from './SuccessModal';
 import FileTypeIcon from './FileTypeIcon';
 
 const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) => {
+  const { colors, buttonClasses, isDark } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
@@ -218,20 +220,20 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-border-color">
-        <div className="sticky top-0 bg-surface border-b border-border-color px-8 py-6 rounded-t-2xl">
+      <div className={`${colors?.surface || 'bg-surface'} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto ${colors?.border || 'border-border-color'} border`}>
+        <div className={`sticky top-0 ${colors?.surface || 'bg-surface'} ${colors?.border || 'border-border-color'} border-b px-8 py-6 rounded-t-2xl`}>
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-text-primary">Upload Resource</h2>
+            <h2 className={`text-2xl font-bold ${colors?.textPrimary || 'text-text-primary'}`}>Upload Resource</h2>
             <button
               onClick={handleClose}
-              className="text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+              className={`${colors?.textSecondary || 'text-text-secondary'} hover:${colors?.textPrimary || 'text-text-primary'} transition-colors disabled:opacity-50`}
               disabled={uploading}
             >
               <X size={24} />
             </button>
           </div>
-          <p className="text-text-secondary mt-2">
-            Uploading for: <span className="font-semibold text-primary">{course?.name || course?.courseName}</span> (Level {level}, Term {term})
+          <p className={`${colors?.textSecondary || 'text-text-secondary'} mt-2`}>
+            Uploading for: <span className={`font-semibold ${colors?.primary || 'text-primary'}`}>{course?.name || course?.courseName}</span> (Level {level}, Term {term})
           </p>
         </div>
 
@@ -247,7 +249,7 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
             <div className="space-y-6">
               {/* Upload Mode Selection */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-3">Upload Mode*</label>
+                <label className={`block text-sm font-medium ${colors?.textSecondary || 'text-text-secondary'} mb-3`}>Upload Mode*</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -262,10 +264,10 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
                         setError('');
                       }}
                       disabled={uploading}
-                      className="text-primary focus:ring-primary"
+                      className={`${colors?.primary || 'text-blue-600'} focus:ring-blue-500`}
                     />
-                    <File size={20} className="text-text-secondary" />
-                    <span className="text-text-primary">Single File</span>
+                    <File size={20} className={`${colors?.textSecondary || 'text-text-secondary'}`} />
+                    <span className={`${colors?.textPrimary || 'text-text-primary'}`}>Single File</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -280,53 +282,53 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
                         setError('');
                       }}
                       disabled={uploading}
-                      className="text-primary focus:ring-primary"
+                      className={`${colors?.primary || 'text-blue-600'} focus:ring-blue-500`}
                     />
-                    <Folder size={20} className="text-text-secondary" />
-                    <span className="text-text-primary">Multiple Files (Folder)</span>
+                    <Folder size={20} className={`${colors?.textSecondary || 'text-text-secondary'}`} />
+                    <span className={`${colors?.textPrimary || 'text-text-primary'}`}>Multiple Files (Folder)</span>
                   </label>
                 </div>
                 {uploadMode === 'folder' && (
-                  <p className="mt-2 text-xs text-text-secondary">
+                  <p className={`mt-2 text-xs ${colors?.textSecondary || 'text-text-secondary'}`}>
                     Upload multiple files that will be grouped together under a single resource title.
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-text-secondary mb-2">Resource Title*</label>
+                <label htmlFor="title" className={`block text-sm font-medium ${colors?.textSecondary || 'text-text-secondary'} mb-2`}>Resource Title*</label>
                 <input
                   type="text"
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g., Midterm Lecture Slides"
-                  className="w-full bg-background border border-border-color rounded-lg px-4 py-2 text-text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+                  className={`w-full ${colors?.inputBackground || 'bg-background'} ${colors?.border || 'border-border-color'} border rounded-lg px-4 py-2 ${colors?.textPrimary || 'text-text-primary'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
                   disabled={uploading}
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-text-secondary mb-2">Description (Optional)</label>
+                <label htmlFor="description" className={`block text-sm font-medium ${colors?.textSecondary || 'text-text-secondary'} mb-2`}>Description (Optional)</label>
                 <textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief description of this resource"
-                  className="w-full bg-background border border-border-color rounded-lg px-4 py-2 text-text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+                  className={`w-full ${colors?.inputBackground || 'bg-background'} ${colors?.border || 'border-border-color'} border rounded-lg px-4 py-2 ${colors?.textPrimary || 'text-text-primary'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
                   rows="3"
                   disabled={uploading}
                 />
               </div>
 
               <div>
-                <label htmlFor="resourceType" className="block text-sm font-medium text-text-secondary mb-2">Resource Type*</label>
+                <label htmlFor="resourceType" className={`block text-sm font-medium ${colors?.textSecondary || 'text-text-secondary'} mb-2`}>Resource Type*</label>
                 <select
                   id="resourceType"
                   value={resourceType}
                   onChange={(e) => setResourceType(e.target.value)}
-                  className="w-full bg-background border border-border-color rounded-lg px-4 py-2 text-text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+                  className={`w-full ${colors?.inputBackground || 'bg-background'} ${colors?.border || 'border-border-color'} border rounded-lg px-4 py-2 ${colors?.textPrimary || 'text-text-primary'} focus:ring-2 focus:ring-blue-500 focus:outline-none`}
                   disabled={uploading}
                 >
                   <option value="LECTURE_NOTE">Lecture Note</option>
@@ -344,7 +346,7 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
             {/* Right Column - File Upload */}
             <div className="space-y-6">
               <div>
-                <label htmlFor="file" className="block text-sm font-medium text-text-secondary mb-2">
+                <label htmlFor="file" className={`block text-sm font-medium ${colors?.textSecondary || 'text-text-secondary'} mb-2`}>
                   {uploadMode === 'single' ? 'File*' : 'Files*'}
                 </label>
                 <div className="border border-dashed border-border-color rounded-lg p-6">
@@ -439,18 +441,18 @@ const ResourceUploadModal = ({ open, onClose, onUpload, course, level, term }) =
         </div>
 
         {/* Footer with action buttons */}
-        <div className="sticky bottom-0 bg-surface border-t border-border-color px-8 py-6 rounded-b-2xl">
+        <div className={`sticky bottom-0 ${colors?.surface || 'bg-surface'} ${colors?.border || 'border-border-color'} border-t px-8 py-6 rounded-b-2xl`}>
           <div className="flex justify-end gap-4">
             <button
               onClick={handleClose}
-              className="px-6 py-2 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white font-semibold transition-all disabled:opacity-50"
+              className={`${buttonClasses?.secondary || 'px-6 py-2 rounded-lg bg-neutral-600 hover:bg-neutral-500 text-white'} font-semibold transition-all disabled:opacity-50`}
               disabled={uploading}
             >
               Cancel
             </button>
             <button
               onClick={handleUpload}
-              className="px-6 py-2 rounded-lg bg-success hover:bg-emerald-600 text-white font-semibold transition-all flex items-center gap-2 disabled:opacity-50"
+              className={`${buttonClasses?.success || 'px-6 py-2 rounded-lg bg-success hover:bg-emerald-600 text-white'} font-semibold transition-all flex items-center gap-2 disabled:opacity-50`}
               disabled={uploading || !title.trim() || (uploadMode === 'single' ? !file : files.length === 0)}
             >
               {uploading ? (

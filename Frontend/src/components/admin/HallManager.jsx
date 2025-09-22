@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { HALLS } from '../../utils/validation';
 import { Home, Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const HallManager = () => {
+  const { isDark, colors } = useTheme();
   const [halls, setHalls] = useState(HALLS);
   const [newHall, setNewHall] = useState('');
   const [editing, setEditing] = useState(null); // { index, name }
@@ -28,36 +30,110 @@ const HallManager = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-        <Home className="text-green-500" />
+    <div
+      className="p-6 rounded-xl shadow-md border"
+      style={{
+        backgroundColor: isDark ? colors.background.cardDark : colors.background.cardLight,
+        borderColor: isDark ? colors.interactive.borderDark : colors.interactive.border
+      }}
+    >
+      <h2
+        className="text-xl font-semibold mb-4 flex items-center gap-2"
+        style={{ color: isDark ? colors.text.primaryDark : colors.text.primaryLight }}
+      >
+        <Home style={{ color: colors.status.event.lightText }} />
         Manage Halls
       </h2>
-      
+
       {/* List */}
       <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
         {halls.map((name, index) => (
-          <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+          <div
+            key={index}
+            className="flex items-center justify-between p-3 rounded-lg"
+            style={{ backgroundColor: isDark ? colors.status.general.dark : colors.status.general.light }}
+          >
             {editing?.index === index ? (
               <input
                 type="text"
                 value={editing.name}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="bg-transparent w-full focus:outline-none text-gray-900 dark:text-white"
+                className="bg-transparent w-full focus:outline-none"
+                style={{ color: isDark ? colors.text.primaryDark : colors.text.primaryLight }}
               />
             ) : (
-              <span className="text-gray-800 dark:text-gray-200">{name}</span>
+              <span
+                style={{ color: isDark ? colors.text.primaryDark : colors.text.primaryLight }}
+              >
+                {name}
+              </span>
             )}
             <div className="flex items-center gap-2">
               {editing?.index === index ? (
                 <>
-                  <button onClick={handleEdit} className="p-1.5 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full"><Save size={16} /></button>
-                  <button onClick={() => setEditing(null)} className="p-1.5 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full"><X size={16} /></button>
+                  <button
+                    onClick={handleEdit}
+                    className="p-1.5 rounded-full transition-colors"
+                    style={{
+                      color: isDark ? colors.status.success.darkText : colors.status.success.lightText,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = isDark ? colors.status.success.dark : colors.status.success.light;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Save size={16} />
+                  </button>
+                  <button
+                    onClick={() => setEditing(null)}
+                    className="p-1.5 rounded-full transition-colors"
+                    style={{
+                      color: isDark ? colors.text.secondaryDark : colors.text.secondaryLight,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = isDark ? colors.interactive.hoverDark : colors.interactive.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => setEditing({ index, name })} className="p-1.5 text-yellow-500 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 rounded-full"><Edit size={16} /></button>
-                  <button onClick={() => handleDelete(index)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"><Trash2 size={16} /></button>
+                  <button
+                    onClick={() => setEditing({ index, name })}
+                    className="p-1.5 rounded-full transition-colors"
+                    style={{
+                      color: colors.primary.blue,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = colors.primary.blueLight;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="p-1.5 rounded-full transition-colors"
+                    style={{
+                      color: isDark ? colors.status.error.darkText : colors.status.error.lightText,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = isDark ? colors.status.error.dark : colors.status.error.light;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </>
               )}
             </div>
@@ -66,17 +142,45 @@ const HallManager = () => {
       </div>
 
       {/* Add Form */}
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">Add New Hall</h3>
+      <div
+        className="mt-6 pt-4 border-t"
+        style={{ borderColor: isDark ? colors.interactive.borderDark : colors.interactive.border }}
+      >
+        <h3
+          className="text-md font-semibold mb-2"
+          style={{ color: isDark ? colors.text.secondaryDark : colors.text.secondaryLight }}
+        >
+          Add New Hall
+        </h3>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             placeholder="Hall Name"
             value={newHall}
             onChange={(e) => setNewHall(e.target.value)}
-            className="flex-grow p-2 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-grow p-2 border rounded-lg focus:ring-2 focus:outline-none"
+            style={{
+              backgroundColor: isDark ? colors.interactive.hoverDark : colors.interactive.hover,
+              borderColor: isDark ? colors.interactive.borderDark : colors.interactive.border,
+              color: isDark ? colors.text.primaryDark : colors.text.primaryLight,
+              focusRingColor: colors.primary.blue,
+              focusBorderColor: colors.primary.blue
+            }}
           />
-          <button onClick={handleAdd} className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            onClick={handleAdd}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors"
+            style={{
+              backgroundColor: colors.primary.blue,
+              color: colors.text.primaryDark
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = colors.primary.blueHover;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = colors.primary.blue;
+            }}
+          >
             <Plus size={18} />
             <span>Add</span>
           </button>

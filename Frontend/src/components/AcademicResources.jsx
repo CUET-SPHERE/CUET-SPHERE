@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useResources } from '../contexts/ResourcesContext';
 import { useResourceNavigation } from '../contexts/ResourceNavigationContext';
+import { useTheme } from '../contexts/ThemeContext';
 import API from '../services/api';
 import ResourceUploadModal from './ResourceUploadModal';
 import CourseBatchModal from './CourseBatchModal';
@@ -70,6 +71,7 @@ const initialCoursesByLevelTerm = {
 
 function AcademicResources() {
   const { user } = useUser();
+  const { colors, buttonClasses, isDark } = useTheme();
   const { resources, toggleFavourite, findFolder, handleUpload: handleResourceUpload, refreshResources, removeResource, loading: resourcesLoading } = useResources();
   const { navigationTarget, clearNavigationTarget, isResourceHighlighted } = useResourceNavigation();
 
@@ -722,24 +724,24 @@ function AcademicResources() {
   const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
 
   return (
-    <div className="bg-white dark:bg-surface rounded-2xl shadow-2xl p-4 sm:p-6 flex flex-col h-full border border-gray-200 dark:border-border-color">
+    <div className={`${colors?.glass || (isDark ? 'bg-slate-800/90 backdrop-blur-sm' : 'bg-white/90 backdrop-blur-sm')} rounded-2xl ${colors?.shadow || 'shadow-xl'} ${colors?.shadowHover || 'hover:shadow-2xl'} p-4 sm:p-6 flex flex-col h-full ${colors?.border || 'border-slate-200 dark:border-slate-600'} border transition-all duration-300`}>
       <div className="flex items-center justify-between mb-6 shrink-0">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-text-primary">
+        <h2 className={`text-xl sm:text-2xl font-bold ${colors?.textPrimary || 'text-gray-800 dark:text-text-primary'}`}>
           Academic Resources
-          <span className="block sm:inline text-base font-normal text-gray-500 dark:text-text-secondary ml-0 sm:ml-2">
+          <span className={`block sm:inline text-base font-normal ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} ml-0 sm:ml-2`}>
             ({departmentMap[user.department]} - Batch '{user.batch}')
           </span>
         </h2>
       </div>
 
-      <div className="flex flex-col gap-6 flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent pr-2 min-h-0">
+      <div className="flex flex-col gap-6 flex-grow overflow-y-auto scrollbar-hide pr-2 min-h-0">
         {/* Navigation Bar */}
-        <div className="flex justify-between items-center border-b border-gray-200 dark:border-border-color pb-2 shrink-0">
+        <div className={`flex justify-between items-center ${colors?.border || 'border-gray-200 dark:border-border-color'} border-b pb-2 shrink-0`}>
           <div className="flex flex-wrap items-center gap-3">
             {/* Level dropdown */}
             <div className="relative">
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-background rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-all"
+                className={`flex items-center gap-2 px-4 py-2.5 ${colors?.gradient || (isDark ? 'bg-gradient-to-r from-slate-700 to-slate-600' : 'bg-gradient-to-r from-white to-slate-50')} rounded-lg ${colors?.border || 'border-slate-200 dark:border-slate-600'} border ${colors?.hover || 'hover:bg-slate-100 dark:hover:bg-slate-700'} ${colors?.shadow || 'shadow-sm'} ${colors?.shadowHover || 'hover:shadow-md'} transition-all duration-200 font-medium`}
                 onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
               >
                 <span>Level {selectedLevel}</span>
@@ -747,11 +749,11 @@ function AcademicResources() {
               </button>
 
               {isLevelDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-surface border border-gray-200 dark:border-border-color rounded-lg shadow-lg z-10 w-40">
+                <div className={`absolute top-full left-0 mt-2 ${colors?.glass || (isDark ? 'bg-slate-800/90 backdrop-blur-sm' : 'bg-white/90 backdrop-blur-sm')} ${colors?.border || 'border-slate-200 dark:border-slate-600'} border rounded-xl ${colors?.shadow || 'shadow-xl'} z-10 w-40 overflow-hidden`}>
                   {levels.map((level) => (
                     <button
                       key={level}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all ${selectedLevel === level ? 'bg-primary/10 text-primary' : ''}`}
+                      className={`w-full text-left px-4 py-3 ${colors?.hover || 'hover:bg-slate-100 dark:hover:bg-slate-700'} transition-all duration-200 font-medium ${selectedLevel === level ? colors?.primaryBg + ' ' + colors?.primary || 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : colors?.textPrimary || 'text-slate-900 dark:text-slate-50'}`}
                       onClick={() => {
                         setSelectedLevel(level);
                         setSelectedTerm(1);
@@ -776,12 +778,12 @@ function AcademicResources() {
                 }}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all
                   ${selectedLevel === currentSemester.level && selectedTerm === currentSemester.term
-                    ? 'bg-primary/20 text-primary'
+                    ? colors?.primaryBg + ' ' + colors?.primary || 'bg-primary/20 text-primary'
                     : 'bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300'
                   }`}
                 title="Go to the ongoing semester"
               >
-                <Calendar size={16} className={selectedLevel === currentSemester.level && selectedTerm === currentSemester.term ? 'text-primary' : 'text-amber-600 dark:text-amber-400'} />
+                <Calendar size={16} className={selectedLevel === currentSemester.level && selectedTerm === currentSemester.term ? colors?.primary || 'text-primary' : 'text-amber-600 dark:text-amber-400'} />
                 <span>Ongoing Semester</span>
               </button>
             )}
@@ -821,7 +823,10 @@ function AcademicResources() {
                   {terms.map((term) => (
                     <button
                       key={term}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all ${selectedTerm === term ? 'bg-primary/20 text-primary' : 'bg-gray-100 dark:bg-background text-gray-700 dark:text-text-secondary hover:bg-gray-200 dark:hover:bg-neutral-700'}`}
+                      className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${selectedTerm === term
+                        ? colors?.primaryBg + ' ' + colors?.primary + ' ' + colors?.shadow || 'bg-blue-50 text-blue-600 shadow-md dark:bg-blue-900/30 dark:text-blue-400'
+                        : colors?.gradient + ' ' + colors?.textSecondary + ' ' + colors?.hover + ' ' + colors?.shadowHover || 'bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 hover:from-slate-200 hover:to-slate-100 dark:from-slate-700 dark:to-slate-600 dark:text-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 hover:shadow-md'
+                        }`}
                       onClick={() => { setSelectedTerm(term); setSelectedCourse(null); }}
                       disabled={loadingCourses}
                     >
@@ -832,7 +837,7 @@ function AcademicResources() {
                 {user.role === 'CR' && (
                   <button
                     onClick={() => setCourseBatchModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg transition-all text-sm font-semibold"
+                    className={`flex items-center gap-2 ${buttonClasses?.primary || 'px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg'} transition-all text-sm font-semibold`}
                     disabled={loadingCourses}
                   >
                     <PlusCircle size={18} />
@@ -843,10 +848,10 @@ function AcademicResources() {
 
               {loadingCourses ? (
                 <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${colors?.primary || 'border-primary'}`}></div>
                 </div>
               ) : courseError ? (
-                <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
+                <div className={`text-center py-10 border-2 border-dashed ${colors?.border || 'border-gray-300 dark:border-border-color'} rounded-lg`}>
                   <AlertCircle className="mx-auto text-error mb-2" size={24} />
                   <p className="text-error">{courseError}</p>
                   <button
@@ -855,18 +860,18 @@ function AcademicResources() {
                       setSelectedLevel(selectedLevel);
                       setSelectedTerm(selectedTerm);
                     }}
-                    className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-600 transition-colors"
+                    className={`mt-4 ${buttonClasses?.primary || 'px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-600'} transition-colors`}
                   >
                     Retry
                   </button>
                 </div>
               ) : currentCourses.length === 0 ? (
-                <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-border-color rounded-lg">
-                  <p className="text-gray-500 dark:text-text-secondary">No courses found for this term.</p>
+                <div className={`text-center py-10 border-2 border-dashed ${colors?.border || 'border-gray-300 dark:border-border-color'} rounded-lg`}>
+                  <p className={`${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'}`}>No courses found for this term.</p>
                   {user.role === 'CR' && (
                     <button
                       onClick={() => setCourseBatchModalOpen(true)}
-                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg transition-all text-sm font-semibold mx-auto"
+                      className={`mt-4 flex items-center gap-2 ${buttonClasses?.primary || 'px-4 py-2 bg-primary hover:bg-purple-600 text-white rounded-lg'} transition-all text-sm font-semibold mx-auto`}
                     >
                       <Plus size={18} />
                       <span>Add Course</span>
@@ -879,10 +884,10 @@ function AcademicResources() {
                     <div key={colIndex} className="flex flex-col gap-3">
                       {col.map((course) => (
                         <div key={course.code} className="flex flex-col">
-                          <div className="group p-4 bg-gray-50 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:border-primary transition-all flex justify-between items-center">
+                          <div className={`group p-5 ${colors?.gradient || (isDark ? 'bg-gradient-to-br from-slate-700 to-slate-800' : 'bg-gradient-to-br from-white to-slate-50')} rounded-xl ${colors?.border || 'border-slate-200 dark:border-slate-600'} border ${colors?.gradientHover || 'hover:from-slate-600 hover:to-slate-700 dark:hover:from-slate-600 dark:hover:to-slate-700'} ${colors?.shadowHover || 'hover:shadow-lg'} transition-all duration-300 flex justify-between items-center group-hover:scale-[1.02]`}>
                             <button className="text-left w-full" onClick={() => setSelectedCourse(course)}>
-                              <p className="font-semibold text-gray-800 dark:text-text-primary">{course.name}</p>
-                              <p className="text-sm text-gray-500 dark:text-text-secondary">{course.code}</p>
+                              <p className={`font-bold text-lg ${colors?.textPrimary || 'text-slate-900 dark:text-slate-50'} group-hover:${colors?.primary || 'text-blue-600'} transition-colors duration-200`}>{course.name}</p>
+                              <p className={`text-sm font-medium ${colors?.textSecondary || 'text-slate-600 dark:text-slate-300'} mt-1`}>{course.code}</p>
                             </button>
                             {user.role === 'CR' && (
                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -891,13 +896,13 @@ function AcademicResources() {
                                     setEditingCourse(course);
                                     setCourseBatchModalOpen(true);
                                   }}
-                                  className="p-2 text-gray-500 dark:text-text-secondary hover:text-secondary"
+                                  className={`p-2 ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:text-secondary`}
                                 >
                                   <Edit size={16} />
                                 </button>
                                 <button
                                   onClick={() => openDeleteModal('course', course)}
-                                  className="p-2 text-gray-500 dark:text-text-secondary hover:text-error"
+                                  className={`p-2 ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:text-error`}
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -915,16 +920,16 @@ function AcademicResources() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-grow">
-                  <button className="flex items-center gap-2 text-sm text-gray-500 dark:text-text-secondary hover:text-primary mb-2" onClick={() => setSelectedCourse(null)}>
+                  <button className={`flex items-center gap-2 text-sm ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:${colors?.primary || 'text-primary'} mb-2`} onClick={() => setSelectedCourse(null)}>
                     <ArrowLeft size={16} /> Back to Courses
                   </button>
-                  <h3 className="text-xl font-semibold text-gray-800 dark:text-text-primary">{selectedCourse.name}</h3>
-                  <p className="text-gray-500 dark:text-text-secondary">{selectedCourse.code}</p>
+                  <h3 className={`text-xl font-semibold ${colors?.textPrimary || 'text-gray-800 dark:text-text-primary'}`}>{selectedCourse.name}</h3>
+                  <p className={`${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'}`}>{selectedCourse.code}</p>
                 </div>
                 {user.role === 'CR' && (
                   <button
                     onClick={() => setUploadModalOpen(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-success hover:bg-emerald-600 text-white rounded-lg transition-all text-sm font-semibold"
+                    className={`flex items-center gap-2 ${buttonClasses?.success || 'px-3 py-2 bg-success hover:bg-emerald-600 text-white rounded-lg'} transition-all text-sm font-semibold`}
                     disabled={resourcesLoading}
                   >
                     <PlusCircle size={18} />
@@ -937,7 +942,7 @@ function AcademicResources() {
                 {/* Show loading, error or resources */}
                 {resourcesLoading ? (
                   <div className="flex justify-center items-center h-48">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${colors?.primary || 'border-primary'}`}></div>
                   </div>
                 ) : getResourcesForCourse(selectedCourse.code).length > 0 ? (
                   getResourcesForCourse(selectedCourse.code).map((res) => (
@@ -1040,7 +1045,7 @@ function AcademicResources() {
             </div>
 
             {/* Progress Bar for Auto-hide */}
-            <div className="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+            <div className={`mt-4 w-full ${colors?.border || 'bg-slate-200 dark:bg-slate-700'} rounded-full h-1`}>
               <div
                 className={`h-1 rounded-full ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-all ease-linear`}
                 style={{
@@ -1176,6 +1181,7 @@ const ResourceCard = ({
   onDragStart,
   isHighlighted = false
 }) => {
+  const { colors, buttonClasses } = useTheme();
   const isFolder = resource.isFolder && resource.files && resource.files.length > 0;
   const isExpanded = expandedFolders.has(resource.id || resource.resourceId);
   const resourceId = resource.id || resource.resourceId;
@@ -1194,20 +1200,20 @@ const ResourceCard = ({
       draggable="true"
       onDragStart={(e) => onDragStart(e, resourceId)}
       data-resource-id={resourceId}
-      className={`bg-gray-100 dark:bg-background rounded-lg border border-gray-200 dark:border-border-color hover:shadow-md transition-all hover:border-primary ${isHighlighted
-        ? 'ring-2 ring-primary ring-opacity-50 bg-primary/5 dark:bg-primary/10 border-primary'
+      className={`${colors?.gradient || (isDark ? 'bg-gradient-to-br from-slate-700 to-slate-800' : 'bg-gradient-to-br from-white to-slate-50')} rounded-xl ${colors?.border || 'border-slate-200 dark:border-slate-600'} border ${colors?.shadowHover || 'hover:shadow-lg'} transition-all duration-300 hover:scale-[1.01] group ${isHighlighted
+        ? `ring-2 ring-blue-500 ring-opacity-60 ${colors?.primaryBg || 'bg-blue-50/50 dark:bg-blue-900/20'} ${colors?.primary || 'border-blue-500'}`
         : ''
         }`}
     >
       {/* Main Resource Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-5">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           {/* Folder/File Icon with Expand Button */}
           <div className="flex items-center gap-2">
             {isFolder ? (
               <button
                 onClick={() => onToggleFolder(resourceId)}
-                className="flex items-center gap-1 hover:bg-gray-200 dark:hover:bg-neutral-700 p-1 rounded transition-colors"
+                className={`flex items-center gap-1 ${colors?.hover || 'hover:bg-slate-200 dark:hover:bg-slate-600'} p-2 rounded-lg transition-all duration-200`}
               >
                 {isExpanded ? (
                   <FolderOpen size={28} className="text-blue-600 dark:text-blue-400" />
@@ -1216,7 +1222,7 @@ const ResourceCard = ({
                 )}
                 <ChevronRight
                   size={16}
-                  className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                  className={`${colors?.textSecondary || 'text-gray-500'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                 />
               </button>
             ) : (
@@ -1232,12 +1238,12 @@ const ResourceCard = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => isFolder ? onToggleFolder(resourceId) : onViewFile(resource)}
-                className="resource-title-button font-semibold text-gray-800 dark:text-text-primary hover:text-primary transition-colors block truncate text-left cursor-pointer"
+                className={`resource-title-button font-semibold ${colors?.textPrimary || 'text-gray-800 dark:text-text-primary'} hover:${colors?.primary || 'text-primary'} transition-colors block truncate text-left cursor-pointer`}
               >
                 {resource.title}
               </button>
               {isFolder && (
-                <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium">
                   {resource.fileCount || resource.files?.length || 0} files
                 </span>
               )}
@@ -1245,21 +1251,21 @@ const ResourceCard = ({
 
             {/* Resource Description */}
             {resource.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+              <p className={`text-sm ${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} mt-1 truncate`}>
                 {resource.description}
               </p>
             )}
 
             {/* Uploader Information and Upload Date */}
-            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-text-secondary mt-2">
+            <div className={`flex items-center gap-3 text-xs ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} mt-2`}>
               <Avatar src={resource.uploaderProfilePicture} name={resource.uploaderName} size="xs" />
               <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-700 dark:text-gray-300">
+                <span className={`font-medium ${colors?.textPrimary || 'text-gray-700 dark:text-gray-300'}`}>
                   {resource.uploaderName || 'Unknown'}
                 </span>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <span className={`${colors?.textMuted || 'text-gray-300 dark:text-gray-600'}`}>•</span>
                 <span>Student ID: {formatStudentId(resource.uploaderStudentId) || 'Unknown'}</span>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <span className={`${colors?.textMuted || 'text-gray-300 dark:text-gray-600'}`}>•</span>
                 <span>
                   {new Date(resource.uploadedAt || resource.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -1269,7 +1275,7 @@ const ResourceCard = ({
                 </span>
                 {resource.resourceType && (
                   <>
-                    <span className="text-gray-300 dark:text-gray-600">•</span>
+                    <span className={`${colors?.textMuted || 'text-gray-300 dark:text-gray-600'}`}>•</span>
                     <span className="capitalize">
                       {resource.resourceType.replace(/_/g, ' ').toLowerCase()}
                     </span>
@@ -1289,7 +1295,7 @@ const ResourceCard = ({
             <>
               <button
                 onClick={() => onViewFile(resource)}
-                className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                className={`p-2 rounded-md ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:${colors?.primaryBg || 'bg-primary/20'} hover:${colors?.primary || 'text-primary'} transition-colors`}
                 title={`View ${resource.title}`}
               >
                 <Eye size={16} />
@@ -1297,7 +1303,7 @@ const ResourceCard = ({
               <a
                 href={resource.fileUrl || resource.file?.url || resource.filePath}
                 download={resource.file?.name || resource.fileName || resource.title}
-                className="p-2 rounded-md text-gray-500 dark:text-text-secondary hover:bg-primary/20 hover:text-primary transition-colors"
+                className={`p-2 rounded-md ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:${colors?.primaryBg || 'bg-primary/20'} hover:${colors?.primary || 'text-primary'} transition-colors`}
                 title={`Download ${resource.title}`}
               >
                 <Download size={16} />
@@ -1312,7 +1318,7 @@ const ResourceCard = ({
                 console.log('Edit button clicked for resource:', resource.id || resource.resourceId);
                 onEditResource(resource);
               }}
-              className="p-2 text-gray-500 dark:text-text-secondary hover:bg-blue-500/20 hover:text-blue-600 transition-colors"
+              className={`p-2 ${colors?.textSecondary || 'text-gray-500 dark:text-text-secondary'} hover:bg-blue-500/20 hover:text-blue-600 transition-colors`}
               title="Edit resource details"
             >
               <Edit size={16} />
