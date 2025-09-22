@@ -56,7 +56,7 @@ const LoginPage = () => {
     try {
       const response = await ApiService.signin(formData);
 
-      console.log('Backend response:', response); // Debug log
+      console.log('Backend response:', response);
 
       if (response.success) {
         // Transform the response to match frontend expectations
@@ -73,7 +73,7 @@ const LoginPage = () => {
           bio: response.bio || '',
         };
 
-        console.log('Transformed userData:', userData); // Debug log
+        console.log('Transformed userData:', userData);
 
         login(userData);
 

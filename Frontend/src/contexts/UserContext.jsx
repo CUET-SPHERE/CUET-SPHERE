@@ -20,27 +20,22 @@ export const UserProvider = ({ children }) => {
   useEffect(() => {
     const initializeUser = () => {
       try {
-        console.log('Initializing user context...'); // Debug log
         const storedUser = localStorage.getItem('user');
-        console.log('Stored user data:', storedUser); // Debug log
-        
+
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          console.log('Parsed user data:', parsedUser); // Debug log
-          
+
           // Check if token exists
           if (parsedUser.token) {
             setUser(parsedUser);
             setIsAuthenticated(true);
-            console.log('User authenticated:', parsedUser); // Debug log
           } else {
-            console.log('No token found, clearing user data'); // Debug log
             localStorage.removeItem('user');
           }
         } else {
-          console.log('No user data found in localStorage'); // Debug log
+          // No user data in localStorage
         }
-        
+
         const storedDeleteCount = localStorage.getItem('postDeleteCount');
         if (storedDeleteCount) {
           setPostDeleteCount(parseInt(storedDeleteCount, 10));
@@ -51,7 +46,6 @@ export const UserProvider = ({ children }) => {
         localStorage.removeItem('postDeleteCount');
       } finally {
         setIsLoading(false);
-        console.log('User context initialization complete'); // Debug log
       }
     };
 
@@ -59,25 +53,21 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   const login = (userData) => {
-    console.log('UserContext.login called with:', userData); // Debug log
-    
     // Ensure userData has the required fields
     const userWithToken = {
       ...userData,
       token: userData.token || userData.jwt,
       role: userData.role || 'STUDENT'
     };
-    
-    console.log('Final userWithToken:', userWithToken); // Debug log
-    
+
     setUser(userWithToken);
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(userWithToken));
-    
+
     // Reset delete count on new admin login if desired, or persist across sessions
     if (userWithToken.role !== 'SYSTEM_ADMIN') {
-        localStorage.removeItem('postDeleteCount');
-        setPostDeleteCount(0);
+      localStorage.removeItem('postDeleteCount');
+      setPostDeleteCount(0);
     }
   };
 
@@ -99,9 +89,9 @@ export const UserProvider = ({ children }) => {
 
   const incrementPostDeleteCount = () => {
     setPostDeleteCount(prevCount => {
-        const newCount = prevCount + 1;
-        localStorage.setItem('postDeleteCount', newCount.toString());
-        return newCount;
+      const newCount = prevCount + 1;
+      localStorage.setItem('postDeleteCount', newCount.toString());
+      return newCount;
     });
   };
 

@@ -26,15 +26,11 @@ class PostService {
       token = localStorage.getItem('jwt_token');
     }
 
-    console.log('Auth token found:', token ? 'Yes' : 'No'); // Debug log
-    console.log('Token value:', token); // Debug log
-
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     };
 
-    console.log('Final headers:', headers); // Debug log
     return headers;
   }
 
@@ -51,14 +47,15 @@ class PostService {
     }
     return 1; // Default fallback
   }
-  async getAllPosts(page = 0, size = 10) {
+  async getAllPosts(page = 0, size = 10, includeComments = false) {
     try {
       console.log('API_BASE_URL:', API_BASE_URL);
       console.log('DEV mode:', import.meta.env.DEV);
-      console.log('Fetching posts from:', `${API_BASE_URL}/posts?page=${page}&size=${size}`);
+      const url = `${API_BASE_URL}/posts?page=${page}&size=${size}&includeComments=${includeComments}`;
+      console.log('Fetching posts from:', url);
       console.log('Auth headers:', this.getAuthHeaders());
 
-      const response = await fetch(`${API_BASE_URL}/posts?page=${page}&size=${size}`, {
+      const response = await fetch(url, {
         headers: this.getAuthHeaders()
       });
 

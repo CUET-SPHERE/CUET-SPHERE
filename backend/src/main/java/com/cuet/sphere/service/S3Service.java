@@ -117,7 +117,7 @@ public class S3Service {
                 return s3Url;
             } catch (Exception e) {
                 // S3 resource upload failed, falling back to local storage
-                System.err.println("S3 resource upload failed: " + e.getMessage());
+                logger.error("S3 resource upload failed: {}", e.getMessage(), e);
             }
         }
         

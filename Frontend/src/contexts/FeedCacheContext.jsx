@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { postService } from '../services/postService';
+import { FEED_CONFIG } from '../config/feedConfig';
 
 const FeedCacheContext = createContext();
 
@@ -28,8 +29,8 @@ export const FeedCacheProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Cache configuration
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  const MAX_CACHED_PAGES = 10; // Maximum pages to keep in memory
+  const CACHE_DURATION = FEED_CONFIG.CACHE_DURATION;
+  const MAX_CACHED_PAGES = FEED_CONFIG.MAX_CACHED_PAGES;
 
   // Check if cache is valid
   const isCacheValid = useCallback(() => {
@@ -39,7 +40,7 @@ export const FeedCacheProvider = ({ children }) => {
   }, [cache.lastFetchTime, cache.isInitialized]);
 
   // Fetch posts from API
-  const fetchPostsFromAPI = useCallback(async (page = 0, append = false) => {
+  const fetchPostsFromAPI = useCallback(async (page = 0, append = false, includeComments = FEED_CONFIG.PRELOAD_COMMENTS) => {
     try {
       if (page === 0) {
         setLoading(true);
@@ -48,16 +49,14 @@ export const FeedCacheProvider = ({ children }) => {
         setLoadingMore(true);
       }
 
-      console.log(`FeedCache: Fetching page ${page} from API...`);
-      const data = await postService.getAllPosts(page, 10);
-      console.log('FeedCache: Posts received from API:', data);
+      const data = await postService.getAllPosts(page, FEED_CONFIG.POSTS_PER_PAGE, includeComments);
 
       const newPosts = data.content || [];
       const now = Date.now();
 
       setCache(prevCache => {
         let updatedPosts;
-        
+
         if (append) {
           // Create a Set of existing post IDs to avoid duplicates
           const existingIds = new Set(prevCache.posts.map(post => post.id));
@@ -68,7 +67,7 @@ export const FeedCacheProvider = ({ children }) => {
         }
 
         // Limit cached posts to prevent memory issues
-        const maxPosts = MAX_CACHED_PAGES * 10;
+        const maxPosts = MAX_CACHED_PAGES * FEED_CONFIG.POSTS_PER_PAGE;
         const trimmedPosts = updatedPosts.slice(0, maxPosts);
 
         return {
@@ -94,10 +93,9 @@ export const FeedCacheProvider = ({ children }) => {
   }, []);
 
   // Get posts (from cache or API)
-  const getPosts = useCallback(async (page = 0, append = false, forceRefresh = false) => {
+  const getPosts = useCallback(async (page = 0, append = false, forceRefresh = false, includeComments = FEED_CONFIG.PRELOAD_COMMENTS) => {
     // If requesting page 0 and cache is valid and not forcing refresh, return cached data
     if (page === 0 && !append && isCacheValid() && !forceRefresh && cache.posts.length > 0) {
-      console.log('FeedCache: Returning cached posts');
       return {
         content: cache.posts,
         totalPages: cache.totalPages,
@@ -107,12 +105,11 @@ export const FeedCacheProvider = ({ children }) => {
     }
 
     // If requesting a page we already have in cache
-    const startIndex = page * 10;
-    const endIndex = startIndex + 10;
+    const startIndex = page * FEED_CONFIG.POSTS_PER_PAGE;
+    const endIndex = startIndex + FEED_CONFIG.POSTS_PER_PAGE;
     const hasRequestedPage = cache.posts.length > startIndex;
 
     if (hasRequestedPage && !forceRefresh && isCacheValid()) {
-      console.log(`FeedCache: Returning cached page ${page}`);
       const cachedPagePosts = cache.posts.slice(startIndex, endIndex);
       return {
         content: cachedPagePosts,
@@ -123,7 +120,7 @@ export const FeedCacheProvider = ({ children }) => {
     }
 
     // Fetch from API
-    return await fetchPostsFromAPI(page, append);
+    return await fetchPostsFromAPI(page, append, includeComments);
   }, [cache, isCacheValid, fetchPostsFromAPI]);
 
   // Add new post to cache
@@ -131,7 +128,7 @@ export const FeedCacheProvider = ({ children }) => {
     setCache(prevCache => {
       // Check if post already exists to avoid duplicates
       const existingPostIndex = prevCache.posts.findIndex(post => post.id === newPost.id);
-      
+
       let updatedPosts;
       if (existingPostIndex >= 0) {
         // Update existing post
@@ -142,7 +139,7 @@ export const FeedCacheProvider = ({ children }) => {
         // Add new post to the beginning
         updatedPosts = [newPost, ...prevCache.posts];
       }
-      
+
       return {
         ...prevCache,
         posts: updatedPosts,
@@ -188,9 +185,8 @@ export const FeedCacheProvider = ({ children }) => {
 
   // Refresh cache
   const refreshCache = useCallback(async () => {
-    console.log('FeedCache: Refreshing cache...');
     clearCache();
-    return await fetchPostsFromAPI(0, false);
+    return await fetchPostsFromAPI(0, false, FEED_CONFIG.PRELOAD_COMMENTS);
   }, [clearCache, fetchPostsFromAPI]);
 
   // Get cached search results

@@ -581,7 +581,7 @@ public class ResourceService {
             s3Service.deleteFile(fileToRemove.getFilePath());
         } catch (Exception e) {
             // Log error but continue with database cleanup
-            System.err.println("Failed to delete file from S3: " + e.getMessage());
+            logger.error("Failed to delete file from S3: {}", e.getMessage(), e);
         }
         
         // Remove file from database

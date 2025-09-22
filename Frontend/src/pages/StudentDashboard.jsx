@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import AdminCRFeatures from '../components/AdminCRFeatures';
-import { 
-  Calendar, 
-  Clock, 
-  BookOpen, 
-  FileText, 
-  Download, 
-  MessageCircle, 
+import {
+  Calendar,
+  Clock,
+  BookOpen,
+  FileText,
+  Download,
+  MessageCircle,
   Plus,
   Edit3,
   Upload,
@@ -86,7 +86,7 @@ const MiniProfile = ({ user }) => {
   const getDepartmentName = (deptCode) => {
     const departments = {
       '01': 'Civil Engineering',
-      '02': 'Mechanical Engineering', 
+      '02': 'Mechanical Engineering',
       '03': 'Electrical & Electronics Engineering',
       '04': 'Computer Science & Engineering',
       '05': 'Water Resources Engineering',
@@ -240,7 +240,7 @@ const WeeklySchedule = () => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
       return 'Today';
     } else if (date.toDateString() === tomorrow.toDateString()) {
@@ -251,7 +251,7 @@ const WeeklySchedule = () => {
   };
 
   const toggleTaskCompletion = (taskId) => {
-    setTasks(tasks.map(task => 
+    setTasks(tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     ));
   };
@@ -278,36 +278,34 @@ const WeeklySchedule = () => {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">This Week's Important Tasks</h3>
-        <button 
+        <button
           onClick={() => setIsAddingTask(!isAddingTask)}
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
         </button>
       </div>
-      
+
       <div className="space-y-3 overflow-y-auto flex-grow scrollbar-hide">
         {tasks.map((task) => (
-          <div 
-            key={task.id} 
-            className={`p-4 rounded-lg border transition-all ${
-              task.completed 
-                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 opacity-60' 
+          <div
+            key={task.id}
+            className={`p-4 rounded-lg border transition-all ${task.completed
+                ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 opacity-60'
                 : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:shadow-sm'
-            }`}
+              }`}
           >
             <div className="flex items-start gap-3">
               <button
                 onClick={() => toggleTaskCompletion(task.id)}
-                className={`mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
-                  task.completed
+                className={`mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${task.completed
                     ? 'bg-green-500 border-green-500 text-white'
                     : 'border-gray-300 dark:border-gray-500 hover:border-green-500'
-                }`}
+                  }`}
               >
                 {task.completed && <Check className="h-3 w-3" />}
               </button>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center flex-wrap gap-2 mb-1">
                   <h4 className={`font-medium ${task.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
@@ -317,7 +315,7 @@ const WeeklySchedule = () => {
                     {task.priority}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center gap-1.5">
                     {getTypeIcon(task.type)}
@@ -337,7 +335,7 @@ const WeeklySchedule = () => {
           </div>
         ))}
       </div>
-      
+
       {isAddingTask && (
         <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
           <input
@@ -350,13 +348,13 @@ const WeeklySchedule = () => {
             className="w-full bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
           />
           <div className="flex justify-end items-center gap-2 mt-2">
-            <button 
+            <button
               onClick={() => setIsAddingTask(false)}
               className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
-            <button 
+            <button
               onClick={handleAddNewTask}
               className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
               disabled={!newTaskTitle.trim()}
@@ -431,7 +429,7 @@ const ClassRoutine = () => {
           )}
         </div>
       </div>
-      
+
       <div className="relative group h-[calc(100%-80px)] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600">
         <img
           src={currentFile}
@@ -439,7 +437,7 @@ const ClassRoutine = () => {
           className="w-full h-full object-contain cursor-pointer"
           onClick={() => window.open(currentFile, '_blank')}
         />
-        
+
         {!routine.hasCustom && (
           <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="text-center text-white">
@@ -449,12 +447,12 @@ const ClassRoutine = () => {
           </div>
         )}
       </div>
-      
+
       <div className="mt-4 flex items-center justify-between text-sm">
         <span className="text-gray-500 dark:text-gray-400">
           {routine.hasCustom ? 'Custom routine' : 'Default routine'}
         </span>
-        <button 
+        <button
           onClick={() => window.open(currentFile, '_blank')}
           className="text-blue-600 dark:text-blue-400 hover:underline"
         >
@@ -494,7 +492,7 @@ const RecentActivity = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
-      
+
       <div className="space-y-3">
         {activities.map((activity) => {
           const Icon = activity.icon;
@@ -511,7 +509,7 @@ const RecentActivity = () => {
           );
         })}
       </div>
-      
+
       <button className="w-full mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline">
         View All Activity
       </button>
@@ -521,9 +519,9 @@ const RecentActivity = () => {
 
 const StudentDashboard = () => {
   const { user } = useUser();
-  
-  console.log('StudentDashboard received user:', user); // Debug log
-  
+
+  console.log('StudentDashboard received user:', user);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -551,7 +549,7 @@ const StudentDashboard = () => {
               <WeeklySchedule />
             </div>
           </div>
-          
+
           {/* Class Routine - 50% space */}
           <div className="lg:w-1/2 h-full">
             <ClassRoutine />

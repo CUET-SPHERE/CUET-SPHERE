@@ -68,20 +68,21 @@ public class PostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(defaultValue = "false") boolean includeComments
     ) {
         try {
-            logger.debug("GET /api/posts called with pagination - Page: {}, Size: {}, Sort: {} {}", page, size, sortBy, sortDir);
+            logger.debug("GET /api/posts called with pagination - Page: {}, Size: {}, Sort: {} {}, Include Comments: {}", page, size, sortBy, sortDir, includeComments);
             
             Pageable pageable = PageRequest.of(page, size, 
                 sortDir.equals("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
             
-            Page<PostDTO> posts = postService.getAllPostsPaginated(pageable);
+            Page<PostDTO> posts = postService.getAllPostsPaginated(pageable, includeComments);
             logger.debug("Posts fetched successfully, count: {}, total pages: {}, total elements: {}", 
                          posts.getContent().size(), posts.getTotalPages(), posts.getTotalElements());
             return ResponseEntity.ok(posts);
         } catch (Exception e) {
-            System.err.println("Error in getAllPosts: " + e.getMessage());
+            logger.error("Error in getAllPosts: {}", e.getMessage(), e);
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
@@ -128,7 +129,7 @@ public class PostController {
                 if (userOpt.isPresent()) {
                     user = userOpt.get();
                 } else {
-                    System.err.println("User not found for ID: " + userId);
+                    logger.error("User not found for ID: {}", userId);
                     return ResponseEntity.badRequest().build();
                 }
             }
@@ -144,14 +145,14 @@ public class PostController {
                 notificationService.createNewPostAdminNotification(createdPost, user);
                 logger.debug("Admin notification sent for new post: {}", createdPost.getId());
             } catch (Exception e) {
-                System.err.println("Error sending admin notification for new post: " + e.getMessage());
+                logger.error("Error sending admin notification for new post: {}", e.getMessage(), e);
                 // Don't fail post creation if notification fails
             }
             
             PostDTO postDTO = postService.convertToDTO(createdPost);
             return ResponseEntity.created(URI.create("/api/posts/" + createdPost.getId())).body(postDTO);
         } catch (Exception e) {
-            System.err.println("Error creating post: " + e.getMessage());
+            logger.error("Error creating post: {}", e.getMessage(), e);
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
@@ -480,7 +481,7 @@ public class PostController {
             ));
             
         } catch (Exception e) {
-            System.err.println("Error saving post: " + e.getMessage());
+            logger.error("Error saving post: {}", e.getMessage(), e);
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(java.util.Map.of("success", false, "message", "Failed to save post"));
@@ -522,7 +523,7 @@ public class PostController {
             ));
             
         } catch (Exception e) {
-            System.err.println("Error unsaving post: " + e.getMessage());
+            logger.error("Error unsaving post: {}", e.getMessage(), e);
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(java.util.Map.of("success", false, "message", "Failed to unsave post"));
@@ -566,7 +567,7 @@ public class PostController {
             ));
             
         } catch (Exception e) {
-            System.err.println("Error getting saved posts: " + e.getMessage());
+            logger.error("Error getting saved posts: {}", e.getMessage(), e);
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(java.util.Map.of("success", false, "message", "Failed to get saved posts"));

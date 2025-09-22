@@ -326,7 +326,7 @@ public class EmailService {
             return response.getStatusCode().is2xxSuccessful();
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending welcome email: " + e.getMessage());
+            logger.error("Error sending welcome email: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -412,7 +412,7 @@ public class EmailService {
             return response.getStatusCode().is2xxSuccessful();
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending comment notification email: " + e.getMessage());
+            logger.error("Error sending comment notification email: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -459,7 +459,7 @@ public class EmailService {
             return response.getStatusCode().is2xxSuccessful();
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending reply notification email: " + e.getMessage());
+            logger.error("Error sending reply notification email: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -506,7 +506,7 @@ public class EmailService {
             return response.getStatusCode().is2xxSuccessful();
             
         } catch (Exception e) {
-            System.err.println("ERROR: Error sending admin notification email: " + e.getMessage());
+            logger.error("Error sending admin notification email: {}", e.getMessage(), e);
             return false;
         }
     }

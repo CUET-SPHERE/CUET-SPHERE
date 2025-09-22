@@ -66,7 +66,7 @@ public class NoticeService {
             
             return response;
         } catch (Exception e) {
-            System.err.println("Error in createNotice: " + e.getMessage());
+            logger.error("Error in createNotice: {}", e.getMessage(), e);
             e.printStackTrace();
             throw new UserException("Failed to create notice: " + e.getMessage());
         }
@@ -172,7 +172,7 @@ public class NoticeService {
                 s3Service.deleteFile(notice.getAttachment());
             } catch (Exception e) {
                 // Log error but don't fail notice deletion
-                System.err.println("S3 file deletion failed: " + e.getMessage());
+                logger.error("S3 file deletion failed: {}", e.getMessage(), e);
             }
         }
         

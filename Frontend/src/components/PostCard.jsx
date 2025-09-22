@@ -271,22 +271,27 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
     setShowFullContent(!showFullContent);
   };
 
-  // Load comments initially when component mounts - REMOVED FOR LAZY LOADING
+  // Load comments initially when component mounts
   useEffect(() => {
     // If post already has comments from the backend, use them
     if (post.comments && post.comments.length > 0) {
       setComments(post.comments);
       setCommentsLoaded(true);
+    } else {
+      // If no comments are preloaded, mark as loaded (empty state)
+      setComments([]);
+      setCommentsLoaded(true);
     }
-    // Don't load comments from API immediately - wait for user to request them
-  }, [post.id]);
-
-  // Load comments when showComments is toggled and not already loaded
+  }, [post.id, post.comments]);  // Load comments when showComments is toggled and not already loaded
   useEffect(() => {
-    if (showComments && !commentsLoaded) {
+    // Only load comments from API if:
+    // 1. User wants to see comments (showComments is true)
+    // 2. Comments are not already loaded (commentsLoaded is false)
+    // 3. Post doesn't have preloaded comments
+    if (showComments && !commentsLoaded && (!post.comments || post.comments.length === 0)) {
       loadComments();
     }
-  }, [showComments, commentsLoaded]);
+  }, [showComments, commentsLoaded, post.comments]);
 
   // Load votes when component mounts
   useEffect(() => {
@@ -519,24 +524,30 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
         if (userData) {
           try {
             const parsedUser = JSON.parse(userData);
-            return {
+            const user = {
               id: parsedUser.id || 1,
               fullName: parsedUser.fullName || 'You',
               email: parsedUser.email || 'you@student.cuet.ac.bd',
               studentId: parsedUser.studentId || '0000000',
-              profilePicture: parsedUser.profilePicture || null
+              profilePicture: parsedUser.profilePicture
             };
+            // Generate fallback avatar URL if no profile picture
+            if (!user.profilePicture) {
+              user.profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=ffffff&size=200`;
+            }
+            return user;
           } catch (e) {
             console.error('Error parsing user data:', e);
           }
         }
-        return {
+        const fallbackUser = {
           id: 1,
           fullName: 'You',
           email: 'you@student.cuet.ac.bd',
           studentId: '0000000',
-          profilePicture: null
+          profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent('You')}&background=3b82f6&color=ffffff&size=200`
         };
+        return fallbackUser;
       };
 
       // Create optimistic comment object
@@ -606,24 +617,30 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
       if (userData) {
         try {
           const parsedUser = JSON.parse(userData);
-          return {
+          const user = {
             id: parsedUser.id || 1,
             fullName: parsedUser.fullName || 'You',
             email: parsedUser.email || 'you@student.cuet.ac.bd',
             studentId: parsedUser.studentId || '0000000',
-            profilePicture: parsedUser.profilePicture || null
+            profilePicture: parsedUser.profilePicture
           };
+          // Generate fallback avatar URL if no profile picture
+          if (!user.profilePicture) {
+            user.profilePicture = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=ffffff&size=200`;
+          }
+          return user;
         } catch (e) {
           console.error('Error parsing user data:', e);
         }
       }
-      return {
+      const fallbackUser = {
         id: 1,
         fullName: 'You',
         email: 'you@student.cuet.ac.bd',
         studentId: '0000000',
-        profilePicture: null
+        profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent('You')}&background=3b82f6&color=ffffff&size=200`
       };
+      return fallbackUser;
     };
 
     const currentUser = getCurrentUser();

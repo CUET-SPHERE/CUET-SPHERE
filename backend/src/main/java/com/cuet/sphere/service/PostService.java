@@ -54,9 +54,21 @@ public class PostService {
     }
     
     public Page<PostDTO> getAllPostsPaginated(Pageable pageable) {
-        // Use paginated query with only user info to avoid N+1 queries
-        Page<Post> posts = postRepository.findAllWithUserOnlyPaginated(pageable);
-        return posts.map(this::convertToDTOWithoutComments);
+        return getAllPostsPaginated(pageable, false);
+    }
+    
+    public Page<PostDTO> getAllPostsPaginated(Pageable pageable, boolean includeComments) {
+        Page<Post> posts;
+        
+        if (includeComments) {
+            // Use query that includes comments
+            posts = postRepository.findAllWithUserAndCommentsPaginated(pageable);
+            return posts.map(this::convertToDTO);
+        } else {
+            // Use query with only user info to avoid N+1 queries
+            posts = postRepository.findAllWithUserOnlyPaginated(pageable);
+            return posts.map(this::convertToDTOWithoutComments);
+        }
     }
     
     public PostDTO getPostWithUserInfo(Long id) {

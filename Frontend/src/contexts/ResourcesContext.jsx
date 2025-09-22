@@ -295,8 +295,6 @@ export const ResourcesProvider = ({ children }) => {
         uploadedResource = await API.uploadResource(resourceData);
       }
 
-      console.log('Upload response:', uploadedResource); // Debug log
-
       if (!uploadedResource) {
         throw new Error('No response received from upload');
       }
@@ -324,8 +322,6 @@ export const ResourcesProvider = ({ children }) => {
         fileCount: uploadedResource.fileCount || 0,
         files: uploadedResource.files || [],
       };
-
-      console.log('Formatted resource:', formattedResource); // Debug log
 
       // Handle file data for both single files and folders
       if (uploadedResource.isFolder && uploadedResource.files && uploadedResource.files.length > 0) {
@@ -360,7 +356,6 @@ export const ResourcesProvider = ({ children }) => {
 
       // Update the local state with the new resource
       setResources(prev => [formattedResource, ...prev]);
-      console.log('Resource added to state successfully'); // Debug log
       return formattedResource;
     } catch (err) {
       console.error('Error uploading resource:', err);

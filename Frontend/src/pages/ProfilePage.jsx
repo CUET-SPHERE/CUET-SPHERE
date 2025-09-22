@@ -108,17 +108,17 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
   const validateImageFile = (file) => {
     const maxSize = 5 * 1024 * 1024; // 5MB
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    
+
     if (!allowedTypes.includes(file.type)) {
       alert('Please select a valid image file (JPEG, PNG, or WebP)');
       return false;
     }
-    
+
     if (file.size > maxSize) {
       alert('File size must be less than 5MB');
       return false;
     }
-    
+
     return true;
   };
 
@@ -133,14 +133,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
   const handleProfileCropComplete = async (croppedFile) => {
     try {
       setIsUploading(true);
-      
+
       // Show preview immediately
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfilePreview(e.target.result);
       };
       reader.readAsDataURL(croppedFile);
-      
+
       // Upload to S3 via backend
       const response = await ApiService.uploadProfilePicture(croppedFile, 'profile');
       if (response.success) {
@@ -171,14 +171,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
   const handleBackgroundCropComplete = async (croppedFile) => {
     try {
       setIsUploading(true);
-      
+
       // Show preview immediately
       const reader = new FileReader();
       reader.onload = (e) => {
         setBackgroundPreview(e.target.result);
       };
       reader.readAsDataURL(croppedFile);
-      
+
       // Upload to S3 via backend
       const response = await ApiService.uploadProfilePicture(croppedFile, 'background');
       if (response.success) {
@@ -284,14 +284,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                     onChange={handleProfileImageChange}
                     className="hidden"
                   />
-                                     <button
-                     type="button"
-                     onClick={() => profileFileRef.current.click()}
-                     disabled={isUploading}
-                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                   >
-                     {isUploading ? 'Uploading...' : 'Choose Image'}
-                   </button>
+                  <button
+                    type="button"
+                    onClick={() => profileFileRef.current.click()}
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? 'Uploading...' : 'Choose Image'}
+                  </button>
                   {profilePreview && (
                     <button
                       type="button"
@@ -326,14 +326,14 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                     onChange={handleBackgroundImageChange}
                     className="hidden"
                   />
-                                     <button
-                     type="button"
-                     onClick={() => backgroundFileRef.current.click()}
-                     disabled={isUploading}
-                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                   >
-                     {isUploading ? 'Uploading...' : 'Choose Background'}
-                   </button>
+                  <button
+                    type="button"
+                    onClick={() => backgroundFileRef.current.click()}
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? 'Uploading...' : 'Choose Background'}
+                  </button>
                   {backgroundPreview && (
                     <button
                       type="button"
@@ -452,7 +452,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
         }}
         onCropComplete={handleBackgroundCropComplete}
         imageFile={selectedBackgroundFile}
-        aspectRatio={16/9} // Widescreen for background
+        aspectRatio={16 / 9} // Widescreen for background
         title="Crop Background Image"
         minWidth={400}
         minHeight={225}
@@ -568,18 +568,18 @@ function ChangePasswordModal({ isOpen, onClose }) {
 
 function ProfilePage() {
   const { user: contextUser, updateUser } = useUser();
-  
-  console.log('ProfilePage received contextUser:', contextUser); // Debug log
-  
+
+  console.log('ProfilePage received contextUser:', contextUser);
+
   // Add state for fresh profile and background images
   const [freshProfilePicture, setFreshProfilePicture] = useState(null);
   const [freshBackgroundImage, setFreshBackgroundImage] = useState(null);
-  
+
   // Get department name from department code
   const getDepartmentName = (deptCode) => {
     const departments = {
       '01': 'Civil Engineering',
-      '02': 'Mechanical Engineering', 
+      '02': 'Mechanical Engineering',
       '03': 'Electrical & Electronics Engineering',
       '04': 'Computer Science & Engineering',
       '05': 'Water Resources Engineering',
@@ -650,17 +650,17 @@ function ProfilePage() {
   useEffect(() => {
     const fetchFreshProfileData = async () => {
       if (!contextUser?.email) return;
-      
+
       try {
         console.log('Fetching fresh profile data for:', contextUser.email);
-        
+
         // Fetch profile picture
         const profilePictureUrl = await ApiService.getProfileImageUrl(contextUser.email);
         if (profilePictureUrl) {
           console.log('Fresh profile picture URL:', profilePictureUrl);
           setFreshProfilePicture(profilePictureUrl);
         }
-        
+
         // Fetch full profile (includes background image)
         const fullProfile = await ApiService.getCurrentUserProfile();
         if (fullProfile?.backgroundImage) {
@@ -679,7 +679,7 @@ function ProfilePage() {
   useEffect(() => {
     const fetchSavedPosts = async () => {
       if (!contextUser?.email) return;
-      
+
       try {
         setSavedPostsLoading(true);
         const response = await ApiService.getSavedPosts(0, 50); // Get first 50 saved posts
@@ -714,15 +714,15 @@ function ProfilePage() {
       // Update local state immediately for better UX
       const updatedUser = { ...user, ...newData };
       setUser(updatedUser);
-      
+
       // Update the context as well
       updateUser(newData);
-      
+
       // Save to backend
       const response = await ApiService.updateUserProfile(newData);
       if (response.success) {
         console.log('Profile updated successfully');
-        
+
         // Refresh fresh image data if images were updated
         if (newData.profilePicture) {
           setFreshProfilePicture(newData.profilePicture);
@@ -730,7 +730,7 @@ function ProfilePage() {
         if (newData.backgroundImage) {
           setFreshBackgroundImage(newData.backgroundImage);
         }
-        
+
         // Optionally show success message
       } else {
         throw new Error(response.message || 'Failed to update profile');
@@ -778,37 +778,37 @@ function ProfilePage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 -mt-20">
               {/* Avatar */}
               <div className="flex justify-center -mt-24">
-                                 <ProfileAvatar
-                   src={freshProfilePicture || user.profilePicture}
-                   name={user.fullName || user.full_name || 'User'}
-                   size="2xl"
-                   editable
-                   onEdit={handleProfilePictureEdit}
-                 />
+                <ProfileAvatar
+                  src={freshProfilePicture || user.profilePicture}
+                  name={user.fullName || user.full_name || 'User'}
+                  size="2xl"
+                  editable
+                  onEdit={handleProfilePictureEdit}
+                />
               </div>
 
               {/* User Details */}
               <div className="mt-4">
-                                 <div className="flex items-center justify-center gap-3">
-                   <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                     {user.fullName || user.full_name || 'User'}
-                     {user.isPublic ? (
-                       <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
-                     ) : (
-                       <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
-                     )}
-                   </h1>
-                   <button
-                     onClick={() => setShowEditModal(true)}
-                     className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
-                     title="Edit Profile"
-                   >
-                     <Edit3 className="h-5 w-5" />
-                   </button>
-                 </div>
-                 <p className="text-gray-600 dark:text-gray-400 mt-1">
-                   {user.studentId || user.student_id || 'XXXXXXX'} • {user.department} Batch {user.batch}
-                 </p>
+                <div className="flex items-center justify-center gap-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    {user.fullName || user.full_name || 'User'}
+                    {user.isPublic ? (
+                      <Unlock className="h-5 w-5 text-green-500" title="Public Profile" />
+                    ) : (
+                      <Lock className="h-5 w-5 text-gray-500" title="Private Profile" />
+                    )}
+                  </h1>
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                    title="Edit Profile"
+                  >
+                    <Edit3 className="h-5 w-5" />
+                  </button>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {user.studentId || user.student_id || 'XXXXXXX'} • {user.department} Batch {user.batch}
+                </p>
                 {user.bio && (
                   <p className="text-gray-700 dark:text-gray-300 mt-4 max-w-2xl mx-auto">
                     {user.bio}

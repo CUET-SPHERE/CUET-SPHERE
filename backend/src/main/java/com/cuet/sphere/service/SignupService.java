@@ -139,7 +139,7 @@ public class SignupService {
         try {
             return emailService.sendSignupOtp(email, otp);
         } catch (Exception e) {
-            System.err.println("Error sending signup OTP email: " + e.getMessage());
+            logger.error("Error sending signup OTP email: {}", e.getMessage(), e);
             return false;
         }
     }

@@ -21,6 +21,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         """)
     Page<Post> findAllWithUserOnlyPaginated(Pageable pageable);
     
+    // Paginated query with user info and comments (for when comments are needed)
+    @Query(value = """
+        SELECT DISTINCT p FROM Post p 
+        LEFT JOIN FETCH p.user 
+        LEFT JOIN FETCH p.comments c 
+        LEFT JOIN FETCH c.user 
+        ORDER BY p.createdAt DESC
+        """,
+        countQuery = "SELECT COUNT(DISTINCT p) FROM Post p")
+    Page<Post> findAllWithUserAndCommentsPaginated(Pageable pageable);
+    
     // Count query for pagination
     @Query("SELECT COUNT(p) FROM Post p")
     long countAllPosts();
