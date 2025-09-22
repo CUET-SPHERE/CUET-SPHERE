@@ -133,6 +133,24 @@ npm run dev
 
 The frontend will be available at `http://localhost:5173`
 
+## Features
+
+### Profile Management
+- **Image Cropping**: Users can now crop their profile pictures and background images before uploading
+  - Square crop for profile pictures (1:1 aspect ratio)
+  - Widescreen crop for background images (16:9 aspect ratio)
+  - Zoom and rotation controls
+  - Real-time preview
+  - Minimum size validation
+- **Profile Updates**: Complete profile editing with image uploads to AWS S3
+- **Privacy Settings**: Public/private profile visibility controls
+
+### Image Upload Requirements
+- **Supported formats**: JPEG, PNG, WebP
+- **File size limit**: 5MB maximum
+- **Profile pictures**: Minimum 150x150 pixels after cropping
+- **Background images**: Minimum 400x225 pixels after cropping
+
 `If database connection fails , try this`
 # Add IP to RDS Security Group
 1. Go to AWS Console → RDS → Databases → [Your DB Instance].

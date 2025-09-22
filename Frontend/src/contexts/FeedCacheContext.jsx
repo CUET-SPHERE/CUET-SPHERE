@@ -56,9 +56,16 @@ export const FeedCacheProvider = ({ children }) => {
       const now = Date.now();
 
       setCache(prevCache => {
-        const updatedPosts = append
-          ? [...prevCache.posts, ...newPosts]
-          : newPosts;
+        let updatedPosts;
+        
+        if (append) {
+          // Create a Set of existing post IDs to avoid duplicates
+          const existingIds = new Set(prevCache.posts.map(post => post.id));
+          const uniqueNewPosts = newPosts.filter(post => !existingIds.has(post.id));
+          updatedPosts = [...prevCache.posts, ...uniqueNewPosts];
+        } else {
+          updatedPosts = newPosts;
+        }
 
         // Limit cached posts to prevent memory issues
         const maxPosts = MAX_CACHED_PAGES * 10;
@@ -121,11 +128,27 @@ export const FeedCacheProvider = ({ children }) => {
 
   // Add new post to cache
   const addPostToCache = useCallback((newPost) => {
-    setCache(prevCache => ({
-      ...prevCache,
-      posts: [newPost, ...prevCache.posts],
-      lastFetchTime: Date.now(), // Update cache time
-    }));
+    setCache(prevCache => {
+      // Check if post already exists to avoid duplicates
+      const existingPostIndex = prevCache.posts.findIndex(post => post.id === newPost.id);
+      
+      let updatedPosts;
+      if (existingPostIndex >= 0) {
+        // Update existing post
+        updatedPosts = prevCache.posts.map((post, index) =>
+          index === existingPostIndex ? newPost : post
+        );
+      } else {
+        // Add new post to the beginning
+        updatedPosts = [newPost, ...prevCache.posts];
+      }
+      
+      return {
+        ...prevCache,
+        posts: updatedPosts,
+        lastFetchTime: Date.now(), // Update cache time
+      };
+    });
   }, []);
 
   // Remove post from cache

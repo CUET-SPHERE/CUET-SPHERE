@@ -5,6 +5,7 @@ import com.cuet.sphere.dto.PostDTO;
 import com.cuet.sphere.model.Post;
 import com.cuet.sphere.model.User;
 import com.cuet.sphere.repository.PostRepository;
+import com.cuet.sphere.repository.SavedPostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,9 @@ public class PostService {
     
     @Autowired
     private S3Service s3Service;
+    
+    @Autowired
+    private SavedPostRepository savedPostRepository;
 
     public Post createPost(Post post) {
         return postRepository.save(post);
@@ -169,6 +173,21 @@ public class PostService {
         } catch (Exception e) {
             // Error loading comments for post
             dto.setComments(new ArrayList<>());
+        }
+        
+        return dto;
+    }
+    
+    // Overloaded method that includes saved status for current user
+    public PostDTO convertToDTO(Post post, User currentUser) {
+        PostDTO dto = convertToDTO(post);
+        
+        // Check if the current user has saved this post
+        if (currentUser != null) {
+            boolean isSaved = savedPostRepository.existsByUserAndPost(currentUser, post);
+            dto.setSaved(isSaved);
+        } else {
+            dto.setSaved(false);
         }
         
         return dto;

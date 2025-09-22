@@ -23,6 +23,7 @@ public class PostDTO {
     private int upvotes;
     private int downvotes;
     private int commentCount;
+    private boolean saved; // Whether the current user has saved this post
     private LocalDateTime timestamp; // Alias for createdAt for frontend compatibility
     private String image; // Alias for mediaUrl for frontend compatibility
     
@@ -103,6 +104,9 @@ public class PostDTO {
 
     public int getCommentCount() { return commentCount; }
     public void setCommentCount(int commentCount) { this.commentCount = commentCount; }
+
+    public boolean isSaved() { return saved; }
+    public void setSaved(boolean saved) { this.saved = saved; }
 
     public LocalDateTime getTimestamp() { return timestamp != null ? timestamp : createdAt; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }

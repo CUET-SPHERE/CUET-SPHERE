@@ -4,6 +4,7 @@ import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl } from '../utils
 import commentService from '../services/commentService';
 import replyService from '../services/replyService';
 import voteService from '../services/voteService';
+import ApiService from '../services/api';
 
 // Avatar component
 const Avatar = React.memo(({ src, name, size = 'md' }) => {
@@ -245,7 +246,7 @@ const PostImage = React.memo(({ src, alt }) => {
 const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDelete, onSelectTag }, ref) => {
   const [upvotes, setUpvotes] = useState(post.upvotes || 0);
   const [downvotes, setDownvotes] = useState(post.downvotes || 0);
-  const [bookmarked, setBookmarked] = useState(post.bookmarked || false);
+  const [bookmarked, setBookmarked] = useState(post.bookmarked || post.saved || false);
   const [userVote, setUserVote] = useState(null); // 'up' | 'down' | null
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
@@ -387,8 +388,34 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
     }
   };
 
-  const handleBookmark = () => {
-    setBookmarked(!bookmarked);
+  const handleBookmark = async () => {
+    try {
+      const newBookmarkState = !bookmarked;
+      
+      // Optimistically update UI
+      setBookmarked(newBookmarkState);
+      
+      // Call API to save/unsave
+      if (newBookmarkState) {
+        const response = await ApiService.savePost(post.id);
+        if (!response.success) {
+          // Revert on failure
+          setBookmarked(!newBookmarkState);
+          console.error('Failed to save post:', response.message);
+        }
+      } else {
+        const response = await ApiService.unsavePost(post.id);
+        if (!response.success) {
+          // Revert on failure
+          setBookmarked(!newBookmarkState);
+          console.error('Failed to unsave post:', response.message);
+        }
+      }
+    } catch (error) {
+      // Revert on error
+      setBookmarked(bookmarked);
+      console.error('Error handling bookmark:', error);
+    }
   };
 
   const handleAddComment = async () => {

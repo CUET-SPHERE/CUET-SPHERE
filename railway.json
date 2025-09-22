@@ -1,0 +1,6 @@
+{
+    "build": {
+        "builder": "shell",
+        "start": "cd backend && ./mvnw package -DskipTests && java -jar target/*.jar"
+    }
+}
