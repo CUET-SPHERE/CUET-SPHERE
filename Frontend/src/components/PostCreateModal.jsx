@@ -17,8 +17,55 @@ function PostCreateModal({ open, onClose, onCreate }) {
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   if (!open) return null;
+
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Get auth headers similar to postService
+    const userData = localStorage.getItem('user');
+    let token = null;
+
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        token = parsedUser.token || parsedUser.jwt;
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+
+    if (!token) {
+      token = localStorage.getItem('jwt_token');
+    }
+
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
+    const API_BASE_URL = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_BASE_URL || 'https://cuetsphere-backend-cuet-sphere.vercel.app/api';
+
+    const response = await fetch(`${API_BASE_URL}/upload/post`, {
+      method: 'POST',
+      headers: headers,
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Upload failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    return result.fileUrl;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,11 +91,27 @@ function PostCreateModal({ open, onClose, onCreate }) {
         return;
       }
 
+      let finalMediaUrl = imageUrl || null;
+
+      // If a file is selected, upload it first
+      if (file) {
+        try {
+          setUploading(true);
+          finalMediaUrl = await uploadFile(file);
+          setUploading(false);
+        } catch (uploadError) {
+          setUploading(false);
+          setError(`File upload failed: ${uploadError.message}`);
+          setLoading(false);
+          return;
+        }
+      }
+
       await onCreate({
         title,
         content,
         tags,
-        mediaUrl: imageUrl || null,
+        mediaUrl: finalMediaUrl,
         userId: user.id || 1, // Use actual user ID from context
       });
 
@@ -149,19 +212,22 @@ function PostCreateModal({ open, onClose, onCreate }) {
                 className="hidden"
                 id="file-upload"
                 onChange={(e) => setFile(e.target.files[0])}
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.avi,.mov,.wmv,.webm"
               />
               <label
                 htmlFor="file-upload"
                 className={`flex items-center gap-3 w-full p-4 border-2 border-dashed ${colors?.border || 'border-gray-300 dark:border-gray-600'} rounded-lg hover:${colors?.borderHover || 'border-blue-400 dark:border-blue-500'} cursor-pointer transition-colors ${colors?.cardSecondary || 'bg-gray-50 dark:bg-gray-700'} hover:${colors?.cardSecondaryHover || 'bg-gray-100 dark:bg-gray-600'}`}
               >
                 <Paperclip className={`h-5 w-5 ${colors?.textMuted || 'text-gray-400'}`} />
-                <div className="text-center">
+                <div className="text-center flex-1">
                   <span className={colors?.textSecondary || 'text-gray-600 dark:text-gray-300'}>
                     {file ? file.name : 'Click to upload a file'}
                   </span>
                   <p className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} mt-1`}>
-                    PDF, DOC, TXT, or images up to 10MB
+                    Images & Documents (max 10MB), Videos (max 50MB)
+                  </p>
+                  <p className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>
+                    Supported: PDF, DOC, TXT, JPG, PNG, GIF, MP4, AVI, MOV
                   </p>
                 </div>
               </label>
@@ -184,10 +250,10 @@ function PostCreateModal({ open, onClose, onCreate }) {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               className={buttonClasses?.primary || "px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors shadow-sm"}
             >
-              {loading ? 'Creating...' : 'Create Post'}
+              {uploading ? 'Uploading file...' : loading ? 'Creating...' : 'Create Post'}
             </button>
           </div>
         </form>

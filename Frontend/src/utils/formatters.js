@@ -3,31 +3,31 @@ export function formatTimeAgo(isoString) {
   const date = new Date(isoString);
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return 'Just now';
   }
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
     return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
   }
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
     return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
   }
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) {
     return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
   }
-  
+
   if (diffInDays < 30) {
     const diffInWeeks = Math.floor(diffInDays / 7);
     return `${diffInWeeks} week${diffInWeeks === 1 ? '' : 's'} ago`;
   }
-  
+
   // For older dates, show the actual date
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -64,7 +64,7 @@ export function getAvatarColor(name) {
     'bg-orange-500',
     'bg-cyan-500'
   ];
-  
+
   const charCodeSum = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return colors[charCodeSum % colors.length];
 }
@@ -74,9 +74,18 @@ export function isImageUrl(url) {
   if (!url) return false;
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
   const lowercaseUrl = url.toLowerCase();
-  return imageExtensions.some(ext => lowercaseUrl.includes(ext)) || 
-         lowercaseUrl.includes('placeholder') || 
-         lowercaseUrl.includes('image');
+  return imageExtensions.some(ext => lowercaseUrl.includes(ext)) ||
+    lowercaseUrl.includes('placeholder') ||
+    lowercaseUrl.includes('image');
+}
+
+// Video utilities
+export function isVideoUrl(url) {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.webm', '.mkv', '.flv'];
+  const lowercaseUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowercaseUrl.includes(ext)) ||
+    lowercaseUrl.includes('video');
 }
 
 export function isValidImageUrl(url) {

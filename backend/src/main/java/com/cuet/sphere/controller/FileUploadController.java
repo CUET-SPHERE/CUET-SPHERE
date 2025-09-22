@@ -47,6 +47,55 @@ public class FileUploadController {
         }
     }
 
+    @PostMapping("/post")
+    public ResponseEntity<FileUploadResponse> uploadPostFile(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File is empty"));
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("Unable to determine file type"));
+            }
+
+            // Check file type and size based on content type
+            if (contentType.startsWith("image/")) {
+                // Images: max 10MB
+                if (file.getSize() > 10 * 1024 * 1024) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("Image file size exceeds 10MB limit"));
+                }
+                if (!isAllowedImageType(contentType)) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("Image type not allowed. Allowed types: JPG, JPEG, PNG, GIF, WEBP"));
+                }
+            } else if (contentType.startsWith("video/")) {
+                // Videos: max 50MB
+                if (file.getSize() > 50 * 1024 * 1024) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("Video file size exceeds 50MB limit"));
+                }
+                if (!isAllowedVideoType(contentType)) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("Video type not allowed. Allowed types: MP4, AVI, MOV, WMV, WEBM"));
+                }
+            } else {
+                // Other files (documents): max 10MB
+                if (file.getSize() > 10 * 1024 * 1024) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("File size exceeds 10MB limit"));
+                }
+                if (!isAllowedDocumentType(contentType)) {
+                    return ResponseEntity.badRequest().body(FileUploadResponse.error("File type not allowed. Allowed types: PDF, DOC, DOCX, TXT, and images"));
+                }
+            }
+
+            String fileUrl = s3Service.uploadPostFile(file);
+            logger.debug("Post file uploaded successfully: {}", fileUrl);
+            return ResponseEntity.ok(FileUploadResponse.success(fileUrl));
+            
+        } catch (IOException e) {
+            logger.error("Error uploading post file: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(FileUploadResponse.error("Failed to upload file: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/profile")
     public ResponseEntity<FileUploadResponse> uploadProfilePicture(
             @RequestParam("file") MultipartFile file,
@@ -144,5 +193,29 @@ public class FileUploadController {
                contentType.startsWith("image/") ||
                contentType.startsWith("video/") ||
                contentType.startsWith("audio/");
+    }
+
+    private boolean isAllowedImageType(String contentType) {
+        return contentType.equals("image/jpeg") ||
+               contentType.equals("image/jpg") ||
+               contentType.equals("image/png") ||
+               contentType.equals("image/gif") ||
+               contentType.equals("image/webp");
+    }
+
+    private boolean isAllowedVideoType(String contentType) {
+        return contentType.equals("video/mp4") ||
+               contentType.equals("video/avi") ||
+               contentType.equals("video/quicktime") || // .mov
+               contentType.equals("video/x-ms-wmv") ||  // .wmv
+               contentType.equals("video/webm");
+    }
+
+    private boolean isAllowedDocumentType(String contentType) {
+        return contentType.startsWith("application/pdf") ||
+               contentType.equals("application/msword") ||
+               contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
+               contentType.equals("text/plain") ||
+               isAllowedImageType(contentType); // Also allow images in document category
     }
 }

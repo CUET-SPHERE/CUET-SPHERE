@@ -15,10 +15,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @Service
 public class S3Service {
+
+    private static final Logger logger = LoggerFactory.getLogger(S3Service.class);
 
     @Autowired(required = false)
     private S3Client s3Client;
@@ -95,6 +99,40 @@ public class S3Service {
         
         // Fallback to local storage
         return uploadToLocalStorage(file, key);
+    }
+
+    public String uploadPostFile(MultipartFile file) throws IOException {
+        // Generate unique file name to avoid conflicts
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String fileName = "posts/" + UUID.randomUUID().toString() + fileExtension;
+
+        // Try S3 first, fallback to local storage
+        if (s3Client != null && bucketUrl != null && !bucketUrl.isEmpty()) {
+            try {
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(fileName)
+                        .contentType(file.getContentType())
+                        .build();
+
+                PutObjectResponse response = s3Client.putObject(putObjectRequest, 
+                        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                String s3Url = bucketUrl + "/" + fileName;
+                logger.debug("Post file uploaded to S3 successfully: {}", s3Url);
+                return s3Url;
+            } catch (Exception e) {
+                logger.error("S3 post upload failed: {}", e.getMessage(), e);
+                // S3 upload failed, falling back to local storage
+            }
+        }
+        
+        // Fallback to local storage
+        return uploadToLocalStorage(file, fileName);
     }
 
     public String uploadResourceFile(MultipartFile file, String fileName) throws IOException {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2 } from 'lucide-react';
-import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl } from '../utils/formatters';
+import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl, isVideoUrl } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
 import commentService from '../services/commentService';
 import replyService from '../services/replyService';
@@ -243,6 +243,48 @@ const PostImage = React.memo(({ src, alt }) => {
           setImageLoading(false);
         }}
       />
+    </div>
+  );
+});
+
+const PostVideo = React.memo(({ src, alt }) => {
+  const { colors } = useTheme();
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+
+  if (!src || videoError) {
+    return null;
+  }
+
+  return (
+    <div className={`mt-3 mb-3 rounded-lg overflow-hidden ${colors?.cardBackground || 'bg-gray-100 dark:bg-gray-800'}`}>
+      {videoLoading && (
+        <div className={`flex items-center justify-center h-64 ${colors?.cardSecondary || 'bg-gray-200 dark:bg-gray-700'}`}>
+          <div className={`animate-pulse flex items-center gap-2 ${colors?.textMuted || 'text-gray-500'}`}>
+            <ImageIcon className="h-6 w-6" />
+            <span>Loading video...</span>
+          </div>
+        </div>
+      )}
+      <video
+        src={src}
+        controls
+        className={`w-full max-h-96 ${videoLoading ? 'hidden' : 'block'}`}
+        onLoadedData={() => setVideoLoading(false)}
+        onError={() => {
+          setVideoError(true);
+          setVideoLoading(false);
+        }}
+        preload="metadata"
+      >
+        <p className={colors?.textMuted || 'text-gray-500'}>
+          Your browser doesn't support HTML video. Here is a{' '}
+          <a href={src} className={colors?.primary || 'text-blue-600 hover:underline'}>
+            link to the video
+          </a>{' '}
+          instead.
+        </p>
+      </video>
     </div>
   );
 });
@@ -852,7 +894,12 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
             </button>
           )}
 
-          {post.image && isImageUrl(post.image) && <PostImage src={post.image} alt={post.title} />}
+          {/* Media Display - Handle both images and videos */}
+          {post.mediaUrl && isImageUrl(post.mediaUrl) && <PostImage src={post.mediaUrl} alt={post.title} />}
+          {post.mediaUrl && isVideoUrl(post.mediaUrl) && <PostVideo src={post.mediaUrl} alt={post.title} />}
+
+          {/* Legacy support for post.image field */}
+          {!post.mediaUrl && post.image && isImageUrl(post.image) && <PostImage src={post.image} alt={post.title} />}
 
           {post.attachment && (
             <div className={`flex items-center gap-2 mt-3 p-3 ${colors?.cardSecondary || 'bg-gray-50 dark:bg-gray-700'} rounded-lg`}>

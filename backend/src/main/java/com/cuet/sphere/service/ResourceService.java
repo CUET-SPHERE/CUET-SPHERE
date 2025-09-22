@@ -6,6 +6,8 @@ import com.cuet.sphere.response.ResourceRequest;
 import com.cuet.sphere.response.ResourceResponse;
 import com.cuet.sphere.response.ResourceFileResponse;
 import com.cuet.sphere.exception.UserException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +38,8 @@ public class ResourceService {
     @Autowired
     private S3Service s3Service;
     
+    private static final Logger logger = LoggerFactory.getLogger(ResourceService.class);
+
     public ResourceResponse createResource(ResourceRequest resourceRequest, User uploader) throws UserException {
         // Check if uploader is CR
         if (!uploader.isCR()) {
