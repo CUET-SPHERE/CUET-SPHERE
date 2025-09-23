@@ -80,7 +80,7 @@ public class PostService {
     }
 
     public void deletePost(Long id) {
-        // Get post before deletion to clean up S3 files
+        // Get post before deletion to clean up S3 files and saved post records
         Optional<Post> postOpt = postRepository.findById(id);
         if (postOpt.isPresent()) {
             Post post = postOpt.get();
@@ -90,11 +90,21 @@ public class PostService {
                 try {
                     s3Service.deleteFile(post.getMediaUrl());
                 } catch (Exception e) {
-                    // Failed to delete post media from S3
+                    // Failed to delete post media from S3, but continue with deletion
+                    // Log this in production for monitoring
                 }
+            }
+            
+            // Clean up saved post records manually since they don't have cascade
+            try {
+                savedPostRepository.deleteByPost(post);
+            } catch (Exception e) {
+                // Failed to delete saved post records, but continue with deletion
+                // This will be handled by database constraints if needed
             }
         }
         
+        // Delete the post (this will cascade delete comments and votes)
         postRepository.deleteById(id);
     }
 

@@ -96,17 +96,15 @@ function PostFeed({ isManageMode = false }) {
     }
   };
 
-  // Handle post deletion from admin
+  // Handle post deletion - now handled by PostCard modal
   const handleDeletePost = async (postId) => {
-    if (window.confirm('Are you sure you want to permanently delete this post? This action cannot be undone.')) {
-      try {
-        await postService.deletePost(postId);
-        removePost(postId);
-        incrementPostDeleteCount();
-      } catch (err) {
-        console.error('Error deleting post:', err);
-        // You might want to show an error toast or message here
-      }
+    try {
+      // The actual deletion is handled by the PostCard component
+      // This function just removes the post from the UI after successful deletion
+      removePost(postId);
+      incrementPostDeleteCount();
+    } catch (err) {
+      console.error('Error removing post from feed:', err);
     }
   };
 
