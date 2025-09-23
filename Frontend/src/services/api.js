@@ -947,6 +947,33 @@ class ApiService {
     return handleResponse(response);
   }
 
+  // Background image upload to S3
+  static async uploadBackgroundImage(file) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return {
+        success: true,
+        message: 'Background image uploaded successfully',
+        fileUrl: `https://mock-s3-bucket.s3.amazonaws.com/backgrounds/${Date.now()}-${file.name}`,
+        fileName: file.name
+      };
+    }
+
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/api/upload/background`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return handleResponse(response);
+  }
+
   // Resource file upload to S3
   static async uploadResourceFile(file, onProgress) {
     if (DEV_MODE) {
@@ -1342,9 +1369,9 @@ class ApiService {
       const token = getAuthToken();
       const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/save`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`, 
-          'Content-Type': 'application/json' 
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       });
       return handleResponse(response);
@@ -1366,9 +1393,9 @@ class ApiService {
       const token = getAuthToken();
       const response = await fetch(`${API_BASE_URL}/api/posts/${postId}/save`, {
         method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`, 
-          'Content-Type': 'application/json' 
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       });
       return handleResponse(response);
@@ -1387,7 +1414,7 @@ class ApiService {
       const startIndex = page * size;
       const endIndex = startIndex + size;
       const paginatedPosts = savedPosts.slice(startIndex, endIndex);
-      
+
       return {
         success: true,
         posts: paginatedPosts.map(post => ({ ...post, saved: true })),
@@ -1403,9 +1430,9 @@ class ApiService {
       const token = getAuthToken();
       const response = await fetch(`${API_BASE_URL}/api/posts/saved?page=${page}&size=${size}`, {
         method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`, 
-          'Content-Type': 'application/json' 
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       });
       return handleResponse(response);

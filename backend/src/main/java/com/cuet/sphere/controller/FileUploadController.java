@@ -131,6 +131,41 @@ public class FileUploadController {
         }
     }
 
+    @PostMapping("/background")
+    public ResponseEntity<FileUploadResponse> uploadBackgroundImage(
+            @RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File is empty"));
+            }
+
+            // Check file size (limit to 10MB for background images)
+            if (file.getSize() > 10 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("File size exceeds 10MB limit"));
+            }
+
+            // Check file type (only images for background images)
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(FileUploadResponse.error("Only image files are allowed for background images"));
+            }
+
+            // Generate a unique filename for background image
+            String originalFilename = file.getOriginalFilename();
+            String fileExtension = originalFilename != null ? 
+                originalFilename.substring(originalFilename.lastIndexOf(".")) : ".jpg";
+            String filename = "background_" + System.currentTimeMillis() + fileExtension;
+
+            String fileUrl = s3Service.uploadBackgroundImage(file, filename);
+            logger.debug("Background image uploaded successfully: {}", fileUrl);
+            return ResponseEntity.ok(FileUploadResponse.success(fileUrl));
+            
+        } catch (IOException e) {
+            logger.error("Error uploading background image: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(FileUploadResponse.error("Failed to upload background image: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/resource")
     public ResponseEntity<FileUploadResponse> uploadResourceFile(
             @RequestParam("file") MultipartFile file) {
