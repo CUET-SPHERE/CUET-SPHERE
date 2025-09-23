@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { FeedCacheProvider } from './contexts/FeedCacheContext';
+import { preloadDepartments } from './utils/departmentUtils';
 
 // Navbars
 import { LoggedOutNavbar, LoggedInNavbar } from './components/Navbar';
@@ -102,6 +103,11 @@ function AppContent() {
 }
 
 function App() {
+  // Preload department mappings on app initialization
+  useEffect(() => {
+    preloadDepartments();
+  }, []);
+
   return (
     <ThemeProvider>
       <UserProvider>

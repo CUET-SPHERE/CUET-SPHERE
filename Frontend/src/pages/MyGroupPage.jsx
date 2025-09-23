@@ -7,6 +7,7 @@ import webSocketService from '../services/websocket';
 import ProfileImage from '../components/ProfileImage';
 import FileViewer from '../components/FileViewer';
 import { getApiBaseUrl } from '../services/apiConfig';
+import { getDepartmentNameSync, preloadDepartments } from '../utils/departmentUtils';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -575,28 +576,10 @@ function MyGroupPage() {
            (user?.role === 'CR' && notice.senderEmail === user.email);
   };
 
-  const getDepartmentName = (deptCode) => {
-    const departments = {
-      '01': 'Civil Engineering',
-      '02': 'Mechanical Engineering', 
-      '03': 'Electrical & Electronics Engineering',
-      '04': 'Computer Science & Engineering',
-      '05': 'Water Resources Engineering',
-      '06': 'Petroleum & Mining Engineering',
-      '07': 'Mechatronics and Industrial Engineering',
-      '08': 'Electronics & Telecommunication Engineering',
-      '09': 'Urban & Regional Planning',
-      '10': 'Architecture',
-      '11': 'Biomedical Engineering',
-      '12': 'Nuclear Engineering',
-      '13': 'Materials Science & Engineering',
-      '14': 'Physics',
-      '15': 'Chemistry',
-      '16': 'Mathematics',
-      '17': 'Humanities'
-    };
-    return departments[deptCode] || 'Unknown Department';
-  };
+  // Initialize departments cache on component mount
+  useEffect(() => {
+    preloadDepartments();
+  }, []);
 
   if (!isAuthenticated) return <Navigate to="/" />;
 
@@ -611,7 +594,7 @@ function MyGroupPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {getDepartmentName(user?.department)} - Batch {user?.batch}
+                {getDepartmentNameSync(user?.department)} - Batch {user?.batch}
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {groupMembers.length} members

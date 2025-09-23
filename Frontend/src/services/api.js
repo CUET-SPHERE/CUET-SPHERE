@@ -364,10 +364,12 @@ class ApiService {
     return handleResponse(response);
   }
 
-  static async assignCrRole(userEmail) {
+  static async assignCrRole(requestData) {
     if (DEV_MODE) {
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      // Handle both string userEmail and object request formats
+      const userEmail = typeof requestData === 'string' ? requestData : requestData.userEmail;
       const user = mockUsers.find(u => u.email === userEmail);
       if (!user) {
         throw new Error('User not found');
@@ -383,8 +385,25 @@ class ApiService {
     }
 
     const token = getAuthToken();
-    // Get current user info to get department and batch
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Handle both string userEmail and object request formats
+    let requestBody;
+    if (typeof requestData === 'string') {
+      // Legacy format: just userEmail string
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      requestBody = {
+        userEmail: requestData,
+        department: currentUser.department || '04',
+        batch: currentUser.batch || '22'
+      };
+    } else {
+      // New format: object with userEmail, department, batch
+      requestBody = {
+        userEmail: requestData.userEmail,
+        department: requestData.department,
+        batch: requestData.batch
+      };
+    }
 
     const response = await fetch(`${API_BASE_URL}/api/admin/assign-cr`, {
       method: 'POST',
@@ -392,11 +411,7 @@ class ApiService {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        userEmail: userEmail,
-        department: currentUser.department || '04',
-        batch: currentUser.batch || '22'
-      }),
+      body: JSON.stringify(requestBody),
     });
     return handleResponse(response);
   }
@@ -1413,6 +1428,174 @@ class ApiService {
       console.error('Failed to get saved posts:', error);
       throw error;
     }
+  }
+
+  // Department APIs
+  static async getAllDepartments() {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        departments: {
+          '01': 'Civil Engineering',
+          '02': 'Electrical and Electronical Engineering',
+          '03': 'Mechanical Engineering',
+          '04': 'Computer Science & Engineering',
+          '05': 'Urban & Regional Planning',
+          '06': 'Architecture',
+          '07': 'Petroleum & Mining Engineering',
+          '08': 'Electronics & Telecommunication Engineering',
+          '09': 'Mechatronics & Industrial Engineering',
+          '10': 'Water Resources Engineering',
+          '11': 'Biomedical Engineering',
+          '12': 'Materials Science & Engineering',
+        },
+        departmentIds: {
+          '01': 1,
+          '02': 2,
+          '03': 3,
+          '04': 4,
+          '05': 5,
+          '06': 6,
+          '07': 7,
+          '08': 8,
+          '09': 9,
+          '10': 10,
+          '11': 11,
+          '12': 12,
+        },
+        total: 12
+      };
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/public/departments/all`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
+  }
+
+  // Get department name by code (no auth required)
+  static async getDepartmentNameByCode(code) {
+    if (DEV_MODE) {
+      const departments = {
+        '01': 'Civil Engineering',
+        '02': 'Electrical and Electronical Engineering',
+        '03': 'Mechanical Engineering',
+        '04': 'Computer Science & Engineering',
+        '05': 'Urban & Regional Planning',
+        '06': 'Architecture',
+        '07': 'Petroleum & Mining Engineering',
+        '08': 'Electronics & Telecommunication Engineering',
+        '09': 'Mechatronics & Industrial Engineering',
+        '10': 'Water Resources Engineering',
+        '11': 'Biomedical Engineering',
+        '12': 'Materials Science & Engineering',
+      };
+      return {
+        success: true,
+        code: code,
+        name: departments[code] || 'Unknown Department'
+      };
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/public/departments/code/${code}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
+  }
+
+  static async getDepartmentCount() {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        count: 12
+      };
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/admin/departments/count`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
+  }
+
+  static async createDepartment(departmentData) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        id: Date.now(),
+        code: departmentData.code,
+        name: departmentData.name,
+        message: 'Department created successfully'
+      };
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/admin/departments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(departmentData),
+    });
+    return handleResponse(response);
+  }
+
+  static async updateDepartment(deptId, departmentData) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        id: deptId,
+        code: departmentData.code,
+        name: departmentData.name,
+        message: 'Department updated successfully'
+      };
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/admin/departments/${deptId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(departmentData),
+    });
+    return handleResponse(response);
+  }
+
+  static async deleteDepartment(deptId) {
+    if (DEV_MODE) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        message: 'Department deleted successfully'
+      };
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/api/admin/departments/${deptId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   }
 }
 

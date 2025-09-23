@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import AdminCRFeatures from '../components/AdminCRFeatures';
+import { getDepartmentNameSync, preloadDepartments } from '../utils/departmentUtils';
 import {
   Calendar,
   Clock,
@@ -82,30 +83,6 @@ const MiniProfile = ({ user }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  // Get department name from department code
-  const getDepartmentName = (deptCode) => {
-    const departments = {
-      '01': 'Civil Engineering',
-      '02': 'Mechanical Engineering',
-      '03': 'Electrical & Electronics Engineering',
-      '04': 'Computer Science & Engineering',
-      '05': 'Water Resources Engineering',
-      '06': 'Petroleum & Mining Engineering',
-      '07': 'Mechatronics and Industrial Engineering',
-      '08': 'Electronics & Telecommunication Engineering',
-      '09': 'Urban & Regional Planning',
-      '10': 'Architecture',
-      '11': 'Biomedical Engineering',
-      '12': 'Nuclear Engineering',
-      '13': 'Materials Science & Engineering',
-      '14': 'Physics',
-      '15': 'Chemistry',
-      '16': 'Mathematics',
-      '17': 'Humanities'
-    };
-    return departments[deptCode] || 'Unknown Department';
-  };
-
   // Format student ID properly
   const formatStudentId = (email) => {
     if (!email) return 'XXXXXXX';
@@ -127,7 +104,7 @@ const MiniProfile = ({ user }) => {
         <div className="flex-1">
           <h2 className="text-xl font-bold">{user?.fullName || 'Student Name'}</h2>
           <p className="text-blue-100 text-sm">ID: {formatStudentId(user?.email)}</p>
-          <p className="text-blue-200 text-sm">{getDepartmentName(user?.department)} - Batch {user?.batch || 'XX'}</p>
+          <p className="text-blue-200 text-sm">{getDepartmentNameSync(user?.department)} - Batch {user?.batch || 'XX'}</p>
           {user?.role === 'CR' && (
             <div className="mt-1">
               <span className="inline-block px-2 py-1 bg-yellow-500 text-yellow-900 text-xs font-bold rounded-full">
@@ -519,6 +496,11 @@ const RecentActivity = () => {
 
 const StudentDashboard = () => {
   const { user } = useUser();
+
+  // Initialize departments cache on component mount
+  React.useEffect(() => {
+    preloadDepartments();
+  }, []);
 
   console.log('StudentDashboard received user:', user);
 

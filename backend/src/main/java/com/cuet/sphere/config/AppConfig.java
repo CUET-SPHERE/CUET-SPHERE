@@ -55,6 +55,7 @@ public class AppConfig {
                 .authorizeHttpRequests(auth -> {
                     logger.debug("Configuring authorization rules");
                     auth.requestMatchers("/auth/**", "/public/**").permitAll();
+                    auth.requestMatchers("/api/public/**").permitAll(); // Allow public API endpoints
                     auth.requestMatchers("/api/posts/**").permitAll(); // Temporarily allow posts without auth for testing
                     auth.requestMatchers("/api/**").authenticated();
                     auth.anyRequest().permitAll();

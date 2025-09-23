@@ -65,7 +65,20 @@ const AdminCRFeatures = ({ user }) => {
 
   const handleAssignCR = async (userEmail) => {
     try {
-      await ApiService.assignCrRole(userEmail);
+      // Find the user to get their department and batch
+      const user = users.find(u => u.email === userEmail);
+      if (!user) {
+        console.error('User not found in local list:', userEmail);
+        return;
+      }
+      
+      const request = {
+        userEmail: userEmail,
+        department: user.department,
+        batch: user.batch
+      };
+      
+      await ApiService.assignCrRole(request);
       loadUsers(); // Reload users
     } catch (error) {
       console.error('Error assigning CR role:', error);

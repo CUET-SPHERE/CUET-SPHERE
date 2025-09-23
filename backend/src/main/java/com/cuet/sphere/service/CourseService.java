@@ -235,8 +235,8 @@ public class CourseService {
     private String getDepartmentNameByCode(String deptCode) {
         switch (deptCode) {
             case "01": return "Civil Engineering";
-            case "02": return "Mechanical Engineering";
-            case "03": return "Electrical & Electronics Engineering";
+            case "02": return "Electrical and Electronical Engineering";
+            case "03": return "Mechanical Engineering";
             case "04": return "Computer Science & Engineering";
             case "05": return "Water Resources Engineering";
             case "06": return "Petroleum & Mining Engineering";

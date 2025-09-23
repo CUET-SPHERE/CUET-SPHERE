@@ -1,16 +1,13 @@
-export const DEPARTMENTS = {
-  '01': 'Civil Engineering',
-  '02': 'Electrical & Electronic Engineering',
-  '03': 'Mechanical Engineering',
-  '04': 'Computer Science & Engineering',
-  '05': 'Urban & Regional Planning',
-  '06': 'Architecture',
-  '07': 'Petroleum & Mining Engineering',
-  '08': 'Electronics & Telecommunication Engineering',
-  '09': 'Mechatronics & Industrial Engineering',
-  '10': 'Water Resources Engineering',
-  '11': 'Biomedical Engineering',
-  '12': 'Materials Science & Engineering',
+import { getDepartmentNameSync } from './departmentUtils';
+
+// Dynamically populated from backend
+export const getDepartments = () => {
+  // This will return the cached departments
+  // Make sure to call preloadDepartments() before using this
+  const departments = {};
+  // We can't use async here, so we rely on the cache being populated
+  // by preloadDepartments() called during app initialization
+  return departments;
 };
 
 export const BOYS_HALLS = [

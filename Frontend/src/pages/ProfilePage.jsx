@@ -6,6 +6,7 @@ import { mockPosts } from '../mock/mockPosts';
 import PostCard from '../components/PostCard';
 import ApiService from '../services/api';
 import ImageCropModal from '../components/ImageCropModal';
+import { getDepartmentName, getDepartmentNameSync, preloadDepartments } from '../utils/departmentUtils';
 
 // Profile Avatar Component
 function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
@@ -574,30 +575,24 @@ function ProfilePage() {
   // Add state for fresh profile and background images
   const [freshProfilePicture, setFreshProfilePicture] = useState(null);
   const [freshBackgroundImage, setFreshBackgroundImage] = useState(null);
+  const [departmentName, setDepartmentName] = useState('Loading...');
 
-  // Get department name from department code
-  const getDepartmentName = (deptCode) => {
-    const departments = {
-      '01': 'Civil Engineering',
-      '02': 'Mechanical Engineering',
-      '03': 'Electrical & Electronics Engineering',
-      '04': 'Computer Science & Engineering',
-      '05': 'Water Resources Engineering',
-      '06': 'Petroleum & Mining Engineering',
-      '07': 'Mechatronics and Industrial Engineering',
-      '08': 'Electronics & Telecommunication Engineering',
-      '09': 'Urban & Regional Planning',
-      '10': 'Architecture',
-      '11': 'Biomedical Engineering',
-      '12': 'Nuclear Engineering',
-      '13': 'Materials Science & Engineering',
-      '14': 'Physics',
-      '15': 'Chemistry',
-      '16': 'Mathematics',
-      '17': 'Humanities'
+  // Load department name from backend
+  useEffect(() => {
+    const loadDepartmentName = async () => {
+      if (contextUser?.department) {
+        try {
+          const name = await getDepartmentName(contextUser.department);
+          setDepartmentName(name);
+        } catch (error) {
+          console.error('Error loading department name:', error);
+          setDepartmentName('Unknown Department');
+        }
+      }
     };
-    return departments[deptCode] || 'Unknown Department';
-  };
+    
+    loadDepartmentName();
+  }, [contextUser?.department]);
 
   // Format student ID properly
   const formatStudentId = (email) => {
@@ -620,7 +615,7 @@ function ProfilePage() {
     postsCount: 25,
     followersCount: 150,
     followingCount: 89,
-    department: getDepartmentName(contextUser?.department),
+    department: departmentName, // Use state variable instead of async function
     studentId: formatStudentId(contextUser?.email),
     hall: contextUser?.hall || 'Not specified'
   });
@@ -639,12 +634,12 @@ function ProfilePage() {
         postsCount: 25,
         followersCount: 150,
         followingCount: 89,
-        department: getDepartmentName(contextUser?.department),
+        department: departmentName,
         studentId: formatStudentId(contextUser?.email),
         hall: contextUser?.hall || 'Not specified'
       });
     }
-  }, [contextUser]);
+  }, [contextUser, departmentName]);
 
   // Fetch fresh profile and background images from API
   useEffect(() => {

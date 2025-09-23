@@ -53,16 +53,18 @@ const AdminDashboard = () => {
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const users = await ApiService.getAllUsers();
+      const [users, departmentCountResponse] = await Promise.all([
+        ApiService.getAllUsers(),
+        ApiService.getDepartmentCount()
+      ]);
 
-      const departments = [...new Set(users.map(user => user.department).filter(Boolean))];
       const halls = [...new Set(users.map(user => user.hall).filter(Boolean))];
       const crs = users.filter(user => user.role === 'CR');
 
       setStats({
         totalUsers: users.length,
         totalCRs: crs.length,
-        totalDepartments: departments.length,
+        totalDepartments: departmentCountResponse.count || 0,
         totalHalls: halls.length
       });
     } catch (error) {
