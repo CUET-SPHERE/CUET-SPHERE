@@ -112,4 +112,26 @@ public class UserService {
         
         return userRepository.save(freshUser);
     }
+    
+    public User clearBackgroundImage(User user) {
+        // Get fresh user from database to avoid overwriting other fields
+        User freshUser = userRepository.findUserByEmail(user.getEmail());
+        if (freshUser == null) {
+            throw new RuntimeException("User not found: " + user.getEmail());
+        }
+        
+        // Delete existing background image from S3 if exists
+        if (freshUser.getBackgroundImage() != null && !freshUser.getBackgroundImage().isEmpty()) {
+            try {
+                s3Service.deleteFile(freshUser.getBackgroundImage());
+            } catch (Exception e) {
+                // Failed to delete background image from S3
+            }
+        }
+        
+        // Clear the background image field, preserve everything else
+        freshUser.setBackgroundImage(null);
+        
+        return userRepository.save(freshUser);
+    }
 }

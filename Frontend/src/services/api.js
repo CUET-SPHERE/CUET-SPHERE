@@ -666,15 +666,6 @@ class ApiService {
     // Convert level and term to semester format (e.g. 1-1, 1-2, 2-1, etc.)
     const semester = `${level}-${term}`;
 
-    console.log('Fetching courses from backend:', {
-      department,
-      level,
-      term,
-      semester,
-      hasToken: !!token,
-      url: `${API_BASE_URL}/api/courses/department/${department}/semester/${semester}`
-    });
-
     const response = await fetch(`${API_BASE_URL}/api/courses/department/${department}/semester/${semester}`, {
       method: 'GET',
       headers: {
@@ -685,13 +676,9 @@ class ApiService {
 
     // If backend endpoint doesn't exist yet, fallback to demo data
     try {
-      console.log('Backend response status:', response.status, response.ok);
       const result = await handleResponse(response);
-      console.log('Backend courses data:', result);
       return result;
     } catch (error) {
-      console.warn("Course API not available, using fallback data", error);
-      console.error("Backend error details:", error.message);
 
       // Fallback data based on level and term
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -847,10 +834,7 @@ class ApiService {
   }
 
   static async deleteCourseByCode(courseCode) {
-    console.log('API.deleteCourseByCode called with courseCode:', courseCode);
     const token = getAuthToken();
-    console.log('Auth token available:', !!token);
-    console.log('API URL will be:', `${API_BASE_URL}/api/courses/code/${courseCode}`);
 
     const response = await fetch(`${API_BASE_URL}/api/courses/code/${courseCode}`, {
       method: 'DELETE',
@@ -859,13 +843,10 @@ class ApiService {
       }
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
     return await handleResponse(response);
   }
 
   static async updateCourseByCode(courseCode, courseData) {
-    console.log('API.updateCourseByCode called with:', { courseCode, courseData });
     const token = getAuthToken();
 
     const response = await fetch(`${API_BASE_URL}/api/courses/code/${courseCode}`, {
@@ -971,7 +952,7 @@ class ApiService {
       body: formData,
     });
 
-    return handleResponse(response);
+    return await handleResponse(response);
   }
 
   // Resource file upload to S3
@@ -1090,21 +1071,9 @@ class ApiService {
     formData.append('courseCode', resourceData.courseCode);
     formData.append('semesterName', resourceData.semesterName);
 
-    // Debug logging
-    console.log('Multi-file upload request data:', {
-      title: resourceData.title,
-      description: resourceData.description,
-      resourceType: resourceData.resourceType,
-      courseCode: resourceData.courseCode,
-      semesterName: resourceData.semesterName,
-      fileCount: files.length,
-      fileNames: files.map(f => f.name)
-    });
-
     // Add all files to form data
     files.forEach((file, index) => {
       formData.append('files', file);
-      console.log(`Added file ${index + 1}:`, file.name, 'size:', file.size);
     });
 
     return new Promise((resolve, reject) => {
@@ -1118,28 +1087,18 @@ class ApiService {
       });
 
       xhr.onload = function () {
-        console.log('Multi-file upload response status:', xhr.status);
-        console.log('Multi-file upload response headers:', xhr.getAllResponseHeaders());
-        console.log('Multi-file upload response text:', xhr.responseText);
-        console.log('Multi-file upload response contentType:', xhr.getResponseHeader('content-type'));
-
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
-            console.log('Multi-file upload successful:', response);
             resolve(response);
           } catch (e) {
-            console.error('Failed to parse success response:', e);
             reject(new Error('Invalid JSON response from server'));
           }
         } else {
-          console.error('Multi-file upload failed with status:', xhr.status);
           try {
             const errorResponse = JSON.parse(xhr.responseText);
-            console.error('Error response:', errorResponse);
             reject(new Error(errorResponse.error || `HTTP Error: ${xhr.status}`));
           } catch (e) {
-            console.error('Failed to parse error response:', e);
             reject(new Error(`HTTP Error: ${xhr.status}`));
           }
         }
