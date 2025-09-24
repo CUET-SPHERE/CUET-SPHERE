@@ -107,17 +107,39 @@ class PostService {
 
   async deletePost(postId) {
     try {
+      console.log('Deleting post with ID:', postId);
       const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
 
+      console.log('Delete response status:', response.status);
+      console.log('Delete response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error(`Failed to delete post: ${response.status}`);
+        // Try to get error message from response
+        let errorMessage = `Failed to delete post: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (jsonError) {
+          // If can't parse JSON, use default message
+        }
+        throw new Error(errorMessage);
       }
 
-      return true;
+      // Try to parse JSON response, but don't fail if it's empty
+      try {
+        const result = await response.json();
+        console.log('Delete response data:', result);
+        return result.success !== false;
+      } catch (jsonError) {
+        // If no JSON or parsing fails, but response was OK, consider it successful
+        console.log('No JSON response, but status was OK');
+        return true;
+      }
     } catch (error) {
+      console.error('Delete post error:', error);
       throw error;
     }
   }

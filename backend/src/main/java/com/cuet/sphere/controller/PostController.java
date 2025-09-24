@@ -173,9 +173,45 @@ public class PostController {
     }
 
     @DeleteMapping("/{postId}")
-    public ResponseEntity<Void> deletePost(@PathVariable Long postId) {
-        postService.deletePost(postId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> deletePost(@PathVariable Long postId) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = authentication.getName();
+            
+            Optional<User> userOpt = userService.getUserByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("success", false, "message", "User not authenticated"));
+            }
+            User currentUser = userOpt.get();
+            
+            // Get the post to check ownership
+            Post post = postService.getPost(postId).orElse(null);
+            if (post == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Map.of("success", false, "message", "Post not found"));
+            }
+            
+            // Check if user is the post owner OR is system admin
+            boolean isPostOwner = post.getUser() != null && post.getUser().getId().equals(currentUser.getId());
+            boolean isSystemAdmin = User.Role.SYSTEM_ADMIN.equals(currentUser.getRole());
+            
+            if (!isPostOwner && !isSystemAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("success", false, "message", "You can only delete your own posts"));
+            }
+            
+            // Delete the post (includes S3 cleanup)
+            postService.deletePost(postId);
+            
+            return ResponseEntity.ok(java.util.Map.of("success", true, "message", "Post deleted successfully"));
+            
+        } catch (Exception e) {
+            logger.error("Error deleting post: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("success", false, "message", "Failed to delete post"));
+        }
     }
 
     @GetMapping("/{postId}/comments")

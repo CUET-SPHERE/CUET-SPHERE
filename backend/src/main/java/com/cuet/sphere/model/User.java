@@ -46,13 +46,10 @@ public class User {
     @Column(name = "u_role")
     private Role role = Role.STUDENT;
     
-    @Column(name = "u_profile_img_url")
-    private String profileImageUrl = null;
-    
-    @Column(name = "u_profile_picture")
+    @Column(name = "u_profile_picture", columnDefinition = "TEXT")
     private String profilePicture = null;
     
-    @Column(name = "u_background_image")
+    @Column(name = "u_background_image", columnDefinition = "TEXT")
     private String backgroundImage = null;
     
     @Column(name = "u_created_at")
@@ -82,23 +79,5 @@ public class User {
     // Method to check if user is CR
     public boolean isCR() {
         return Role.CR.equals(this.role);
-    }
-    
-    // Getter and setter for profilePicture
-    public String getProfilePicture() {
-        return profilePicture;
-    }
-    
-    public void setProfilePicture(String profilePicture) {
-        this.profilePicture = profilePicture;
-    }
-    
-    // Getter and setter for backgroundImage
-    public String getBackgroundImage() {
-        return backgroundImage;
-    }
-    
-    public void setBackgroundImage(String backgroundImage) {
-        this.backgroundImage = backgroundImage;
     }
 } 

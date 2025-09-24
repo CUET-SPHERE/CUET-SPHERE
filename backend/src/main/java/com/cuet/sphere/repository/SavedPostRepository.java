@@ -79,6 +79,11 @@ public interface SavedPostRepository extends JpaRepository<SavedPost, Long> {
     void deleteByUserAndPost(User user, Post post);
     
     /**
+     * Delete all saved post records for a specific post (when post is deleted)
+     */
+    void deleteByPost(Post post);
+    
+    /**
      * Delete saved post by user ID and post ID
      */
     @Query("DELETE FROM SavedPost sp WHERE sp.user.id = :userId AND sp.post.id = :postId")

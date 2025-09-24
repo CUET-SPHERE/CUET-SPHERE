@@ -163,6 +163,35 @@ public class S3Service {
         return uploadToLocalStorage(file, key);
     }
 
+    public String uploadBackgroundImage(MultipartFile file, String fileName) throws IOException {
+        // Upload background image to S3 with custom filename in backgrounds folder
+        String key = "backgrounds/" + fileName;
+
+        // Try S3 first, fallback to local storage
+        if (s3Client != null && bucketUrl != null && !bucketUrl.isEmpty()) {
+            try {
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(file.getContentType())
+                        .build();
+
+                PutObjectResponse response = s3Client.putObject(putObjectRequest, 
+                        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                String s3Url = bucketUrl + "/" + key;
+                logger.debug("Background image uploaded to S3 successfully: {}", s3Url);
+                return s3Url;
+            } catch (Exception e) {
+                logger.error("S3 background upload failed: {}", e.getMessage(), e);
+                // S3 upload failed, falling back to local storage
+            }
+        }
+        
+        // Fallback to local storage
+        return uploadToLocalStorage(file, key);
+    }
+
     public void deleteFile(String fileUrl) {
         if (fileUrl == null || fileUrl.isEmpty()) {
             return;

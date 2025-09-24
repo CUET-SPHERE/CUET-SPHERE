@@ -60,32 +60,78 @@ public class UserService {
     }
     
     public User updateProfilePicture(User user, String newProfilePictureUrl) {
+        // Validate URL
+        if (newProfilePictureUrl == null || newProfilePictureUrl.trim().isEmpty()) {
+            throw new IllegalArgumentException("Profile picture URL cannot be null or empty");
+        }
+        
+        // Get fresh user from database to avoid overwriting other fields
+        User freshUser = userRepository.findUserByEmail(user.getEmail());
+        if (freshUser == null) {
+            throw new RuntimeException("User not found: " + user.getEmail());
+        }
+        
         // Delete old profile picture from S3 if exists
-        if (user.getProfilePicture() != null && !user.getProfilePicture().isEmpty()) {
+        if (freshUser.getProfilePicture() != null && !freshUser.getProfilePicture().isEmpty()) {
             try {
-                s3Service.deleteFile(user.getProfilePicture());
+                s3Service.deleteFile(freshUser.getProfilePicture());
             } catch (Exception e) {
                 // Failed to delete old profile picture from S3
             }
         }
         
-        // Update user with new profile picture URL
-        user.setProfilePicture(newProfilePictureUrl);
-        return userRepository.save(user);
+        // Update ONLY the profile picture field, preserve everything else
+        freshUser.setProfilePicture(newProfilePictureUrl.trim());
+        
+        return userRepository.save(freshUser);
     }
     
     public User updateBackgroundImage(User user, String newBackgroundImageUrl) {
+        // Validate URL
+        if (newBackgroundImageUrl == null || newBackgroundImageUrl.trim().isEmpty()) {
+            throw new IllegalArgumentException("Background image URL cannot be null or empty");
+        }
+        
+        // Get fresh user from database to avoid overwriting other fields
+        User freshUser = userRepository.findUserByEmail(user.getEmail());
+        if (freshUser == null) {
+            throw new RuntimeException("User not found: " + user.getEmail());
+        }
+        
         // Delete old background image from S3 if exists
-        if (user.getBackgroundImage() != null && !user.getBackgroundImage().isEmpty()) {
+        if (freshUser.getBackgroundImage() != null && !freshUser.getBackgroundImage().isEmpty()) {
             try {
-                s3Service.deleteFile(user.getBackgroundImage());
+                s3Service.deleteFile(freshUser.getBackgroundImage());
             } catch (Exception e) {
                 // Failed to delete old background image from S3
             }
         }
         
-        // Update user with new background image URL
-        user.setBackgroundImage(newBackgroundImageUrl);
-        return userRepository.save(user);
+        // Update ONLY the background image field, preserve everything else
+        freshUser.setBackgroundImage(newBackgroundImageUrl.trim());
+        
+        return userRepository.save(freshUser);
+    }
+    
+    public User clearBackgroundImage(User user) {
+        // Get fresh user from database to avoid overwriting other fields
+        User freshUser = userRepository.findUserByEmail(user.getEmail());
+        if (freshUser == null) {
+            throw new RuntimeException("User not found: " + user.getEmail());
+        }
+        
+        // Delete existing background image from S3 if exists
+        if (freshUser.getBackgroundImage() != null && !freshUser.getBackgroundImage().isEmpty()) {
+            try {
+                s3Service.deleteFile(freshUser.getBackgroundImage());
+            } catch (Exception e) {
+                // Failed to delete background image from S3
+            }
+        }
+        
+        // Clear the background image field, preserve everything else
+        freshUser.setBackgroundImage(null);
+        
+        return userRepository.save(freshUser);
     }
 }

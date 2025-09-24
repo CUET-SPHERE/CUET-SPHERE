@@ -5,8 +5,7 @@ import { useUser } from '../contexts/UserContext';
 import { mockPosts } from '../mock/mockPosts';
 import PostCard from '../components/PostCard';
 import ApiService from '../services/api';
-import ImageCropModal from '../components/ImageCropModal';
-import { getDepartmentName, getDepartmentNameSync, preloadDepartments } from '../utils/departmentUtils';
+import AdvancedImageCropModal from '../components/AdvancedImageCropModal';
 
 // Profile Avatar Component
 function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
@@ -57,7 +56,22 @@ function ProfileAvatar({ src, name, size = 'xl', editable = false, onEdit }) {
 }
 
 // Edit Profile Modal
-function EditProfileModal({ isOpen, onClose, user, onSave }) {
+function EditProfileModal({ isOpen, onClose, user, onSave, uploadFunctions }) {
+  const {
+    profilePreview,
+    backgroundPreview,
+    isUploadingProfile,
+    isUploadingBackground,
+    showProfileCrop,
+    showBackgroundCrop,
+    selectedProfileFile,
+    selectedBackgroundFile,
+    handleProfileImageChange,
+    handleBackgroundImageChange,
+    handleProfileCropComplete,
+    handleBackgroundCropComplete
+  } = uploadFunctions || {};
+
   const [formData, setFormData] = useState({
     full_name: user.fullName || user.full_name || '',
     bio: user.bio || '',
@@ -69,13 +83,6 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
   });
 
   const [newInterest, setNewInterest] = useState('');
-  const [profilePreview, setProfilePreview] = useState(user.profilePicture || '');
-  const [backgroundPreview, setBackgroundPreview] = useState(user.backgroundImage || '');
-  const [isUploading, setIsUploading] = useState(false);
-  const [showProfileCrop, setShowProfileCrop] = useState(false);
-  const [showBackgroundCrop, setShowBackgroundCrop] = useState(false);
-  const [selectedProfileFile, setSelectedProfileFile] = useState(null);
-  const [selectedBackgroundFile, setSelectedBackgroundFile] = useState(null);
   const profileFileRef = useRef(null);
   const backgroundFileRef = useRef(null);
 
@@ -90,113 +97,35 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
       backgroundImage: user.backgroundImage || '',
       isPublic: user.isPublic !== false
     });
-    setProfilePreview(user.profilePicture || '');
-    setBackgroundPreview(user.backgroundImage || '');
   }, [user]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({
-      ...formData,
-      profilePicture: profilePreview,
-      backgroundImage: backgroundPreview
-    });
+    
+    // Only include fields that have actually changed or are not empty
+    const dataToSave = {
+      full_name: formData.full_name,
+      bio: formData.bio,
+      hall: formData.hall,
+      interests: formData.interests
+    };
+    
+    // Only include profile picture if it has been changed (new upload)
+    if (profilePreview && profilePreview !== user.profilePicture) {
+      dataToSave.profilePicture = profilePreview;
+    }
+    
+    // Only include background image if it has been changed (new upload)
+    if (backgroundPreview && backgroundPreview !== user.backgroundImage) {
+      dataToSave.backgroundImage = backgroundPreview;
+    }
+    
+    console.log('Form submission - data being saved:', dataToSave);
+    console.log('Background image URL being saved:', backgroundPreview);
+    onSave(dataToSave);
     onClose();
-  };
-
-  const validateImageFile = (file) => {
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-
-    if (!allowedTypes.includes(file.type)) {
-      alert('Please select a valid image file (JPEG, PNG, or WebP)');
-      return false;
-    }
-
-    if (file.size > maxSize) {
-      alert('File size must be less than 5MB');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleProfileImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (file && validateImageFile(file)) {
-      setSelectedProfileFile(file);
-      setShowProfileCrop(true);
-    }
-  };
-
-  const handleProfileCropComplete = async (croppedFile) => {
-    try {
-      setIsUploading(true);
-
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfilePreview(e.target.result);
-      };
-      reader.readAsDataURL(croppedFile);
-
-      // Upload to S3 via backend
-      const response = await ApiService.uploadProfilePicture(croppedFile, 'profile');
-      if (response.success) {
-        setProfilePreview(response.fileUrl);
-        console.log('Profile picture uploaded successfully:', response.fileUrl);
-      } else {
-        throw new Error(response.message || 'Upload failed');
-      }
-    } catch (error) {
-      console.error('Error uploading profile picture:', error);
-      alert('Failed to upload profile picture. Please try again.');
-      // Reset preview on error
-      setProfilePreview(user.profilePicture || '');
-    } finally {
-      setIsUploading(false);
-      setSelectedProfileFile(null);
-    }
-  };
-
-  const handleBackgroundImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (file && validateImageFile(file)) {
-      setSelectedBackgroundFile(file);
-      setShowBackgroundCrop(true);
-    }
-  };
-
-  const handleBackgroundCropComplete = async (croppedFile) => {
-    try {
-      setIsUploading(true);
-
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setBackgroundPreview(e.target.result);
-      };
-      reader.readAsDataURL(croppedFile);
-
-      // Upload to S3 via backend
-      const response = await ApiService.uploadProfilePicture(croppedFile, 'background');
-      if (response.success) {
-        setBackgroundPreview(response.fileUrl);
-        console.log('Background image uploaded successfully:', response.fileUrl);
-      } else {
-        throw new Error(response.message || 'Upload failed');
-      }
-    } catch (error) {
-      console.error('Error uploading background image:', error);
-      alert('Failed to upload background image. Please try again.');
-      // Reset preview on error
-      setBackgroundPreview(user.backgroundImage || '');
-    } finally {
-      setIsUploading(false);
-      setSelectedBackgroundFile(null);
-    }
   };
 
   const addInterest = () => {
@@ -288,10 +217,10 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                   <button
                     type="button"
                     onClick={() => profileFileRef.current.click()}
-                    disabled={isUploading}
+                    disabled={isUploadingProfile}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUploading ? 'Uploading...' : 'Choose Image'}
+                    {isUploadingProfile ? 'Uploading...' : 'Choose Image'}
                   </button>
                   {profilePreview && (
                     <button
@@ -330,10 +259,10 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
                   <button
                     type="button"
                     onClick={() => backgroundFileRef.current.click()}
-                    disabled={isUploading}
+                    disabled={isUploadingBackground}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUploading ? 'Uploading...' : 'Choose Background'}
+                    {isUploadingBackground ? 'Uploading...' : 'Choose Background'}
                   </button>
                   {backgroundPreview && (
                     <button
@@ -430,7 +359,7 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
       </div>
 
       {/* Profile Picture Crop Modal */}
-      <ImageCropModal
+      <AdvancedImageCropModal
         isOpen={showProfileCrop}
         onClose={() => {
           setShowProfileCrop(false);
@@ -438,14 +367,12 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
         }}
         onCropComplete={handleProfileCropComplete}
         imageFile={selectedProfileFile}
-        aspectRatio={1} // Square for profile picture
+        cropType="profile"
         title="Crop Profile Picture"
-        minWidth={150}
-        minHeight={150}
       />
 
       {/* Background Image Crop Modal */}
-      <ImageCropModal
+      <AdvancedImageCropModal
         isOpen={showBackgroundCrop}
         onClose={() => {
           setShowBackgroundCrop(false);
@@ -453,10 +380,8 @@ function EditProfileModal({ isOpen, onClose, user, onSave }) {
         }}
         onCropComplete={handleBackgroundCropComplete}
         imageFile={selectedBackgroundFile}
-        aspectRatio={16 / 9} // Widescreen for background
+        cropType="background"
         title="Crop Background Image"
-        minWidth={400}
-        minHeight={225}
       />
     </div>
   );
@@ -647,20 +572,17 @@ function ProfilePage() {
       if (!contextUser?.email) return;
 
       try {
-        console.log('Fetching fresh profile data for:', contextUser.email);
-
         // Fetch profile picture
         const profilePictureUrl = await ApiService.getProfileImageUrl(contextUser.email);
         if (profilePictureUrl) {
-          console.log('Fresh profile picture URL:', profilePictureUrl);
           setFreshProfilePicture(profilePictureUrl);
         }
 
         // Fetch full profile (includes background image)
         const fullProfile = await ApiService.getCurrentUserProfile();
-        if (fullProfile?.backgroundImage) {
-          console.log('Fresh background image URL:', fullProfile.backgroundImage);
-          setFreshBackgroundImage(fullProfile.backgroundImage);
+        
+        if (fullProfile?.user?.backgroundImage) {
+          setFreshBackgroundImage(fullProfile.user.backgroundImage);
         }
       } catch (error) {
         console.error('Failed to fetch fresh profile data:', error);
@@ -669,6 +591,15 @@ function ProfilePage() {
 
     fetchFreshProfileData();
   }, [contextUser?.email]);
+
+  // Initialize preview states with fresh images when available
+  useEffect(() => {
+    setProfilePreview(freshProfilePicture || '');
+  }, [freshProfilePicture]);
+
+  useEffect(() => {
+    setBackgroundPreview(freshBackgroundImage || '');
+  }, [freshBackgroundImage]);
 
   // Fetch saved posts
   useEffect(() => {
@@ -701,11 +632,160 @@ function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [savedPostsLoading, setSavedPostsLoading] = useState(false);
 
+  // Image upload states
+  const [profilePreview, setProfilePreview] = useState('');
+  const [backgroundPreview, setBackgroundPreview] = useState('');
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  const [showProfileCrop, setShowProfileCrop] = useState(false);
+  const [showBackgroundCrop, setShowBackgroundCrop] = useState(false);
+  const [selectedProfileFile, setSelectedProfileFile] = useState(null);
+  const [selectedBackgroundFile, setSelectedBackgroundFile] = useState(null);
+  const profileFileRef = useRef(null);
+  const backgroundFileRef = useRef(null);
+
   // Get user's posts
   const userPosts = mockPosts.filter(post => post.authorEmail === (user.email || user.fullName));
 
+  // Image upload functions
+  const validateImageFile = (file) => {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPEG, PNG, or WebP)');
+      return false;
+    }
+
+    if (file.size > maxSize) {
+      alert('File size must be less than 5MB');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleProfileImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file && validateImageFile(file)) {
+      setSelectedProfileFile(file);
+      setShowProfileCrop(true);
+    }
+  };
+
+  const handleProfileCropComplete = async (croppedFile) => {
+    try {
+      setIsUploadingProfile(true);
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePreview(e.target.result);
+      };
+      reader.readAsDataURL(croppedFile);
+
+      // Upload to S3 via backend
+      const response = await ApiService.uploadProfilePicture(croppedFile, 'profile');
+      if (response.success) {
+        setProfilePreview(response.fileUrl);
+        console.log('Profile picture uploaded successfully:', response.fileUrl);
+
+        // Automatically save the profile picture URL to database
+        const updateData = {
+          profilePicture: response.fileUrl
+        };
+
+        console.log('Updating user profile with profile picture:', updateData);
+        const profileUpdateResponse = await ApiService.updateUserProfile(updateData);
+
+        if (profileUpdateResponse.success) {
+          // Update user context and local state
+          const updatedUser = { ...user, profilePicture: response.fileUrl };
+          setUser(updatedUser);
+          updateUser({ profilePicture: response.fileUrl });
+          setFreshProfilePicture(response.fileUrl);
+          console.log('Profile picture saved to database successfully');
+        } else {
+          console.error('Failed to save profile picture to database:', profileUpdateResponse.message);
+          // Show a warning but don't reset the preview since upload was successful
+          alert('Image uploaded but failed to save to profile. Please refresh the page.');
+        }
+      } else {
+        throw new Error(response.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture. Please try again.');
+      // Reset preview on error
+      setProfilePreview(user.profilePicture || '');
+    } finally {
+      setIsUploadingProfile(false);
+      setSelectedProfileFile(null);
+    }
+  };
+
+  const handleBackgroundImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file && validateImageFile(file)) {
+      setSelectedBackgroundFile(file);
+      setShowBackgroundCrop(true);
+    }
+  };
+
+  const handleBackgroundCropComplete = async (croppedFile) => {
+    try {
+      setIsUploadingBackground(true);
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setBackgroundPreview(e.target.result);
+      };
+      reader.readAsDataURL(croppedFile);
+
+      // Upload to S3 via dedicated background endpoint
+      const response = await ApiService.uploadBackgroundImage(croppedFile);
+      
+      if (response.success) {
+        setBackgroundPreview(response.fileUrl);
+
+        // Automatically save the background image URL to database
+        const updateData = {
+          backgroundImage: response.fileUrl
+        };
+
+        const profileUpdateResponse = await ApiService.updateUserProfile(updateData);
+
+        if (profileUpdateResponse.success) {
+          // Update user context and local state
+          const updatedUser = { ...user, backgroundImage: response.fileUrl };
+          setUser(updatedUser);
+          updateUser({ backgroundImage: response.fileUrl });
+          setFreshBackgroundImage(response.fileUrl);
+        } else {
+          console.error('Failed to save background image to database:', profileUpdateResponse.message);
+          // Show a warning but don't reset the preview since upload was successful
+          alert('Image uploaded but failed to save to profile. Please refresh the page.');
+        }
+      } else {
+        throw new Error(response.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading background image:', error);
+      alert('Failed to upload background image. Please try again.');
+      // Reset preview on error
+      setBackgroundPreview(user.backgroundImage || '');
+    } finally {
+      setIsUploadingBackground(false);
+      setSelectedBackgroundFile(null);
+    }
+  };
+
   const handleSaveProfile = async (newData) => {
     try {
+      console.log('handleSaveProfile called with data:', newData);
+      console.log('Background image in save data:', newData.backgroundImage);
+
       // Update local state immediately for better UX
       const updatedUser = { ...user, ...newData };
       setUser(updatedUser);
@@ -714,7 +794,10 @@ function ProfilePage() {
       updateUser(newData);
 
       // Save to backend
+      console.log('Sending profile update to backend...');
       const response = await ApiService.updateUserProfile(newData);
+      console.log('Backend response:', response);
+
       if (response.success) {
         console.log('Profile updated successfully');
 
@@ -723,6 +806,7 @@ function ProfilePage() {
           setFreshProfilePicture(newData.profilePicture);
         }
         if (newData.backgroundImage) {
+          console.log('Updating fresh background image with:', newData.backgroundImage);
           setFreshBackgroundImage(newData.backgroundImage);
         }
 
@@ -753,15 +837,26 @@ function ProfilePage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Full Width Cover Photo */}
       <div className="relative h-72 bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden">
-        {freshBackgroundImage || user.backgroundImage ? (
-          <img
-            src={freshBackgroundImage || user.backgroundImage}
-            alt="Cover"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
-        )}
+        {(() => {
+          console.log('=== BACKGROUND IMAGE DISPLAY DEBUG ===');
+          console.log('freshBackgroundImage:', freshBackgroundImage);
+          console.log('user.backgroundImage:', user.backgroundImage);
+          console.log('Will show image:', !!(freshBackgroundImage || user.backgroundImage));
+          console.log('Image src will be:', freshBackgroundImage || user.backgroundImage);
+          console.log('=== END BACKGROUND IMAGE DISPLAY DEBUG ===');
+          
+          return (freshBackgroundImage || user.backgroundImage) ? (
+            <img
+              src={freshBackgroundImage || user.backgroundImage}
+              alt="Cover"
+              className="w-full h-full object-cover"
+              onLoad={() => console.log('Background image loaded successfully')}
+              onError={(e) => console.error('Background image failed to load:', e.target.src)}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
+          );
+        })()}
         <div className="absolute inset-0 bg-black bg-opacity-20"></div>
       </div>
 
@@ -997,11 +1092,51 @@ function ProfilePage() {
         onClose={() => setShowEditModal(false)}
         user={user}
         onSave={handleSaveProfile}
+        uploadFunctions={{
+          profilePreview,
+          backgroundPreview,
+          isUploadingProfile,
+          isUploadingBackground,
+          showProfileCrop,
+          showBackgroundCrop,
+          selectedProfileFile,
+          selectedBackgroundFile,
+          handleProfileImageChange,
+          handleBackgroundImageChange,
+          handleProfileCropComplete,
+          handleBackgroundCropComplete
+        }}
       />
 
       <ChangePasswordModal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
+      />
+
+      {/* Profile Picture Crop Modal */}
+      <AdvancedImageCropModal
+        isOpen={showProfileCrop}
+        onClose={() => {
+          setShowProfileCrop(false);
+          setSelectedProfileFile(null);
+        }}
+        onCropComplete={handleProfileCropComplete}
+        imageFile={selectedProfileFile}
+        cropType="profile"
+        title="Crop Profile Picture"
+      />
+
+      {/* Background Image Crop Modal */}
+      <AdvancedImageCropModal
+        isOpen={showBackgroundCrop}
+        onClose={() => {
+          setShowBackgroundCrop(false);
+          setSelectedBackgroundFile(null);
+        }}
+        onCropComplete={handleBackgroundCropComplete}
+        imageFile={selectedBackgroundFile}
+        cropType="background"
+        title="Crop Background Image"
       />
     </div>
   );

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageCircle, Paperclip, Send, ImageIcon, Trash2, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { formatTimeAgo, getInitials, getAvatarColor, isImageUrl, isVideoUrl } from '../utils/formatters';
 import { useTheme } from '../contexts/ThemeContext';
 import commentService from '../services/commentService';
 import replyService from '../services/replyService';
 import voteService from '../services/voteService';
 import ApiService from '../services/api';
+import { postService } from '../services/postService';
 
 // Avatar component
 const Avatar = React.memo(({ src, name, size = 'md' }) => {
@@ -312,8 +313,48 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
   const [loading, setLoading] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [error, setError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const MAX_CONTENT_LENGTH = 200; // Adjust as needed
+
+  // Get current user info
+  const getCurrentUser = () => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        return {
+          id: parsedUser.id,
+          email: parsedUser.email,
+          role: parsedUser.role || 'STUDENT'
+        };
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+    return null;
+  };
+
+  const currentUser = getCurrentUser();
+
+  // Check if current user can delete this post
+  const canDeletePost = () => {
+    if (!currentUser) return false;
+
+    // Admin users can delete any post in manage mode
+    if (isManageMode && currentUser.role === 'SYSTEM_ADMIN') {
+      return true;
+    }
+
+    // Post owners can always delete their own posts
+    return (
+      post.userId === currentUser.id ||
+      post.authorEmail === currentUser.email
+    );
+  };
 
   const displayedContent = post.content.length > MAX_CONTENT_LENGTH && !showFullContent
     ? `${post.content.substring(0, MAX_CONTENT_LENGTH)}...`
@@ -873,6 +914,46 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
     }
   };
 
+  // Handle post deletion with modal
+  const handleDeletePost = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    setDeleteSuccess(false);
+
+    try {
+      console.log('Attempting to delete post:', post.id);
+      const result = await postService.deletePost(post.id);
+      console.log('Delete result:', result);
+
+      if (result === true || result) {
+        setDeleteSuccess(true);
+
+        // Auto-close modal and remove post after showing success
+        setTimeout(() => {
+          setShowDeleteModal(false);
+          onDelete(post.id); // Call parent's delete handler to remove from feed
+        }, 1500);
+      } else {
+        throw new Error('Delete operation failed');
+      }
+
+    } catch (err) {
+      console.error('Delete error:', err);
+      setDeleteError(err.message || 'Failed to delete post');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Reset delete modal state when closing
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setShowDeleteModal(false);
+      setDeleteError(null);
+      setDeleteSuccess(false);
+    }
+  };
+
   return (
     <div ref={ref} className={`${colors?.cardBackground || 'bg-white dark:bg-gray-800'} rounded-xl shadow-sm ${colors?.border || 'border-gray-200 dark:border-gray-700'} border overflow-hidden hover:shadow-md transition-shadow ${isManageMode ? 'ring-2 ring-red-500' : ''}`}>
       <div className="p-6">
@@ -941,27 +1022,27 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? `${colors?.voteActive || 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'up' ? `${colors?.voteActive || 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${(isManageMode && !canDeletePost()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleUpvote}
-                disabled={isManageMode}
+                disabled={isManageMode && !canDeletePost()}
               >
                 <ThumbsUp className="h-4 w-4" />
                 <span className="text-sm font-medium">{upvotes}</span>
               </button>
 
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${userVote === 'down' ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${(isManageMode && !canDeletePost()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleDownvote}
-                disabled={isManageMode}
+                disabled={isManageMode && !canDeletePost()}
               >
                 <ThumbsDown className="h-4 w-4" />
                 <span className="text-sm font-medium">{downvotes}</span>
               </button>
 
               <button
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'} transition-colors ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !isManageMode && setShowComments(!showComments)}
-                disabled={isManageMode}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'} transition-colors ${(isManageMode && !canDeletePost()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => !(isManageMode && !canDeletePost()) && setShowComments(!showComments)}
+                disabled={isManageMode && !canDeletePost()}
               >
                 <MessageCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">{comments.length}</span>
@@ -970,21 +1051,22 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
 
             <div className="flex items-center gap-4">
               <button
-                className={`p-2 rounded-lg transition-colors ${bookmarked ? `${colors?.bookmarkActive || 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${isManageMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`p-2 rounded-lg transition-colors ${bookmarked ? `${colors?.bookmarkActive || 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900'}` : `${colors?.textMuted || 'text-gray-600 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'}`} ${(isManageMode && !canDeletePost()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={handleBookmark}
-                disabled={isManageMode}
+                disabled={isManageMode && !canDeletePost()}
               >
                 {bookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
               </button>
 
-              {isManageMode && (
+              {canDeletePost() && (
                 <button
-                  onClick={() => onDelete(post.id)}
-                  className={buttonClasses?.danger || "flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"}
+                  onClick={() => setShowDeleteModal(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md min-w-fit"
                   aria-label="Delete post"
+                  title={isManageMode ? "Delete post (Admin)" : "Delete your post"}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Delete</span>
+                  <Trash2 size={16} />
+                  Delete
                 </button>
               )}
             </div>
@@ -1055,6 +1137,112 @@ const PostCard = React.memo(React.forwardRef(({ post, isManageMode = false, onDe
                 />
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`${colors?.cardBackground || 'bg-white dark:bg-gray-800'} rounded-xl shadow-xl max-w-md w-full mx-4`}>
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-lg font-semibold ${colors?.text || 'text-gray-900 dark:text-white'}`}>
+                  Delete Post
+                </h3>
+                {!deleteLoading && !deleteSuccess && (
+                  <button
+                    onClick={handleCloseDeleteModal}
+                    className={`p-1 rounded-lg ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} hover:${colors?.hoverBackground || 'bg-gray-100 dark:bg-gray-700'} transition-colors`}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Modal Content */}
+              <div className="mb-6">
+                {deleteSuccess ? (
+                  <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
+                    <CheckCircle className="h-6 w-6 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Post deleted successfully!</p>
+                      <p className="text-sm opacity-75">Removing from feed...</p>
+                    </div>
+                  </div>
+                ) : deleteError ? (
+                  <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+                    <AlertCircle className="h-6 w-6 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Failed to delete post</p>
+                      <p className="text-sm opacity-75">{deleteError}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Trash2 className="h-6 w-6 text-red-500 flex-shrink-0" />
+                      <div>
+                        <p className={`font-medium ${colors?.text || 'text-gray-900 dark:text-white'}`}>
+                          Are you sure you want to delete this post?
+                        </p>
+                        <p className={`text-sm ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'}`}>
+                          This action cannot be undone. All comments and media will be permanently removed.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Post Preview */}
+                    <div className={`p-3 rounded-lg ${colors?.cardSecondary || 'bg-gray-50 dark:bg-gray-700'} mb-4`}>
+                      <p className={`text-sm font-medium ${colors?.text || 'text-gray-900 dark:text-white'} truncate`}>
+                        "{post.title}"
+                      </p>
+                      <p className={`text-xs ${colors?.textMuted || 'text-gray-500 dark:text-gray-400'} mt-1`}>
+                        by {post.author}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              {!deleteSuccess && (
+                <div className="flex gap-3 justify-end">
+                  {!deleteLoading && (
+                    <button
+                      onClick={handleCloseDeleteModal}
+                      className={buttonClasses?.secondary || "px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"}
+                    >
+                      Cancel
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleDeletePost}
+                    disabled={deleteLoading}
+                    className={`flex items-center justify-center gap-2 px-4 py-2 min-w-[100px] bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors ${deleteLoading ? 'cursor-wait' : ''}`}
+                  >
+                    {deleteLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : deleteError ? (
+                      <>
+                        <Trash2 className="h-4 w-4 flex-shrink-0" />
+                        <span>Try Again</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 flex-shrink-0" />
+                        <span>Delete</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

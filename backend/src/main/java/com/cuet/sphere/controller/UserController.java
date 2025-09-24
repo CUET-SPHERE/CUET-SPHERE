@@ -44,6 +44,9 @@ public class UserController {
                 return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
             }
 
+            // Log current user state before update
+            logger.debug("Updating profile for user: {}", user.getEmail());
+
             // Update user fields if provided
             if (profileData.containsKey("full_name")) {
                 user.setFullName((String) profileData.get("full_name"));
@@ -57,19 +60,36 @@ public class UserController {
             // Handle profile picture update with S3 cleanup
             if (profileData.containsKey("profilePicture")) {
                 String newProfilePictureUrl = (String) profileData.get("profilePicture");
-                logger.debug("Updating profile picture for user: {} with URL: {}", user.getEmail(), newProfilePictureUrl);
-                user = userService.updateProfilePicture(user, newProfilePictureUrl);
-                logger.debug("Profile picture updated successfully");
+                if (newProfilePictureUrl != null && !newProfilePictureUrl.trim().isEmpty()) {
+                    user = userService.updateProfilePicture(user, newProfilePictureUrl);
+                    // Return immediately to avoid overwriting with other fields
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", true);
+                    response.put("message", "Profile picture updated successfully");
+                    response.put("user", user);
+                    return ResponseEntity.ok(response);
+                }
             }
             
-            // Handle background image update with S3 cleanup
+            // Handle background image update with S3 cleanup  
             if (profileData.containsKey("backgroundImage")) {
                 String newBackgroundImageUrl = (String) profileData.get("backgroundImage");
-                user = userService.updateBackgroundImage(user, newBackgroundImageUrl);
+                if (newBackgroundImageUrl != null && !newBackgroundImageUrl.trim().isEmpty()) {
+                    user = userService.updateBackgroundImage(user, newBackgroundImageUrl);
+                    // Return immediately to avoid overwriting with other fields
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", true);
+                    response.put("message", "Background image updated successfully");
+                    response.put("user", user);
+                    return ResponseEntity.ok(response);
+                }
             }
 
-            // Save updated user (if not already saved by S3 methods)
-            User updatedUser = userRepository.save(user);
+            // Save updated user only if no image fields were updated (since UserService methods already save)
+            User updatedUser = user;
+            if (!profileData.containsKey("profilePicture") && !profileData.containsKey("backgroundImage")) {
+                updatedUser = userRepository.save(user);
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -101,8 +121,6 @@ public class UserController {
             }
 
             logger.debug("Getting profile for user: {}", user.getEmail());
-            logger.debug("Profile picture URL: {}", user.getProfilePicture());
-            logger.debug("Background image URL: {}", user.getBackgroundImage());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -127,7 +145,6 @@ public class UserController {
             }
 
             logger.debug("Getting profile picture for user: {}", user.getEmail());
-            logger.debug("Profile picture URL: {}", user.getProfilePicture());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -160,7 +177,6 @@ public class UserController {
             userRepository.save(user);
 
             logger.debug("Set test profile picture for user: {}", user.getEmail());
-            logger.debug("Test profile picture URL: {}", testProfilePictureUrl);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -173,6 +189,38 @@ public class UserController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Failed to set test profile picture: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    // DEBUG ENDPOINT: Clear background image for current user
+    @PostMapping("/clear-background")
+    public ResponseEntity<Map<String, Object>> clearBackgroundImage() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("success", false, "message", "User not authenticated"));
+            }
+
+            String email = authentication.getName();
+            User user = userRepository.findUserByEmail(email);
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            }
+
+            User updatedUser = userService.clearBackgroundImage(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Background image cleared successfully");
+            response.put("user", updatedUser);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Failed to clear background image: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }
