@@ -14,22 +14,21 @@ import java.util.Optional;
 public interface PostRepository extends JpaRepository<Post, Long> {
     
     // Paginated query with only user info (no comments to avoid N+1)
+    // Filter out posts with missing users to prevent FetchNotFoundException
     @Query("""
         SELECT p FROM Post p 
-        LEFT JOIN FETCH p.user 
+        INNER JOIN FETCH p.user u
         ORDER BY p.createdAt DESC
         """)
     Page<Post> findAllWithUserOnlyPaginated(Pageable pageable);
     
-    // Paginated query with user info and comments (for when comments are needed)
+    // Paginated query with user info only - avoid loading comments to prevent orphaned user issues
     @Query(value = """
         SELECT DISTINCT p FROM Post p 
-        LEFT JOIN FETCH p.user 
-        LEFT JOIN FETCH p.comments c 
-        LEFT JOIN FETCH c.user 
+        INNER JOIN FETCH p.user u 
         ORDER BY p.createdAt DESC
         """,
-        countQuery = "SELECT COUNT(DISTINCT p) FROM Post p")
+        countQuery = "SELECT COUNT(DISTINCT p) FROM Post p INNER JOIN p.user u")
     Page<Post> findAllWithUserAndCommentsPaginated(Pageable pageable);
     
     // Count query for pagination
