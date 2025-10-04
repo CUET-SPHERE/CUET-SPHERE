@@ -28,12 +28,12 @@ export default defineConfig({
       '/api': {
         target: getProxyTarget(),
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/auth': {
         target: getProxyTarget(),
         changeOrigin: true,
-        secure: true,
+        secure: false,
       }
     }
   }
